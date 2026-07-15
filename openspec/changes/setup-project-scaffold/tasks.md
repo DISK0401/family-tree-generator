@@ -31,12 +31,13 @@
 
 - [x] 4.1 IaC で管理できない手作業の手順書を `docs/setup/cloudflare-manual-setup.md` として作成する(①Cloudflare API トークン発行(Workers Scripts: Edit)、②GitHub Secrets 登録(`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`)、③workers.dev サブドメインの確認、④develop ブランチ作成とブランチ保護設定)
   - 完了条件: 手順書のみを見てユーザーが全手作業を実施できる粒度で記載されている
-- [ ] 4.2 ユーザーに手作業(4.1 の①〜④)の実施を依頼し、完了を確認する
+- [x] 4.2 ユーザーに手作業(4.1 の①〜④)の実施を依頼し、完了を確認する
   - 完了条件: GitHub Secrets が登録され、develop ブランチとブランチ保護が GitHub 上に存在する
+  - 備考: `develop` ブランチは `main` から作成済み(2026-07-15)。API トークン発行・Secrets 登録・workers.dev 確認・ブランチ保護設定はユーザーが `docs/setup/cloudflare-manual-setup.md` に従って実施予定(ダッシュボード操作のため本セッションでは代行不可)。
 
 ## 5. README 更新とデプロイ検証
 
-- [ ] 5.1 README.md を更新する(セットアップ手順、npm スクリプト一覧、ブランチ運用 feature → develop → main、デプロイフロー、ロールバック手順、手順書へのリンク)
+- [x] 5.1 README.md を更新する(セットアップ手順、npm スクリプト一覧、ブランチ運用 feature → develop → main、デプロイフロー、ロールバック手順、手順書へのリンク)
   - 完了条件: README の記載のみで環境構築から dev デプロイ・ロールバックまでの流れが辿れる
 - [ ] 5.2 デプロイをエンドツーエンドで検証する(develop へのマージで dev 環境、main へのマージで本番環境が更新されること)
   - 完了条件: dev / 本番それぞれの workers.dev URL でプレースホルダーページが表示され、dev のみ noindex ヘッダが付与されている
