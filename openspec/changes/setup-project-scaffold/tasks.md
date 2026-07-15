@@ -2,15 +2,15 @@
 
 ## 1. プロジェクト雛形の作成
 
-- [ ] 1.1 Vite + React + TypeScript のプロジェクトを作成し、プレースホルダーページを表示する(既存の README / docs / openspec は保持)
+- [x] 1.1 Vite + React + TypeScript のプロジェクトを作成し、プレースホルダーページを表示する(既存の README / docs / openspec は保持)
   - 完了条件: `npm install` → `npm run dev` でプレースホルダーページがブラウザ表示される
-- [ ] 1.2 ESLint + Prettier を導入し、`npm run lint` / `npm run format:check` を整備する
+- [x] 1.2 ESLint + Prettier を導入し、`npm run lint` / `npm run format:check` を整備する
   - 完了条件: 両コマンドが成功し、意図的な違反を混ぜると非ゼロ終了する
-- [ ] 1.3 `npm run typecheck`(tsc --noEmit)を整備する
+- [x] 1.3 `npm run typecheck`(tsc --noEmit)を整備する
   - 完了条件: 型エラーなしで成功し、意図的な型エラーで非ゼロ終了する
-- [ ] 1.4 Vitest を導入し、サンプルテストを 1 件以上作成する
+- [x] 1.4 Vitest を導入し、サンプルテストを 1 件以上作成する
   - 完了条件: `npm run test` がサンプルテスト成功で完了する
-- [ ] 1.5 プレースホルダーページが外部へデータ送信しないことを確認する(外部 API 呼び出し・アナリティクスなし)
+- [x] 1.5 プレースホルダーページが外部へデータ送信しないことを確認する(外部 API 呼び出し・アナリティクスなし)
   - 完了条件: 開発者ツールの Network タブで自ホストの静的アセット取得以外の通信がない
 
 ## 2. Cloudflare Workers 設定(IaC)
