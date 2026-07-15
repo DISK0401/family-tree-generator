@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "family-tree-generator",
+  "compatibility_date": "2026-07-15",
+  "main": "./worker/index.ts",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true,
+  },
+  "env": {
+    "dev": {
+      "name": "family-tree-generator-dev",
+      "vars": {
+        "ENVIRONMENT": "dev",
+      },
+    },
+    "production": {
+      "name": "family-tree-generator",
+      "vars": {
+        "ENVIRONMENT": "production",
+      },
+    },
+  },
+}
