@@ -29,7 +29,7 @@
 
 ## 4. 手作業手順の文書化とユーザーへの実施依頼
 
-- [ ] 4.1 IaC で管理できない手作業の手順書を `docs/setup/cloudflare-manual-setup.md` として作成する(①Cloudflare API トークン発行(Workers Scripts: Edit)、②GitHub Secrets 登録(`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`)、③workers.dev サブドメインの確認、④develop ブランチ作成とブランチ保護設定)
+- [x] 4.1 IaC で管理できない手作業の手順書を `docs/setup/cloudflare-manual-setup.md` として作成する(①Cloudflare API トークン発行(Workers Scripts: Edit)、②GitHub Secrets 登録(`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`)、③workers.dev サブドメインの確認、④develop ブランチ作成とブランチ保護設定)
   - 完了条件: 手順書のみを見てユーザーが全手作業を実施できる粒度で記載されている
 - [ ] 4.2 ユーザーに手作業(4.1 の①〜④)の実施を依頼し、完了を確認する
   - 完了条件: GitHub Secrets が登録され、develop ブランチとブランチ保護が GitHub 上に存在する
