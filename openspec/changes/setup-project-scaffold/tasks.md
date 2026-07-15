@@ -41,3 +41,4 @@
   - 完了条件: README の記載のみで環境構築から dev デプロイ・ロールバックまでの流れが辿れる
 - [ ] 5.2 デプロイをエンドツーエンドで検証する(develop へのマージで dev 環境、main へのマージで本番環境が更新されること)
   - 完了条件: dev / 本番それぞれの workers.dev URL でプレースホルダーページが表示され、dev のみ noindex ヘッダが付与されている
+  - 進捗: PR #1 を `develop` へマージ(2026-07-15)。`https://family-tree-generator-dev.disk0401.workers.dev/` で 200・プレースホルダーページ表示・`x-robots-tag: noindex` を確認済み。本番環境(`main` マージ)の検証は未実施。
