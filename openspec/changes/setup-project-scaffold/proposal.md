@@ -13,6 +13,7 @@
   - `main` ブランチへのマージ → Cloudflare 上の **本番環境** へ自動デプロイ
 - **`develop` ブランチの新設とブランチ運用ルールの明文化**(feature → develop → main)。
 - **my_infra との役割分担**: カスタムドメイン・DNS レコード等の Cloudflare アカウント/ゾーンレベルのリソースが必要になる場合は、my_infra リポジトリの既存 Terraform 運用フロー(PR 作成 → Speculative Plan 確認 → main マージ → `/apply` コメントで apply)に従って追加する。本リポジトリ側では Workers アプリケーションのデプロイのみを扱う。
+- **IaC 方針**: Cloudflare の設定は可能な限りコードで管理する(Worker・環境定義は `wrangler.jsonc`、デプロイ条件は GitHub Actions、アカウント/ゾーンリソースは my_infra の Terraform)。IaC で管理できない作業(API トークン発行、GitHub Secrets 登録、ブランチ保護設定など)は手順書として明示し、ユーザーに実施を指示する。
 - **README.md の更新**: セットアップ手順・開発フロー・デプロイフローを記載する。
 
 破壊的変更: なし(新規構築のみ)。
