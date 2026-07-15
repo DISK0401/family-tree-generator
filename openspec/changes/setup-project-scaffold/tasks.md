@@ -15,9 +15,9 @@
 
 ## 2. Cloudflare Workers 設定(IaC)
 
-- [ ] 2.1 wrangler を devDependencies に固定バージョンで追加し、`wrangler.jsonc` に static assets 構成と `env.dev` / `env.production`(別名 Worker)を定義する
+- [x] 2.1 wrangler を devDependencies に固定バージョンで追加し、`wrangler.jsonc` に static assets 構成と `env.dev` / `env.production`(別名 Worker)を定義する
   - 完了条件: `npx wrangler deploy --dry-run --env dev` / `--env production` が成功する
-- [ ] 2.2 dev 環境のみ noindex(X-Robots-Tag 相当)を付与する仕組みを実装する
+- [x] 2.2 dev 環境のみ noindex(X-Robots-Tag 相当)を付与する仕組みを実装する
   - 完了条件: dev のレスポンスに noindex 指示が含まれ、production 設定には含まれない(ユニットテストまたはデプロイ後のヘッダ確認)
 
 ## 3. CI/CD(GitHub Actions)
