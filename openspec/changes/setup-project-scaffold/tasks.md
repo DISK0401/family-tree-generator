@@ -22,9 +22,9 @@
 
 ## 3. CI/CD(GitHub Actions)
 
-- [ ] 3.1 PR 品質ゲートのワークフローを作成する(develop / main 向け PR で lint・typecheck・test・build を実行)
+- [x] 3.1 PR 品質ゲートのワークフローを作成する(develop / main 向け PR で lint・typecheck・test・build を実行)
   - 完了条件: PR 上で 4 チェックすべてが実行され、失敗時にステータスチェックが fail になる
-- [ ] 3.2 デプロイワークフローを作成する(develop への push → `wrangler deploy --env dev`、main への push → `wrangler deploy --env production`。Secrets 欠如時は明示的にエラー)
+- [x] 3.2 デプロイワークフローを作成する(develop への push → `wrangler deploy --env dev`、main への push → `wrangler deploy --env production`。Secrets 欠如時は明示的にエラー)
   - 完了条件: ワークフロー定義が actionlint 等の構文検証を通り、ブランチ→環境のマッピングがレビューで確認できる
 
 ## 4. 手作業手順の文書化とユーザーへの実施依頼
