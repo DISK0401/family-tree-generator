@@ -12,7 +12,7 @@ type ChartInstance = ReturnType<typeof f3.createChart>
 // カードサイズCSS(.f3 div.card-rect 等)は適用されないため、ここで定義した値を
 // setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる
 const CARD_WIDTH = 96
-const CARD_HEIGHT = 150
+const CARD_HEIGHT = 108
 
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
@@ -34,10 +34,17 @@ function prefersReducedMotion(): boolean {
 interface LinkDatum {
   source: TreeDatum | TreeDatum[]
   target: TreeDatum | TreeDatum[]
+  /** 婚姻線であることを示すfamily-chart内部フラグ */
+  spouse?: boolean
 }
 
-/** 養子の系線を破線化する: 実子と視覚的に区別する(spec tree-rendering参照) */
-function markAdoptedLinks(container: HTMLElement): void {
+/**
+ * 系線への意味づけ: 養子は破線、婚姻線は二重線(伝統的な系図記法)。
+ * D3が管理する既存ノードへclassList.toggleするだけに留め、DOM構造(ノード数)を
+ * 変更しない(cloneNode等で複製すると次回updateTreeのD3データ結合が壊れるため)。
+ * 二重線自体はCSSの drop-shadow(0 3px 0 ...) で複製せず表現する。
+ */
+function markLinkStyles(container: HTMLElement): void {
   const links = container.querySelectorAll<SVGPathElement>('path.link')
   links.forEach((el) => {
     const datum = (el as unknown as { __data__?: LinkDatum }).__data__
@@ -47,6 +54,7 @@ function markAdoptedLinks(container: HTMLElement): void {
       (n) => (n?.data as unknown as FamilyChartDatum | undefined)?.data.pedigree === 'adopted',
     )
     el.classList.toggle('adopted-link', isAdopted)
+    el.classList.toggle('spouse-link', datum.spouse === true)
   })
 }
 
@@ -102,24 +110,24 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
       const person = (d.data as unknown as FamilyChartDatum).data
-      const selected = person.personId === selectedIdRef.current
-      const genderClass = person.gender === 'F' ? ' female' : ''
-      const selectedClass = selected ? ' selected' : ''
-      const years = [person.birthYear, person.deathYear].filter((y) => y !== undefined).join('–')
+      // 選択状態のみを朱で表現する。性別による色分けはしない
+      // (朱=選択の一意性を保つため。伝統的な家系図も性別を色で区別しない)
+      const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
+      const years = [person.birthYear, person.deathYear].filter((y) => y !== undefined).join(' – ')
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
       // どちらか一方しかない場合は単一列にフォールバックする
       const nameHtml =
         person.surname && person.given
           ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}</div>`
           : `<div class="tree-card-given">${escapeHtml(person.displayName)}</div>`
-      return `<div class="tree-card${genderClass}${selectedClass}">
-        ${nameHtml}
+      return `<div class="tree-card${selectedClass}">
+        <div class="tree-card-name-row">${nameHtml}</div>
         ${years ? `<div class="tree-card-years">${escapeHtml(years)}</div>` : ''}
       </div>`
     })
 
-    // 系線の意味づけ: 養子は実子と視覚的に区別する(破線)。updateTreeのたびに再適用が必要
-    chart.setAfterUpdate(() => markAdoptedLinks(container))
+    // 系線の意味づけ: 養子は破線、婚姻線は二重線。updateTreeのたびに再適用が必要
+    chart.setAfterUpdate(() => markLinkStyles(container))
 
     chart.updateTree({ initial: true, tree_position: 'fit' })
 
@@ -144,15 +152,27 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     chart.updateTree({ tree_position: 'inherit', transition_time: 0 })
   }, [selectedPersonId])
 
+  function zoomBy(amount: number) {
+    const chart = chartRef.current
+    if (!chart) return
+    f3.handlers.manualZoom({ amount, svg: chart.svg, transition_time: 200 })
+  }
+
+  function fitToView() {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.updateTree({ tree_position: 'fit' })
+  }
+
   // "f3" はfamily-chart本体のCSS(family-chart.css)が前提とするスコープクラス。
-  // 凡例はfamily-chartが管理するDOM(containerRef配下)の外、兄弟要素として置く
+  // 凡例・ズームコントロールはfamily-chartが管理するDOM(containerRef配下)の外、兄弟要素として置く
   return (
     <div
       className="tree-canvas-wrapper"
       style={{ ['--tree-card-w' as string]: `${CARD_WIDTH}px`, ['--tree-card-h' as string]: `${CARD_HEIGHT}px` }}
     >
       <div ref={containerRef} className="f3 tree-canvas-root" />
-      <div className="tree-legend" aria-hidden="true">
+      <div className="tree-legend">
         <div className="tree-legend-item">
           <span className="tree-legend-swatch" />
           <span>実子</span>
@@ -161,6 +181,18 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
           <span className="tree-legend-swatch adopted" />
           <span>養子</span>
         </div>
+        <p className="tree-legend-hint">カードを選ぶと編集できます</p>
+      </div>
+      <div className="tree-zoom-controls" role="group" aria-label="表示倍率">
+        <button type="button" onClick={() => zoomBy(1.3)} aria-label="拡大">
+          +
+        </button>
+        <button type="button" onClick={() => zoomBy(1 / 1.3)} aria-label="縮小">
+          −
+        </button>
+        <button type="button" onClick={fitToView} aria-label="全体を表示">
+          ⊡
+        </button>
       </div>
     </div>
   )

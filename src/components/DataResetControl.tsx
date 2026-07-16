@@ -56,7 +56,7 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
             aria-modal="true"
             aria-labelledby={titleId}
           >
-            <h2 id={titleId}>すべてのデータを削除しますか?</h2>
+            <h2 id={titleId}>すべてのデータを削除しますか？</h2>
             <p>
               人物 {personCount} 件・家族 {familyCount} 件を含む、この端末に保存されている家系図データがすべて削除されます。この操作は取り消せません。
             </p>

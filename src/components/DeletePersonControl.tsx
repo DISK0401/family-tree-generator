@@ -45,10 +45,16 @@ export function DeletePersonControl({ personId, onDeleted }: DeletePersonControl
             aria-modal="true"
             aria-labelledby={titleId}
           >
-            <h2 id={titleId}>{displayName(person)}を削除しますか?</h2>
+            <h2 id={titleId}>{displayName(person)}さんを削除しますか？</h2>
             <p>
-              配偶者関係 {impact.spouseFamilyCount} 件・子の帰属 {impact.childLinkCount}{' '}
-              件も変更されます。直後であればundoで復元できます。
+              {[
+                impact.spouseFamilyCount > 0 && `配偶者とのつながり${impact.spouseFamilyCount}件`,
+                impact.childLinkCount > 0 && `子の帰属${impact.childLinkCount}件`,
+              ]
+                .filter(Boolean)
+                .join('・') || '他の人物との関係はありません。'}
+              {(impact.spouseFamilyCount > 0 || impact.childLinkCount > 0) && 'も変更されます。'}
+              削除後すぐであれば「元に戻す」で復元できます。
             </p>
             <div className="confirm-dialog-actions">
               <button type="button" onClick={() => setOpen(false)}>

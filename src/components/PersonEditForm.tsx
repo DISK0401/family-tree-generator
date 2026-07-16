@@ -89,7 +89,7 @@ export function PersonEditForm({ person, onSave }: PersonEditFormProps) {
 
       <fieldset className="person-edit-form-event">
         <legend>生年月日</legend>
-        <WarekiDateInput label="日付" value={birthDate} onChange={setBirthDate} />
+        <WarekiDateInput label="生年月日" hideLabel value={birthDate} onChange={setBirthDate} />
         <label htmlFor={birthPlaceId} className="person-edit-form-field">
           場所
           <input id={birthPlaceId} type="text" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} />
@@ -98,7 +98,7 @@ export function PersonEditForm({ person, onSave }: PersonEditFormProps) {
 
       <fieldset className="person-edit-form-event">
         <legend>没年月日</legend>
-        <WarekiDateInput label="日付" value={deathDate} onChange={setDeathDate} />
+        <WarekiDateInput label="没年月日" hideLabel value={deathDate} onChange={setDeathDate} />
         <label htmlFor={deathPlaceId} className="person-edit-form-field">
           場所
           <input id={deathPlaceId} type="text" value={deathPlace} onChange={(e) => setDeathPlace(e.target.value)} />

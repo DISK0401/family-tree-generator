@@ -87,10 +87,8 @@ export function PersonPanel({ personId, onDeleted }: PersonPanelProps) {
     <div className="person-panel">
       <h2 className="person-panel-name">{displayName(person)}</h2>
 
-      <PersonEditForm key={personId} person={person} onSave={handleSave} />
-
-      <PedigreeEditor personId={personId} />
-
+      {/* コアループ(図の上で家族を育てる)の導線を最上部に置く。
+          フォームの下に埋もれると初見ユーザーが次の操作を見失うため(design.md D7) */}
       <div className="person-panel-actions">
         {(Object.keys(ACTION_LABEL) as RelationAction[]).map((action) => (
           <button
@@ -124,6 +122,10 @@ export function PersonPanel({ personId, onDeleted }: PersonPanelProps) {
           </div>
         </form>
       )}
+
+      <PersonEditForm key={personId} person={person} onSave={handleSave} />
+
+      <PedigreeEditor personId={personId} />
 
       <DeletePersonControl personId={personId} onDeleted={onDeleted} />
     </div>

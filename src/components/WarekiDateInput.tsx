@@ -8,6 +8,9 @@ interface WarekiDateInputProps {
   label: string
   value: FuzzyDate | undefined
   onChange: (value: FuzzyDate | undefined) => void
+  /** 親要素(fieldset legend等)が既に文脈を示している場合、視覚的なラベルを省略する
+   * (スクリーンリーダー向けのラベル自体は残す) */
+  hideLabel?: boolean
 }
 
 /** 入力原文が和暦表記かどうかを元号名の有無で判定する */
@@ -34,7 +37,7 @@ function counterpartLabel(date: FuzzyDate): string | null {
  * 和暦・西暦のどちらでも入力を受け付け、もう一方の表記を即時表示する日付入力。
  * 「頃・以前・以後・範囲」の修飾子にも対応する(spec tree-editor参照)。
  */
-export function WarekiDateInput({ label, value, onChange }: WarekiDateInputProps) {
+export function WarekiDateInput({ label, value, onChange, hideLabel }: WarekiDateInputProps) {
   const [text, setText] = useState(value?.original ?? '')
   const [parsed, setParsed] = useState<FuzzyDate | undefined>(value)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +66,9 @@ export function WarekiDateInput({ label, value, onChange }: WarekiDateInputProps
 
   return (
     <div className="wareki-date-input">
-      <label htmlFor={inputId}>{label}</label>
+      <label htmlFor={inputId} className={hideLabel ? 'visually-hidden' : undefined}>
+        {label}
+      </label>
       <input
         id={inputId}
         type="text"

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import './App.css'
-import { DataResetControl } from './components/DataResetControl'
 import { EmptyStateGuide } from './components/EmptyStateGuide'
 import { PersonPanel } from './components/PersonPanel'
+import { SettingsMenu } from './components/SettingsMenu'
 import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
 import { FamilyTreeCanvas } from './rendering/FamilyTreeCanvas'
 import { useTreeStore } from './store/tree-store'
@@ -41,7 +41,7 @@ function App() {
           <p className="app-header-status" aria-live="polite">
             {saveStatusText(status)}
           </p>
-          <DataResetControl onReset={resetAllData} />
+          <SettingsMenu onReset={resetAllData} />
         </div>
       </header>
       <main className="app-canvas" aria-label="家系図キャンバス">

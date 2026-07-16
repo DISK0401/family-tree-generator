@@ -16,9 +16,9 @@ beforeEach(() => {
 })
 
 /** 編集フォームとコンテキストアクションの追加フォームは同じラベル("姓"/"名")を使うため、
- * アクションフォームを開いた後の2つ目の出現を対象人物追加用の入力として扱う */
+ * コンテキストアクション(パネル上部)を開いた際の1つ目の出現を対象人物追加用の入力として扱う */
 function relationFormGivenInput() {
-  return screen.getAllByLabelText('名')[1]
+  return screen.getAllByLabelText('名')[0]
 }
 
 describe('PersonPanel: 配偶者の追加', () => {
@@ -172,7 +172,7 @@ describe('PersonPanel: 人物の削除', () => {
     render(<PersonPanel personId={personAId} onDeleted={onDeleted} />)
     fireEvent.click(screen.getByRole('button', { name: 'この人物を削除' }))
 
-    expect(screen.getByText(/配偶者関係 1 件・子の帰属 0 件/)).toBeInTheDocument()
+    expect(screen.getByText(/配偶者とのつながり1件/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '削除する' }))
 
     expect(useTreeStore.getState().document.persons[personAId]).toBeUndefined()

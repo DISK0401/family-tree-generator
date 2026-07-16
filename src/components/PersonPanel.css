@@ -12,7 +12,7 @@
 
 .person-panel-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
@@ -24,8 +24,10 @@
   border-radius: var(--radius);
   background: var(--paper);
   color: var(--ink);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
+  flex: 1;
+  min-width: max-content;
 }
 
 .person-panel-action-button:hover {

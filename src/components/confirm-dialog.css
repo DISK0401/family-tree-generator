@@ -2,7 +2,8 @@
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 0.4);
+  /* 無彩色グレーではなく墨のアルファで、楮紙の世界観と馴染ませる */
+  background: rgb(43 42 39 / 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,7 +57,10 @@
 .confirm-dialog-actions button {
   font: inherit;
   padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
   cursor: pointer;
 }
 
@@ -65,8 +69,15 @@
   opacity: 0.5;
 }
 
-.confirm-dialog-danger-button {
+/* 破壊的操作であることが一目で分かるよう、キャンセルより強い(ソリッドの)見た目にする。
+   「安全側のボタンを目立たせる」より「押す前に一拍おいて認識させる」ことを優先する。
+   文字色は --paper: ライト/ダークで明暗が反転するためどちらのテーマでも十分なコントラストになる */
+.confirm-dialog-actions .confirm-dialog-danger-button {
   border: 1px solid var(--danger);
-  background: var(--danger-wash);
-  color: var(--danger);
+  background: var(--danger);
+  color: var(--paper);
+}
+
+.confirm-dialog-actions .confirm-dialog-danger-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 85%, black);
 }

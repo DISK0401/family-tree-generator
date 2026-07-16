@@ -1,12 +1,51 @@
 .empty-state-guide {
+  position: relative;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
+  overflow: hidden;
+}
+
+/* 完成イメージを薄く敷き、縦書きカードという最大の売りを入力前に伝える */
+.empty-state-ghost {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(70vw, 480px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+.empty-state-ghost-line {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.empty-state-ghost-card {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+}
+
+.empty-state-ghost-card span {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mincho);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--ink);
 }
 
 .empty-state-guide-body {
+  position: relative;
   max-width: 24em;
   width: 100%;
   text-align: center;
@@ -24,6 +63,9 @@
   color: var(--ink-soft);
   font-size: var(--text-sm);
   line-height: 1.7;
+  /* 句読点の直前で改行しない(「ください / 。」のような不自然な折り返しを防ぐ) */
+  line-break: strict;
+  text-wrap: pretty;
 }
 
 .empty-state-guide-form {
@@ -40,17 +82,23 @@
   padding: var(--space-3) var(--space-5);
   border: 1px solid var(--ai);
   border-radius: var(--radius);
-  background: var(--ai-wash);
-  color: var(--ai-strong);
+  /* 有効時はソリッドで明確に押せることを示す。淡色は無効状態のみに使う。
+     文字色は --paper(地色)を使う: ライトでは明、ダークでは暗と役割が反転するため
+     どちらのテーマでもアクセント背景に対して十分なコントラストが取れる */
+  background: var(--ai);
+  color: var(--paper);
   cursor: pointer;
   align-self: center;
 }
 
 .empty-state-guide-form button:disabled {
-  opacity: 0.5;
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 
 .empty-state-guide-form button:not(:disabled):hover {
+  background: var(--ai-strong);
   border-color: var(--ai-strong);
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { addPerson } from '../domain/commands'
 import { useTreeStore } from '../store/tree-store'
+import { EmptyStateGhostPreview } from './EmptyStateGhostPreview'
 import { PersonNameFields } from './PersonNameFields'
 import { nameFromFields } from './person-name'
 import './EmptyStateGuide.css'
@@ -24,9 +25,14 @@ export function EmptyStateGuide() {
 
   return (
     <div className="empty-state-guide">
+      <EmptyStateGhostPreview />
       <div className="empty-state-guide-body">
         <h2>家系図をはじめる</h2>
-        <p>まずは最初の人物(たとえばあなた自身)を追加してください。</p>
+        <p>
+          まずは最初の人物を追加しましょう。
+          <br />
+          たとえば、あなた自身から。
+        </p>
         <form onSubmit={handleSubmit} className="empty-state-guide-form">
           <PersonNameFields
             surname={surname}

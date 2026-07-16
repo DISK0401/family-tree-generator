@@ -14,29 +14,29 @@
 
 :root {
   /* 墨 — テキスト */
-  --ink: #211d16;
-  --ink-soft: #5c5546;
-  --ink-faint: #8a8171;
+  --ink: #2b2a27;
+  --ink-soft: #625b4e;
+  --ink-faint: #8f8672;
 
   /* 楮紙 — 地と面 */
-  --paper: #f4efe3;
-  --paper-raised: #fdfaf1;
-  --paper-sunken: #eae4d4;
-  --line: #c9c0ab;
-  --line-strong: #6f6857;
+  --paper: #f2ede1;
+  --paper-raised: #fbf7ec;
+  --paper-sunken: #e8e1d0;
+  --line: #d8d2c4;
+  --line-strong: #a89f8a;
 
   /* 藍 — インタラクティブ */
-  --ai: #14586e;
-  --ai-strong: #0e4356;
-  --ai-wash: #dde8e9;
+  --ai: #274a78;
+  --ai-strong: #17324f;
+  --ai-wash: #e1e7ef;
 
-  /* 朱 — 選択の印 */
-  --shu: #bc3a26;
-  --shu-wash: #f4e0d7;
+  /* 朱 — 選択の印。他のどの役割にも流用しない(選択状態の一意性を保つ) */
+  --shu: #c73e3a;
+  --shu-wash: #f5e1dc;
 
-  /* セマンティック */
-  --danger: #8e2321;
-  --danger-wash: #f2dcda;
+  /* セマンティック(朱と同じ暖色系だが別トークン: 危険操作は選択と役割が異なるため区別する) */
+  --danger: #a8382c;
+  --danger-wash: #f0ddd6;
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
 
@@ -78,28 +78,28 @@
   color-scheme: light;
 }
 
-/* 夜の帳簿 — 藍鉄の地に生成りの文字。単純反転にしない */
+/* 夜の帳簿 — 墨黒の地に生成りの文字。青系ではなく暖色系で「紙」の質感を保つ(単純反転にしない) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --ink: #e6dfcd;
-    --ink-soft: #aaa28e;
-    --ink-faint: #7d7666;
+    --ink: #e9e4d8;
+    --ink-soft: #b3ab97;
+    --ink-faint: #847c69;
 
-    --paper: #171c22;
-    --paper-raised: #202730;
-    --paper-sunken: #10141a;
-    --line: #3b434f;
-    --line-strong: #5d6774;
+    --paper: #191714;
+    --paper-raised: #221f1b;
+    --paper-sunken: #121110;
+    --line: #4a463f;
+    --line-strong: #6b6558;
 
-    --ai: #7db6c9;
-    --ai-strong: #a3cddb;
-    --ai-wash: #1e3038;
+    --ai: #7e9cc4;
+    --ai-strong: #a9c0dd;
+    --ai-wash: #202b3a;
 
-    --shu: #d96a4d;
-    --shu-wash: #3a231c;
+    --shu: #d0604f;
+    --shu-wash: #3a2620;
 
-    --danger: #d9705f;
-    --danger-wash: #3a1f1c;
+    --danger: #ce6c58;
+    --danger-wash: #35231e;
     --warn: #cfa14a;
     --warn-wash: #352c18;
 
@@ -111,21 +111,21 @@
 
 /* 明示的なテーマ指定はOS設定より優先(双方向) */
 :root[data-theme='light'] {
-  --ink: #211d16;
-  --ink-soft: #5c5546;
-  --ink-faint: #8a8171;
-  --paper: #f4efe3;
-  --paper-raised: #fdfaf1;
-  --paper-sunken: #eae4d4;
-  --line: #c9c0ab;
-  --line-strong: #6f6857;
-  --ai: #14586e;
-  --ai-strong: #0e4356;
-  --ai-wash: #dde8e9;
-  --shu: #bc3a26;
-  --shu-wash: #f4e0d7;
-  --danger: #8e2321;
-  --danger-wash: #f2dcda;
+  --ink: #2b2a27;
+  --ink-soft: #625b4e;
+  --ink-faint: #8f8672;
+  --paper: #f2ede1;
+  --paper-raised: #fbf7ec;
+  --paper-sunken: #e8e1d0;
+  --line: #d8d2c4;
+  --line-strong: #a89f8a;
+  --ai: #274a78;
+  --ai-strong: #17324f;
+  --ai-wash: #e1e7ef;
+  --shu: #c73e3a;
+  --shu-wash: #f5e1dc;
+  --danger: #a8382c;
+  --danger-wash: #f0ddd6;
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
   --shadow-raised: 0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
@@ -133,21 +133,21 @@
 }
 
 :root[data-theme='dark'] {
-  --ink: #e6dfcd;
-  --ink-soft: #aaa28e;
-  --ink-faint: #7d7666;
-  --paper: #171c22;
-  --paper-raised: #202730;
-  --paper-sunken: #10141a;
-  --line: #3b434f;
-  --line-strong: #5d6774;
-  --ai: #7db6c9;
-  --ai-strong: #a3cddb;
-  --ai-wash: #1e3038;
-  --shu: #d96a4d;
-  --shu-wash: #3a231c;
-  --danger: #d9705f;
-  --danger-wash: #3a1f1c;
+  --ink: #e9e4d8;
+  --ink-soft: #b3ab97;
+  --ink-faint: #847c69;
+  --paper: #191714;
+  --paper-raised: #221f1b;
+  --paper-sunken: #121110;
+  --line: #4a463f;
+  --line-strong: #6b6558;
+  --ai: #7e9cc4;
+  --ai-strong: #a9c0dd;
+  --ai-wash: #202b3a;
+  --shu: #d0604f;
+  --shu-wash: #3a2620;
+  --danger: #ce6c58;
+  --danger-wash: #35231e;
   --warn: #cfa14a;
   --warn-wash: #352c18;
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
