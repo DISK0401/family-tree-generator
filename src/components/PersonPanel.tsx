@@ -33,6 +33,7 @@ function findSoleSpouseId(doc: TreeDocument, personId: PersonId): PersonId | und
 interface PersonPanelProps {
   personId: PersonId
   onDeleted: () => void
+  onClose: () => void
 }
 
 /**
@@ -40,7 +41,7 @@ interface PersonPanelProps {
  * 「図の上で家族を育てる」操作モデル(design.md D7)。フォームはこのパネル内で
  * 完結させ、モーダルで作業を中断させない。
  */
-export function PersonPanel({ personId, onDeleted }: PersonPanelProps) {
+export function PersonPanel({ personId, onDeleted, onClose }: PersonPanelProps) {
   const apply = useTreeStore((s) => s.apply)
   const person = useTreeStore((s) => s.document.persons[personId])
   const [openAction, setOpenAction] = useState<RelationAction | null>(null)
@@ -85,7 +86,14 @@ export function PersonPanel({ personId, onDeleted }: PersonPanelProps) {
 
   return (
     <div className="person-panel">
-      <h2 className="person-panel-name">{displayName(person)}</h2>
+      <div className="person-panel-header">
+        <h2 className="person-panel-name">{displayName(person)}</h2>
+        {/* 狭幅画面ではパネルが全画面表示になり図に戻る手段がなくなるため、
+            常時表示の閉じるボタンで図へ戻れるようにする */}
+        <button type="button" className="person-panel-close" onClick={onClose} aria-label="パネルを閉じる">
+          ✕
+        </button>
+      </div>
 
       {/* コアループ(図の上で家族を育てる)の導線を最上部に置く。
           フォームの下に埋もれると初見ユーザーが次の操作を見失うため(design.md D7) */}

@@ -5,9 +5,34 @@
   padding: var(--space-4);
 }
 
+.person-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .person-panel-name {
   font-size: var(--text-lg);
   letter-spacing: 0.05em;
+}
+
+.person-panel-close {
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1;
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.person-panel-close:hover {
+  border-color: var(--ai);
+  color: var(--ai-strong);
 }
 
 .person-panel-actions {
