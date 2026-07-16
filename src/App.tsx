@@ -63,6 +63,7 @@ function App() {
           <PersonPanel
             personId={selectedPersonId}
             onDeleted={() => setSelectedPersonId(null)}
+            onClose={() => setSelectedPersonId(null)}
           />
         ) : null}
       </aside>

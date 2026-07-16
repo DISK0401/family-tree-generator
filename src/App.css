@@ -66,3 +66,22 @@
 .app-panel[hidden] {
   display: none;
 }
+
+/* 狭幅画面ではパネルを図の横に並べると図が数十pxのスリバーになり操作不能になるため、
+   全画面オーバーレイに切り替える(design.md: スマホは「閲覧可能レベル」が目標だが、
+   選択後に図へ戻れなくなるのはそれを下回るため最低限のフォールバックとして必要) */
+@media (max-width: 640px) {
+  .app-frame {
+    grid-template-areas:
+      'header'
+      'canvas';
+    grid-template-columns: 1fr;
+  }
+
+  .app-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    z-index: 20;
+  }
+}
