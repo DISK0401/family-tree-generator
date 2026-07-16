@@ -1,0 +1,148 @@
+/*
+ * デザイントークン — 「帳簿・系譜がもつ墨と紙の世界を、現代のツールとして再構成する」
+ *
+ * 4役 + セマンティック:
+ *   墨 (ink)     … テキスト・系線。帳簿の墨書き
+ *   楮紙 (paper) … 地・面。和紙の生成り
+ *   藍 (ai)      … インタラクティブの印(リンク・操作・フォーカス)
+ *   朱 (shu)     … 選択の印。朱印のように「ここぞ」の一点のみに使う
+ *   semantic     … 危険(削除)・警告。朱とは役割で区別する
+ *
+ * コンポーネントは必ずこのトークン経由で色・書体を参照すること。
+ * テーマはトークンの再定義のみで切り替わる(ライト=昼の帳簿 / ダーク=夜の帳簿)。
+ */
+
+:root {
+  /* 墨 — テキスト */
+  --ink: #211d16;
+  --ink-soft: #5c5546;
+  --ink-faint: #8a8171;
+
+  /* 楮紙 — 地と面 */
+  --paper: #f4efe3;
+  --paper-raised: #fdfaf1;
+  --paper-sunken: #eae4d4;
+  --line: #c9c0ab;
+  --line-strong: #6f6857;
+
+  /* 藍 — インタラクティブ */
+  --ai: #14586e;
+  --ai-strong: #0e4356;
+  --ai-wash: #dde8e9;
+
+  /* 朱 — 選択の印 */
+  --shu: #bc3a26;
+  --shu-wash: #f4e0d7;
+
+  /* セマンティック */
+  --danger: #8e2321;
+  --danger-wash: #f2dcda;
+  --warn: #8a5a12;
+  --warn-wash: #f1e6cd;
+
+  /* 書体 — 明朝は人名・見出し、ゴシックはUI操作系 */
+  --font-mincho:
+    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP', 'Noto Serif JP', serif;
+  --font-gothic:
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic', 'Noto Sans CJK JP', 'Noto Sans JP',
+    system-ui, sans-serif;
+
+  /* タイプスケール(1rem = 16px) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.4375rem;
+  --text-2xl: 1.75rem;
+
+  /* 余白(4px基調) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* 造形 — 帳簿の直線的な佇まい。丸角は最小限 */
+  --radius: 2px;
+  --shadow-raised: 0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+
+  color-scheme: light;
+}
+
+/* 夜の帳簿 — 藍鉄の地に生成りの文字。単純反転にしない */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e6dfcd;
+    --ink-soft: #aaa28e;
+    --ink-faint: #7d7666;
+
+    --paper: #171c22;
+    --paper-raised: #202730;
+    --paper-sunken: #10141a;
+    --line: #3b434f;
+    --line-strong: #5d6774;
+
+    --ai: #7db6c9;
+    --ai-strong: #a3cddb;
+    --ai-wash: #1e3038;
+
+    --shu: #d96a4d;
+    --shu-wash: #3a231c;
+
+    --danger: #d9705f;
+    --danger-wash: #3a1f1c;
+    --warn: #cfa14a;
+    --warn-wash: #352c18;
+
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+
+    color-scheme: dark;
+  }
+}
+
+/* 明示的なテーマ指定はOS設定より優先(双方向) */
+:root[data-theme='light'] {
+  --ink: #211d16;
+  --ink-soft: #5c5546;
+  --ink-faint: #8a8171;
+  --paper: #f4efe3;
+  --paper-raised: #fdfaf1;
+  --paper-sunken: #eae4d4;
+  --line: #c9c0ab;
+  --line-strong: #6f6857;
+  --ai: #14586e;
+  --ai-strong: #0e4356;
+  --ai-wash: #dde8e9;
+  --shu: #bc3a26;
+  --shu-wash: #f4e0d7;
+  --danger: #8e2321;
+  --danger-wash: #f2dcda;
+  --warn: #8a5a12;
+  --warn-wash: #f1e6cd;
+  --shadow-raised: 0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --ink: #e6dfcd;
+  --ink-soft: #aaa28e;
+  --ink-faint: #7d7666;
+  --paper: #171c22;
+  --paper-raised: #202730;
+  --paper-sunken: #10141a;
+  --line: #3b434f;
+  --line-strong: #5d6774;
+  --ai: #7db6c9;
+  --ai-strong: #a3cddb;
+  --ai-wash: #1e3038;
+  --shu: #d96a4d;
+  --shu-wash: #3a231c;
+  --danger: #d9705f;
+  --danger-wash: #3a1f1c;
+  --warn: #cfa14a;
+  --warn-wash: #352c18;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+  color-scheme: dark;
+}

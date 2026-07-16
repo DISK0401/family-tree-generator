@@ -1,40 +1,50 @@
+@import './styles/tokens.css';
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-
-  font: 18px/145% var(--sans);
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  font: 16px/1.6 var(--font-gothic);
+  color: var(--ink);
+  background: var(--paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-  }
-}
-
 body {
   margin: 0;
 }
 
-h1 {
-  font-family: var(--sans);
-  font-weight: 500;
-  color: var(--text-h);
-  font-size: 40px;
+h1,
+h2,
+h3 {
+  font-family: var(--font-mincho);
+  font-weight: 600;
+  color: var(--ink);
   margin: 0;
 }
 
 p {
   margin: 0;
+}
+
+button {
+  font-family: var(--font-gothic);
+}
+
+a {
+  color: var(--ai);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ai);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
