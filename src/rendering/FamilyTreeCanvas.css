@@ -1,3 +1,9 @@
+.tree-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .tree-canvas-root {
   width: 100%;
   height: 100%;
@@ -71,4 +77,42 @@
 .tree-canvas-root path.link {
   stroke: var(--line-strong);
   stroke-width: 1.5px;
+}
+
+/* 養子の系線は実子と視覚的に区別する(破線)。装飾ではなく系譜上の意味を持たせる */
+.tree-canvas-root path.link.adopted-link {
+  stroke-dasharray: 5 4;
+}
+
+.tree-legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.tree-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tree-legend-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 0;
+  border-top: 1.5px solid var(--line-strong);
+}
+
+.tree-legend-swatch.adopted {
+  border-top-style: dashed;
 }

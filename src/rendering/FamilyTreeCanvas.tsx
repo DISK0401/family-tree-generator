@@ -26,6 +26,30 @@ function prefersReducedMotion(): boolean {
   )
 }
 
+/**
+ * family-chartのリンク要素(SVG path)のD3データ形状。
+ * `Link`型は公開APIのexportsマップに含まれないため、必要な形だけをローカルに定義する
+ * (実体はlayout/create-links.tsのLinkと同一)。
+ */
+interface LinkDatum {
+  source: TreeDatum | TreeDatum[]
+  target: TreeDatum | TreeDatum[]
+}
+
+/** 養子の系線を破線化する: 実子と視覚的に区別する(spec tree-rendering参照) */
+function markAdoptedLinks(container: HTMLElement): void {
+  const links = container.querySelectorAll<SVGPathElement>('path.link')
+  links.forEach((el) => {
+    const datum = (el as unknown as { __data__?: LinkDatum }).__data__
+    if (!datum) return
+    const nodes = [datum.source, datum.target].flat()
+    const isAdopted = nodes.some(
+      (n) => (n?.data as unknown as FamilyChartDatum | undefined)?.data.pedigree === 'adopted',
+    )
+    el.classList.toggle('adopted-link', isAdopted)
+  })
+}
+
 /** 氏名は利用者入力のため、innerHTMLへ渡す前に必ずエスケープする */
 function escapeHtml(value: string): string {
   return value
@@ -94,6 +118,9 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       </div>`
     })
 
+    // 系線の意味づけ: 養子は実子と視覚的に区別する(破線)。updateTreeのたびに再適用が必要
+    chart.setAfterUpdate(() => markAdoptedLinks(container))
+
     chart.updateTree({ initial: true, tree_position: 'fit' })
 
     return () => {
@@ -117,12 +144,24 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     chart.updateTree({ tree_position: 'inherit', transition_time: 0 })
   }, [selectedPersonId])
 
-  // "f3" はfamily-chart本体のCSS(family-chart.css)が前提とするスコープクラス
+  // "f3" はfamily-chart本体のCSS(family-chart.css)が前提とするスコープクラス。
+  // 凡例はfamily-chartが管理するDOM(containerRef配下)の外、兄弟要素として置く
   return (
     <div
-      ref={containerRef}
-      className="f3 tree-canvas-root"
+      className="tree-canvas-wrapper"
       style={{ ['--tree-card-w' as string]: `${CARD_WIDTH}px`, ['--tree-card-h' as string]: `${CARD_HEIGHT}px` }}
-    />
+    >
+      <div ref={containerRef} className="f3 tree-canvas-root" />
+      <div className="tree-legend" aria-hidden="true">
+        <div className="tree-legend-item">
+          <span className="tree-legend-swatch" />
+          <span>実子</span>
+        </div>
+        <div className="tree-legend-item">
+          <span className="tree-legend-swatch adopted" />
+          <span>養子</span>
+        </div>
+      </div>
+    </div>
   )
 }
