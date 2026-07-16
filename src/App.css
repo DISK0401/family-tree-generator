@@ -28,6 +28,18 @@
 .app-header-status {
   font-size: var(--text-sm);
   color: var(--ink-soft);
+  margin: 0;
+}
+
+.app-blocked-message {
+  max-width: 32em;
+  margin: var(--space-6) auto;
+  padding: var(--space-4);
+  border: 1px solid var(--danger);
+  background: var(--danger-wash);
+  color: var(--ink);
+  border-radius: var(--radius);
+  font-size: var(--text-md);
 }
 
 .app-canvas {
