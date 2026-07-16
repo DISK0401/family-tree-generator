@@ -50,10 +50,15 @@ function markLinkStyles(container: HTMLElement): void {
     const datum = (el as unknown as { __data__?: LinkDatum }).__data__
     if (!datum) return
     const nodes = [datum.source, datum.target].flat()
-    const isAdopted = nodes.some(
-      (n) => (n?.data as unknown as FamilyChartDatum | undefined)?.data.pedigree === 'adopted',
-    )
-    el.classList.toggle('adopted-link', isAdopted)
+    // 続柄は実子/養子/継子/里子/不明の5種類あるが、系線では「実子かどうか」のみを
+    // 区別する(実子以外はすべて破線)。design.md/specは養子との区別のみを要求するが、
+    // 編集UIの選択肢(続柄セレクト)には養子以外の非実子種別もあるため、それらを選んでも
+    // 実子と見分けがつかなくなる不整合を避ける
+    const isNonBiological = nodes.some((n) => {
+      const pedigree = (n?.data as unknown as FamilyChartDatum | undefined)?.data.pedigree
+      return pedigree !== undefined && pedigree !== 'biological'
+    })
+    el.classList.toggle('adopted-link', isNonBiological)
     el.classList.toggle('spouse-link', datum.spouse === true)
   })
 }
@@ -179,7 +184,7 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         </div>
         <div className="tree-legend-item">
           <span className="tree-legend-swatch adopted" />
-          <span>養子</span>
+          <span>養子・継子・里子・不明</span>
         </div>
         <p className="tree-legend-hint">カードを選ぶと編集できます</p>
       </div>
