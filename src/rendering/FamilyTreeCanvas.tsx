@@ -8,6 +8,12 @@ import './FamilyTreeCanvas.css'
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
 type ChartInstance = ReturnType<typeof f3.createChart>
 
+// カード寸法。setCardHtml()にsetCardInnerHtmlCreatorを渡すとfamily-chart側の
+// カードサイズCSS(.f3 div.card-rect 等)は適用されないため、ここで定義した値を
+// setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる
+const CARD_WIDTH = 96
+const CARD_HEIGHT = 150
+
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
   onSelectPerson: (personId: string | null) => void
@@ -18,6 +24,16 @@ function prefersReducedMotion(): boolean {
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   )
+}
+
+/** 氏名は利用者入力のため、innerHTMLへ渡す前に必ずエスケープする */
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 }
 
 /**
@@ -55,7 +71,7 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
 
     const card = chart.setCardHtml()
     card.setStyle('rect')
-    card.setCardDim({ w: 96, h: 150, img: false })
+    card.setCardDim({ w: CARD_WIDTH, h: CARD_HEIGHT, img: false })
     card.setOnCardClick((_e: Event, d: TreeDatum) => {
       const personId = (d.data as unknown as FamilyChartDatum).data.personId
       onSelectPersonRef.current(personId === selectedIdRef.current ? null : personId)
@@ -66,9 +82,15 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       const genderClass = person.gender === 'F' ? ' female' : ''
       const selectedClass = selected ? ' selected' : ''
       const years = [person.birthYear, person.deathYear].filter((y) => y !== undefined).join('–')
+      // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
+      // どちらか一方しかない場合は単一列にフォールバックする
+      const nameHtml =
+        person.surname && person.given
+          ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}</div>`
+          : `<div class="tree-card-given">${escapeHtml(person.displayName)}</div>`
       return `<div class="tree-card${genderClass}${selectedClass}">
-        <div class="tree-card-name">${person.displayName}</div>
-        ${years ? `<div class="tree-card-years">${years}</div>` : ''}
+        ${nameHtml}
+        ${years ? `<div class="tree-card-years">${escapeHtml(years)}</div>` : ''}
       </div>`
     })
 
@@ -95,5 +117,12 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     chart.updateTree({ tree_position: 'inherit', transition_time: 0 })
   }, [selectedPersonId])
 
-  return <div ref={containerRef} className="tree-canvas-root" />
+  // "f3" はfamily-chart本体のCSS(family-chart.css)が前提とするスコープクラス
+  return (
+    <div
+      ref={containerRef}
+      className="f3 tree-canvas-root"
+      style={{ ['--tree-card-w' as string]: `${CARD_WIDTH}px`, ['--tree-card-h' as string]: `${CARD_HEIGHT}px` }}
+    />
+  )
 }

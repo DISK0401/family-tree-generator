@@ -7,47 +7,65 @@
   background: transparent;
 }
 
-/* カード自体のベーススタイルは6.3(縦書き人名カード)で本実装する。
-   ここでは骨格(6.2)として最低限の枠と選択マーカーのみを用意する。 */
+/*
+ * 人物カード: 「帳簿・系譜の紙の世界」を現代化するデザイン言語の核となる一手。
+ * 氏名は縦書き(vertical-rl)・明朝系で表示し、家系図・系譜の伝統的な佇まいを
+ * 画面の第一印象で成立させる(design.md D6)。
+ */
 .tree-card {
   box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  padding: var(--space-2);
+  /* setCardInnerHtmlCreator使用時はfamily-chart側のカードサイズCSSが適用されないため、
+     コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
+  width: var(--tree-card-w, 96px);
+  height: var(--tree-card-h, 150px);
+  padding: var(--space-2) var(--space-1);
   background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse;
   justify-content: center;
-  align-items: center;
-  gap: var(--space-1);
+  align-items: stretch;
+  gap: var(--space-2);
   cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.tree-card:hover {
+  border-color: var(--line-strong);
 }
 
 .tree-card.female {
-  border-color: color-mix(in srgb, var(--shu) 40%, var(--line));
+  border-color: color-mix(in srgb, var(--shu) 35%, var(--line));
 }
 
 .tree-card.selected {
   border-color: var(--shu);
   border-width: 2px;
+  padding: calc(var(--space-2) - 1px) calc(var(--space-1) - 1px);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--shu) 25%, transparent);
 }
 
-.tree-card-name {
+.tree-card-surname,
+.tree-card-given {
+  writing-mode: vertical-rl;
   font-family: var(--font-mincho);
   font-size: var(--text-md);
-  letter-spacing: 0.05em;
-  text-align: center;
+  letter-spacing: 0.15em;
+  color: var(--ink);
 }
 
 .tree-card-years {
+  writing-mode: vertical-rl;
   font-family: var(--font-gothic);
   font-size: var(--text-xs);
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tree-canvas-root path.link {

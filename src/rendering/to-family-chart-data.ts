@@ -19,6 +19,9 @@ export interface FamilyChartCardData {
   personId: PersonId
   gender: 'M' | 'F' | 'U'
   displayName: string
+  /** カード表示用。姓・名を別の縦書き列として描くために分離して持つ(6.3) */
+  surname?: string
+  given?: string
   birthYear?: number
   deathYear?: number
   /** この人物の主たる親子線(rels.parents)に対応する続柄種別。線のスタイル分岐(6.4)に使う */
@@ -86,6 +89,8 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
         personId: person.id,
         gender: toGender(person.gender),
         displayName: displayName(person),
+        surname: person.name.surname,
+        given: person.name.given,
         birthYear: person.birth?.date?.date?.year,
         deathYear: person.death?.date?.date?.year,
         pedigree: pedigreeByChild.get(person.id),

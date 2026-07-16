@@ -111,6 +111,8 @@ describe('toFamilyChartData: 基本フィールド', () => {
 
     const datum = byId(toFamilyChartData(doc), p.personId)
     expect(datum.data.displayName).toBe('髙橋 廣')
+    expect(datum.data.surname).toBe('髙橋')
+    expect(datum.data.given).toBe('廣')
     expect(datum.data.gender).toBe('M')
     expect(datum.data.birthYear).toBe(1935)
     expect(datum.data.deathYear).toBeUndefined()
