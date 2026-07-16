@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import './App.css'
 import { DataResetControl } from './components/DataResetControl'
 import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
+import { FamilyTreeCanvas } from './rendering/FamilyTreeCanvas'
 
 function saveStatusText(status: PersistenceStatus): string {
   switch (status.phase) {
@@ -22,7 +24,9 @@ function saveStatusText(status: PersistenceStatus): string {
 
 function App() {
   const { status, resetAllData } = usePersistedTree()
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
   const blocked = status.phase === 'blocked'
+  const ready = status.phase === 'ready'
 
   return (
     <div className="app-frame">
@@ -41,7 +45,12 @@ function App() {
             {saveStatusText(status)}
           </p>
         ) : null}
-        {/* 家系図キャンバス(tree-rendering実装時に差し替え) */}
+        {ready ? (
+          <FamilyTreeCanvas
+            selectedPersonId={selectedPersonId}
+            onSelectPerson={setSelectedPersonId}
+          />
+        ) : null}
       </main>
       <aside className="app-panel" aria-label="編集パネル" hidden>
         {/* 人物編集パネル(tree-editor実装時に差し替え) */}

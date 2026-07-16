@@ -1,0 +1,56 @@
+.tree-canvas-root {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-canvas-root .card {
+  background: transparent;
+}
+
+/* カード自体のベーススタイルは6.3(縦書き人名カード)で本実装する。
+   ここでは骨格(6.2)として最低限の枠と選択マーカーのみを用意する。 */
+.tree-card {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+}
+
+.tree-card.female {
+  border-color: color-mix(in srgb, var(--shu) 40%, var(--line));
+}
+
+.tree-card.selected {
+  border-color: var(--shu);
+  border-width: 2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--shu) 25%, transparent);
+}
+
+.tree-card-name {
+  font-family: var(--font-mincho);
+  font-size: var(--text-md);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.tree-card-years {
+  font-family: var(--font-gothic);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tree-canvas-root path.link {
+  stroke: var(--line-strong);
+  stroke-width: 1.5px;
+}
