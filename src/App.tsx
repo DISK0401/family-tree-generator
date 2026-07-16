@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import { DataResetControl } from './components/DataResetControl'
 import { EmptyStateGuide } from './components/EmptyStateGuide'
+import { PersonPanel } from './components/PersonPanel'
 import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
 import { FamilyTreeCanvas } from './rendering/FamilyTreeCanvas'
 import { useTreeStore } from './store/tree-store'
@@ -57,8 +58,8 @@ function App() {
           />
         ) : null}
       </main>
-      <aside className="app-panel" aria-label="編集パネル" hidden>
-        {/* 人物編集パネル(tree-editor実装時に差し替え) */}
+      <aside className="app-panel" aria-label="編集パネル" hidden={!selectedPersonId}>
+        {selectedPersonId ? <PersonPanel personId={selectedPersonId} /> : null}
       </aside>
     </div>
   )

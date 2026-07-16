@@ -1,0 +1,25 @@
+.person-name-fields {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.person-name-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.person-name-fields input {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  width: 8em;
+}
