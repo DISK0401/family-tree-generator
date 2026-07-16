@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>family-chart スパイク検証</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #f5f1e8;
+      }
+      #FamilyChart {
+        width: 100%;
+        height: 100vh;
+      }
+      /* 縦書き人名カード */
+      .spike-card {
+        display: flex;
+        flex-direction: row-reverse;
+        gap: 4px;
+        padding: 10px 8px;
+        background: #fffdf7;
+        border: 1px solid #6b6455;
+        border-radius: 2px;
+        color: #1c1b18;
+        min-height: 110px;
+      }
+      .spike-card .name {
+        writing-mode: vertical-rl;
+        font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif CJK JP', serif;
+        font-size: 18px;
+        letter-spacing: 0.15em;
+      }
+      .spike-card .years {
+        writing-mode: vertical-rl;
+        font-family: sans-serif;
+        font-size: 10px;
+        color: #6b6455;
+      }
+      .spike-card.female {
+        border-color: #a0526d;
+      }
+      /* 養子リンクの後処理スタイル */
+      path.link.adopted-link {
+        stroke-dasharray: 6 4 !important;
+        stroke: #8a4b2a !important;
+      }
+      path.link {
+        stroke: #6b6455 !important;
+        stroke-width: 1.5 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="FamilyChart"></div>
+    <script type="module" src="./spike.ts"></script>
+  </body>
+</html>

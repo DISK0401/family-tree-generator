@@ -1,0 +1,86 @@
+.person-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-sunken);
+}
+
+.person-edit-form-kana-fields {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.person-edit-form-kana-fields label,
+.person-edit-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  flex: 1;
+  /* flexアイテムは既定でmin-width:autoのため、コンテンツ幅で親をはみ出す
+     (ふりがな欄がパネル右端で見切れていたバグ)。0にして100%幅の子に委ねる */
+  min-width: 0;
+}
+
+.person-edit-form-kana-fields input,
+.person-edit-form-field input,
+.person-edit-form-field select,
+.person-edit-form-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.person-edit-form-field select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+    linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) center,
+    calc(100% - 13px) center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--space-6);
+}
+
+.person-edit-form-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.person-edit-form-event legend {
+  font-family: var(--font-gothic);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  padding: 0 var(--space-1);
+}
+
+.person-edit-form-submit {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--ai);
+  border-radius: var(--radius);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.person-edit-form-submit:hover {
+  border-color: var(--ai-strong);
+}
