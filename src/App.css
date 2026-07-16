@@ -25,6 +25,12 @@
   letter-spacing: 0.2em;
 }
 
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .app-header-status {
   font-size: var(--text-sm);
   color: var(--ink-soft);

@@ -1,0 +1,84 @@
+.data-reset-trigger {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+}
+
+.data-reset-trigger:hover {
+  color: var(--danger);
+}
+
+.data-reset-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 10;
+}
+
+.data-reset-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 28em;
+  width: 100%;
+  padding: var(--space-5);
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-raised);
+}
+
+.data-reset-dialog h2 {
+  font-size: var(--text-lg);
+}
+
+.data-reset-dialog p {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.data-reset-dialog label {
+  font-size: var(--text-sm);
+}
+
+.data-reset-dialog input {
+  font: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.data-reset-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.data-reset-actions button {
+  font: inherit;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.data-reset-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.data-reset-confirm {
+  border: 1px solid var(--danger);
+  background: var(--danger-wash);
+  color: var(--danger);
+}

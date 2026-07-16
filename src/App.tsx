@@ -1,4 +1,5 @@
 import './App.css'
+import { DataResetControl } from './components/DataResetControl'
 import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
 
 function saveStatusText(status: PersistenceStatus): string {
@@ -20,16 +21,19 @@ function saveStatusText(status: PersistenceStatus): string {
 }
 
 function App() {
-  const status = usePersistedTree()
+  const { status, resetAllData } = usePersistedTree()
   const blocked = status.phase === 'blocked'
 
   return (
     <div className="app-frame">
       <header className="app-header">
         <h1 className="app-title">家系図</h1>
-        <p className="app-header-status" aria-live="polite">
-          {saveStatusText(status)}
-        </p>
+        <div className="app-header-right">
+          <p className="app-header-status" aria-live="polite">
+            {saveStatusText(status)}
+          </p>
+          <DataResetControl onReset={resetAllData} />
+        </div>
       </header>
       <main className="app-canvas" aria-label="家系図キャンバス">
         {blocked ? (
