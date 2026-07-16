@@ -1,0 +1,68 @@
+.person-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-sunken);
+}
+
+.person-edit-form-kana-fields {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.person-edit-form-kana-fields label,
+.person-edit-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  flex: 1;
+}
+
+.person-edit-form-kana-fields input,
+.person-edit-form-field input,
+.person-edit-form-field select,
+.person-edit-form-field textarea {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.person-edit-form-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.person-edit-form-event legend {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  padding: 0 var(--space-1);
+}
+
+.person-edit-form-submit {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--ai);
+  border-radius: var(--radius);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.person-edit-form-submit:hover {
+  border-color: var(--ai-strong);
+}

@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { addChild, addParent, addSpouse } from '../domain/commands'
+import { addChild, addParent, addSpouse, updatePerson } from '../domain/commands'
 import { displayName } from '../domain/helpers'
-import type { PersonId, TreeDocument } from '../domain/types'
+import type { Person, PersonId, TreeDocument } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { PersonEditForm } from './PersonEditForm'
 import { PersonNameFields } from './PersonNameFields'
 import { nameFromFields } from './person-name'
 import './PersonPanel.css'
@@ -75,9 +76,15 @@ export function PersonPanel({ personId }: PersonPanelProps) {
     closeForm()
   }
 
+  function handleSave(patch: Partial<Omit<Person, 'id'>>) {
+    apply((doc) => updatePerson(doc, personId, patch))
+  }
+
   return (
     <div className="person-panel">
       <h2 className="person-panel-name">{displayName(person)}</h2>
+
+      <PersonEditForm key={personId} person={person} onSave={handleSave} />
 
       <div className="person-panel-actions">
         {(Object.keys(ACTION_LABEL) as RelationAction[]).map((action) => (

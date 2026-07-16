@@ -15,11 +15,17 @@ beforeEach(() => {
   useTreeStore.getState().replace(doc)
 })
 
+/** 編集フォームとコンテキストアクションの追加フォームは同じラベル("姓"/"名")を使うため、
+ * アクションフォームを開いた後の2つ目の出現を対象人物追加用の入力として扱う */
+function relationFormGivenInput() {
+  return screen.getAllByLabelText('名')[1]
+}
+
 describe('PersonPanel: 配偶者の追加', () => {
   it('配偶者を追加すると新しい人物とFamilyが作成される', () => {
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
-    fireEvent.change(screen.getByLabelText('名'), { target: { value: 'B' } })
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'B' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const doc = useTreeStore.getState().document
@@ -36,7 +42,7 @@ describe('PersonPanel: 配偶者の追加', () => {
 
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
-    fireEvent.change(screen.getByLabelText('名'), { target: { value: 'C' } })
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const finalDoc = useTreeStore.getState().document
@@ -55,7 +61,7 @@ describe('PersonPanel: 子の追加', () => {
 
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '子を追加' }))
-    fireEvent.change(screen.getByLabelText('名'), { target: { value: 'C' } })
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const finalDoc = useTreeStore.getState().document
@@ -67,7 +73,7 @@ describe('PersonPanel: 子の追加', () => {
   it('配偶者がいないときはひとり親家族へ子が帰属する', () => {
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '子を追加' }))
-    fireEvent.change(screen.getByLabelText('名'), { target: { value: 'C' } })
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const doc = useTreeStore.getState().document
@@ -81,7 +87,7 @@ describe('PersonPanel: 親の追加', () => {
   it('親未登録の人物に親を追加すると家族が新設される', () => {
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '親を追加' }))
-    fireEvent.change(screen.getByLabelText('名'), { target: { value: '親' } })
+    fireEvent.change(relationFormGivenInput(), { target: { value: '親' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const doc = useTreeStore.getState().document
@@ -97,18 +103,34 @@ describe('PersonPanel: フォームの開閉', () => {
   it('同じアクションを再度クリックするとフォームが閉じる', () => {
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
-    expect(screen.getByLabelText('名')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('名')).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
-    expect(screen.queryByLabelText('名')).not.toBeInTheDocument()
+    expect(screen.getAllByLabelText('名')).toHaveLength(1)
   })
 
   it('キャンセルでフォームが閉じ、データは変更されない', () => {
     render(<PersonPanel personId={personAId} />)
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
-    fireEvent.change(screen.getByLabelText('名'), { target: { value: 'B' } })
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'B' } })
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
 
-    expect(screen.queryByLabelText('名')).not.toBeInTheDocument()
+    expect(screen.getAllByLabelText('名')).toHaveLength(1)
     expect(Object.values(useTreeStore.getState().document.persons)).toHaveLength(1)
+  })
+})
+
+describe('PersonPanel: 編集フォーム', () => {
+  it('選択時にサイドパネルの編集フォームが開く', () => {
+    render(<PersonPanel personId={personAId} />)
+    expect(screen.getByRole('button', { name: '確定' })).toBeInTheDocument()
+  })
+
+  it('氏名を変更して確定するとデータモデルへ反映される', () => {
+    render(<PersonPanel personId={personAId} />)
+    const givenInput = screen.getAllByLabelText('名')[0]
+    fireEvent.change(givenInput, { target: { value: '次郎' } })
+    fireEvent.click(screen.getByRole('button', { name: '確定' }))
+
+    expect(useTreeStore.getState().document.persons[personAId].name.given).toBe('次郎')
   })
 })
