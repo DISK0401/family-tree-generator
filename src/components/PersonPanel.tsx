@@ -3,6 +3,8 @@ import { addChild, addParent, addSpouse, updatePerson } from '../domain/commands
 import { displayName } from '../domain/helpers'
 import type { Person, PersonId, TreeDocument } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { DeletePersonControl } from './DeletePersonControl'
+import { PedigreeEditor } from './PedigreeEditor'
 import { PersonEditForm } from './PersonEditForm'
 import { PersonNameFields } from './PersonNameFields'
 import { nameFromFields } from './person-name'
@@ -30,6 +32,7 @@ function findSoleSpouseId(doc: TreeDocument, personId: PersonId): PersonId | und
 
 interface PersonPanelProps {
   personId: PersonId
+  onDeleted: () => void
 }
 
 /**
@@ -37,7 +40,7 @@ interface PersonPanelProps {
  * 「図の上で家族を育てる」操作モデル(design.md D7)。フォームはこのパネル内で
  * 完結させ、モーダルで作業を中断させない。
  */
-export function PersonPanel({ personId }: PersonPanelProps) {
+export function PersonPanel({ personId, onDeleted }: PersonPanelProps) {
   const apply = useTreeStore((s) => s.apply)
   const person = useTreeStore((s) => s.document.persons[personId])
   const [openAction, setOpenAction] = useState<RelationAction | null>(null)
@@ -86,6 +89,8 @@ export function PersonPanel({ personId }: PersonPanelProps) {
 
       <PersonEditForm key={personId} person={person} onSave={handleSave} />
 
+      <PedigreeEditor personId={personId} />
+
       <div className="person-panel-actions">
         {(Object.keys(ACTION_LABEL) as RelationAction[]).map((action) => (
           <button
@@ -119,6 +124,8 @@ export function PersonPanel({ personId }: PersonPanelProps) {
           </div>
         </form>
       )}
+
+      <DeletePersonControl personId={personId} onDeleted={onDeleted} />
     </div>
   )
 }

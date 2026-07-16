@@ -59,7 +59,12 @@ function App() {
         ) : null}
       </main>
       <aside className="app-panel" aria-label="編集パネル" hidden={!selectedPersonId}>
-        {selectedPersonId ? <PersonPanel personId={selectedPersonId} /> : null}
+        {selectedPersonId ? (
+          <PersonPanel
+            personId={selectedPersonId}
+            onDeleted={() => setSelectedPersonId(null)}
+          />
+        ) : null}
       </aside>
     </div>
   )

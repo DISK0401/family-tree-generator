@@ -1,0 +1,14 @@
+.delete-person-trigger {
+  font-size: var(--text-sm);
+  color: var(--danger);
+  background: none;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.delete-person-trigger:hover {
+  background: var(--danger-wash);
+}

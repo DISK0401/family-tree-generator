@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
 import './DataResetControl.css'
+import './confirm-dialog.css'
 
 const CONFIRM_PHRASE = '削除'
 
@@ -48,9 +49,9 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
         すべてのデータを削除
       </button>
       {open && (
-        <div className="data-reset-overlay">
+        <div className="confirm-dialog-overlay">
           <div
-            className="data-reset-dialog"
+            className="confirm-dialog"
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={titleId}
@@ -69,13 +70,13 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
               onChange={(e) => setConfirmText(e.target.value)}
               autoComplete="off"
             />
-            <div className="data-reset-actions">
+            <div className="confirm-dialog-actions">
               <button type="button" onClick={closeDialog} disabled={isDeleting}>
                 キャンセル
               </button>
               <button
                 type="button"
-                className="data-reset-confirm"
+                className="confirm-dialog-danger-button"
                 disabled={!canConfirm || isDeleting}
                 onClick={handleConfirm}
               >
