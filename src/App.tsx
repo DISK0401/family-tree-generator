@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import './App.css'
 import { DataResetControl } from './components/DataResetControl'
+import { EmptyStateGuide } from './components/EmptyStateGuide'
 import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
 import { FamilyTreeCanvas } from './rendering/FamilyTreeCanvas'
+import { useTreeStore } from './store/tree-store'
 
 function saveStatusText(status: PersistenceStatus): string {
   switch (status.phase) {
@@ -25,8 +27,10 @@ function saveStatusText(status: PersistenceStatus): string {
 function App() {
   const { status, resetAllData } = usePersistedTree()
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
+  const personCount = useTreeStore((s) => Object.keys(s.document.persons).length)
   const blocked = status.phase === 'blocked'
   const ready = status.phase === 'ready'
+  const empty = ready && personCount === 0
 
   return (
     <div className="app-frame">
@@ -45,7 +49,8 @@ function App() {
             {saveStatusText(status)}
           </p>
         ) : null}
-        {ready ? (
+        {empty ? <EmptyStateGuide /> : null}
+        {ready && !empty ? (
           <FamilyTreeCanvas
             selectedPersonId={selectedPersonId}
             onSelectPerson={setSelectedPersonId}

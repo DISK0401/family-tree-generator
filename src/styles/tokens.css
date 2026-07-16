@@ -40,12 +40,19 @@
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
 
-  /* 書体 — 明朝は人名・見出し、ゴシックはUI操作系 */
+  /*
+   * 書体 — 明朝は人名・見出し、ゴシックはUI操作系。
+   * --font-mincho は和文明朝フォントが1つも無い環境(Noto Serif CJK系未導入のLinux等)への
+   * フォールバックとして和文ゴシックを挟んでからserifに落ちる。CJK非対応の欧文serifへ
+   * フォールバックすると、writing-mode:vertical-rlのグリフが崩れて表示されるため、
+   * 「明朝の字形が使えないなら可読なゴシックで表示する」を優先する
+   */
   --font-mincho:
-    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP', 'Noto Serif JP', serif;
+    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP', 'Noto Serif JP',
+    'IPAMincho', 'IPAPMincho', 'IPAGothic', 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
   --font-gothic:
     'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic', 'Noto Sans CJK JP', 'Noto Sans JP',
-    system-ui, sans-serif;
+    'IPAGothic', system-ui, sans-serif;
 
   /* タイプスケール(1rem = 16px) */
   --text-xs: 0.75rem;
