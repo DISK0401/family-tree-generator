@@ -95,6 +95,9 @@
 }
 
 .tree-legend {
+  /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
+     タップ/クリックを奪われるため、明示的なz-indexが必須 */
+  z-index: 10;
   position: absolute;
   left: var(--space-3);
   bottom: var(--space-3);
@@ -134,6 +137,9 @@
 }
 
 .tree-zoom-controls {
+  /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
+     タップ/クリックを奪われるため、明示的なz-indexが必須 */
+  z-index: 10;
   position: absolute;
   right: var(--space-3);
   bottom: var(--space-3);
