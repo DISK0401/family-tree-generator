@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse } from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
-import { toFamilyChartData } from './to-family-chart-data'
+import { findRootAncestor, toFamilyChartData } from './to-family-chart-data'
 
 function byId(data: ReturnType<typeof toFamilyChartData>, id: string) {
   const found = data.find((d) => d.id === id)
@@ -125,5 +125,46 @@ describe('toFamilyChartData: 基本フィールド', () => {
     expect(datum.rels.spouses).toBeUndefined()
     expect(datum.rels.children).toBeUndefined()
     expect(datum.rels.parents).toBeUndefined()
+  })
+})
+
+describe('findRootAncestor', () => {
+  it('親がいない人物は自分自身が最上位祖先になる', () => {
+    let doc = createTreeDocument()
+    const p = addPerson(doc, { name: { given: '独身' } })
+    doc = p.doc
+    expect(findRootAncestor(doc, p.personId)).toBe(p.personId)
+  })
+
+  it('複数世代の子孫から最上位祖先までたどる', () => {
+    let doc = createTreeDocument()
+    const gp = addPerson(doc, { name: { given: '祖父' } })
+    doc = gp.doc
+    const parent = addChild(doc, gp.personId, { name: { given: '親' } })
+    doc = parent.doc
+    const child = addChild(doc, parent.childId, { name: { given: '子' } })
+    doc = child.doc
+
+    expect(findRootAncestor(doc, child.childId)).toBe(gp.personId)
+  })
+
+  it('祖先自身を渡した場合はその人物自身を返す(is_ancestryにならない)', () => {
+    let doc = createTreeDocument()
+    const gp = addPerson(doc, { name: { given: '祖父' } })
+    doc = gp.doc
+    const parent = addChild(doc, gp.personId, { name: { given: '親' } })
+    doc = parent.doc
+
+    expect(findRootAncestor(doc, gp.personId)).toBe(gp.personId)
+  })
+
+  it('配偶者(子でない人物)を渡してもその人物自身を返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+
+    expect(findRootAncestor(doc, s.spouseId)).toBe(s.spouseId)
   })
 })

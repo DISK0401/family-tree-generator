@@ -2,7 +2,7 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef } from 'react'
 import { useTreeStore } from '../store/tree-store'
-import { toFamilyChartData, type FamilyChartDatum } from './to-family-chart-data'
+import { findRootAncestor, toFamilyChartData, type FamilyChartDatum } from './to-family-chart-data'
 import './FamilyTreeCanvas.css'
 
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
@@ -84,10 +84,15 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   const chartRef = useRef<ChartInstance | null>(null)
   const selectedIdRef = useRef<string | null>(selectedPersonId)
   const onSelectPersonRef = useRef(onSelectPerson)
+  const documentRef = useRef(document)
 
   useEffect(() => {
     selectedIdRef.current = selectedPersonId
   }, [selectedPersonId])
+
+  useEffect(() => {
+    documentRef.current = document
+  }, [document])
 
   useEffect(() => {
     onSelectPersonRef.current = onSelectPerson
@@ -112,10 +117,11 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     card.setOnCardClick((_e: Event, d: TreeDatum) => {
       const personId = (d.data as unknown as FamilyChartDatum).data.personId
       const nextSelected = personId === selectedIdRef.current ? null : personId
-      // family-chartは初期main_id(最初に作成した人物)の祖先側ノードの配偶者を
-      // 描画しない制約があるため、選択のたびにmain_idを選択人物へ追従させる
-      // (design.md リスク「family-chartの表現力限界」参照)
-      if (nextSelected) chart.updateMainId(nextSelected)
+      // family-chartは初期main_id(最初に作成した人物)の祖先側ノードの配偶者・傍系親族を
+      // 描画しない制約があるため、選択人物の最上位祖先へmain_idを追従させる
+      // (選択人物自身をmain_idにすると、選択人物からさらに上の祖先の配偶者や
+      // 傍系親族が今度は描画から漏れてしまうため。design.md リスク「family-chartの表現力限界」参照)
+      if (nextSelected) chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
       onSelectPersonRef.current(nextSelected)
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
