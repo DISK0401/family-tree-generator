@@ -71,6 +71,8 @@ describe('ExportPanel', () => {
     fireEvent.click(screen.getByLabelText(/GEDCOM 5.5.1互換/))
     fireEvent.click(screen.getByRole('button', { name: 'エクスポート' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('5.5.1では標準表現できない')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '5.5.1では標準表現できない',
+    )
   })
 })

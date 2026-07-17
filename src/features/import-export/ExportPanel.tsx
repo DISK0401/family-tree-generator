@@ -15,7 +15,8 @@ const FORMAT_OPTIONS: {
   {
     value: 'gedcom-7',
     label: 'GEDCOM 7.0(推奨)',
-    description: '養子縁組・事実婚など複雑な家族関係まで表現できる最新規格です。',
+    description:
+      '養子縁組・事実婚など複雑な家族関係まで表現できる最新規格です。',
   },
   {
     value: 'gedcom-551',
@@ -25,7 +26,8 @@ const FORMAT_OPTIONS: {
   {
     value: 'json',
     label: 'JSON(完全バックアップ)',
-    description: 'このアプリの全データをロスレスに保存します。復元にはこのアプリを使用してください。',
+    description:
+      'このアプリの全データをロスレスに保存します。復元にはこのアプリを使用してください。',
   },
 ]
 

@@ -4,7 +4,9 @@ import { ImportPanel } from './ImportPanel'
 import { MAX_IMPORT_FILE_SIZE } from './fileIO'
 
 function selectFile(file: File) {
-  const input = screen.getByLabelText('家系図ファイルを選択') as HTMLInputElement
+  const input = screen.getByLabelText(
+    '家系図ファイルを選択',
+  ) as HTMLInputElement
   fireEvent.change(input, { target: { files: [file] } })
 }
 
