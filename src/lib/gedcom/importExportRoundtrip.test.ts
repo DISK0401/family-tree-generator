@@ -1,74 +1,82 @@
 import { describe, expect, it } from 'vitest'
-import { importGedcom } from './import'
+import { createTreeDocument } from '../../domain/helpers'
+import {
+  addChild,
+  addChildLink,
+  addPerson,
+  addSpouse,
+  updateFamily,
+} from '../../domain/commands'
+import { parseDateInput } from '../../domain/parse-date'
 import { exportGedcom } from './export'
-import { parseGedcomText } from './parser'
-import { findChild } from './nodeHelpers'
+import { importGedcom } from './import'
 
 function bytesOf(text: string): Uint8Array {
   return new TextEncoder().encode(text)
 }
 
-describe('同一バージョンのラウンドトリップ保全', () => {
-  it('独自タグ_MYTAGを5.5.1インポート→5.5.1再エクスポートで復元する', () => {
-    const original = [
-      '0 HEAD',
-      '1 GEDC',
-      '2 VERS 5.5.1',
-      '1 CHAR UTF-8',
-      '0 @I1@ INDI',
-      '1 NAME Test /Person/',
-      '1 _MYTAG custom value',
-      '2 _SUBTAG nested',
-      '0 TRLR',
-    ].join('\n')
+describe('GEDCOM export→importのラウンドトリップ', () => {
+  it('養子・和暦原文・かな表記を含むドキュメントが同一バージョンで意味的に復元される', () => {
+    let document = createTreeDocument()
+    const bioParent = addPerson(document, {
+      name: { surname: '渡邊', given: '一', surnameKana: 'わたなべ' },
+    })
+    document = bioParent.doc
 
-    const imported = importGedcom(bytesOf(original))
-    expect(imported.success).toBe(true)
-    if (!imported.success) return
+    const birthDate = parseDateInput('明治10年頃')
+    expect(birthDate.ok).toBe(true)
+    const child = addChild(document, bioParent.personId, {
+      name: { surname: '渡邊', given: '五郎' },
+      birth: birthDate.ok
+        ? { type: 'birth', date: birthDate.value }
+        : undefined,
+    })
+    document = child.doc
 
-    const person = imported.data.people[0]
-    const myTag = person.unmappedTags?.find((tag) => tag.tag === '_MYTAG')
-    expect(myTag).toBeDefined()
-    expect(myTag?.value).toBe('custom value')
-    expect(findChild(myTag!, '_SUBTAG')?.value).toBe('nested')
-
-    const { text: reExported } = exportGedcom(
-      imported.data,
-      '5.5.1',
-      imported.version,
+    const adoptiveParent = addPerson(document, { name: { given: '養親' } })
+    document = adoptiveParent.doc
+    const adoptiveFamily = addSpouse(document, adoptiveParent.personId, {
+      name: { given: 'ダミー' },
+    })
+    document = updateFamily(adoptiveFamily.doc, adoptiveFamily.familyId, {
+      kind: 'common-law',
+    })
+    document = addChildLink(
+      document,
+      adoptiveFamily.familyId,
+      child.childId,
+      'adopted',
     )
-    const reImported = importGedcom(new TextEncoder().encode(reExported))
-    expect(reImported.success).toBe(true)
-    if (!reImported.success) return
 
-    const roundTrippedTag = reImported.data.people[0].unmappedTags?.find(
-      (tag) => tag.tag === '_MYTAG',
+    const { text } = exportGedcom(document, '5.5.1')
+    const reimported = importGedcom(bytesOf(text))
+
+    expect(reimported.success).toBe(true)
+    if (!reimported.success) return
+
+    expect(Object.keys(reimported.document.persons)).toHaveLength(4)
+    expect(Object.keys(reimported.document.families)).toHaveLength(2)
+
+    const reimportedChild = Object.values(reimported.document.persons).find(
+      (p) => p.name.given === '五郎',
     )
-    expect(roundTrippedTag?.value).toBe('custom value')
-    expect(findChild(roundTrippedTag!, '_SUBTAG')?.value).toBe('nested')
+    expect(reimportedChild?.name.surnameKana).toBeUndefined()
+    expect(reimportedChild?.birth?.date?.original).toBe('明治10年頃')
+    expect(reimportedChild?.birth?.date?.date).toEqual({
+      year: 1877,
+      month: undefined,
+      day: undefined,
+    })
 
-    const { roots } = parseGedcomText(reExported)
-    const indi = roots.find((root) => root.tag === 'INDI')!
-    expect(findChild(indi, '_MYTAG')?.value).toBe('custom value')
-  })
+    const pedigrees = Object.values(reimported.document.families)
+      .flatMap((f) => f.children)
+      .filter((c) => c.childId === reimportedChild?.id)
+      .map((c) => c.pedigree)
+    expect(pedigrees).toEqual(expect.arrayContaining(['biological', 'adopted']))
 
-  it('バージョンをまたぐ再エクスポート(5.5.1→7.0)では警告が出る', () => {
-    const original = [
-      '0 HEAD',
-      '1 GEDC',
-      '2 VERS 5.5.1',
-      '1 CHAR UTF-8',
-      '0 @I1@ INDI',
-      '1 NAME Test /Person/',
-      '1 _MYTAG custom value',
-      '0 TRLR',
-    ].join('\n')
-
-    const imported = importGedcom(bytesOf(original))
-    expect(imported.success).toBe(true)
-    if (!imported.success) return
-
-    const { warnings } = exportGedcom(imported.data, '7.0', imported.version)
-    expect(warnings.length).toBeGreaterThan(0)
+    const commonLawFamily = Object.values(reimported.document.families).find(
+      (f) => f.kind === 'common-law',
+    )
+    expect(commonLawFamily).toBeDefined()
   })
 })

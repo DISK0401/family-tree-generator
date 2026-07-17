@@ -1,69 +1,60 @@
 import { describe, expect, it } from 'vitest'
-import { createId } from '../../domain/id'
-import type { FamilyTreeData } from '../../domain/model'
-import { parseDateString } from '../wareki/parseDate'
+import { createTreeDocument } from '../../domain/helpers'
+import {
+  addChild,
+  addChildLink,
+  addFamilyEvent,
+  addPerson,
+  addSpouse,
+  updateFamily,
+} from '../../domain/commands'
+import { parseDateInput } from '../../domain/parse-date'
 import { exportFamilyTreeJsonText } from './export'
 import { importFamilyTreeJson } from './import'
 
 describe('JSONラウンドトリップの完全性', () => {
-  it('養子・再婚・事実婚・和暦原文・旧字体別表記・保全タグを含む複雑なモデルが等価に復元される', () => {
-    const grandparent = {
-      id: createId(),
-      name: { family: '渡邊', given: '一', alternates: [{ family: '渡辺' }] },
-    }
-    const father = { id: createId(), name: { family: '渡邊', given: '二' } }
-    const stepMother = { id: createId(), name: { given: '三子' } }
-    const biologicalMother = { id: createId(), name: { given: '四子' } }
-    const child = {
-      id: createId(),
-      name: {
-        family: '渡邊',
-        given: '五郎',
-        kana: { family: 'わたなべ', given: 'ごろう' },
-      },
-      birth: { date: parseDateString('明治十年頃') },
-      unmappedTags: [
-        {
-          tag: '_MYTAG',
-          value: 'custom',
-          children: [{ tag: '_SUB', value: 'v', children: [] }],
-        },
-      ],
-    }
+  it('養子・再婚・事実婚・和暦原文を含む複雑なドキュメントが等価に復元される', () => {
+    let document = createTreeDocument({ title: 'テスト家系図' })
 
-    const marriageWithBiologicalMother = {
-      id: createId(),
-      partnerIds: [father.id, biologicalMother.id],
-      relationshipType: 'divorced' as const,
-      children: [{ personId: child.id, pedigree: 'biological' as const }],
-    }
-    const remarriageWithStepMother = {
-      id: createId(),
-      partnerIds: [father.id, stepMother.id],
-      relationshipType: 'defacto' as const,
-      children: [{ personId: child.id, pedigree: 'step' as const }],
-    }
-    const grandparentFamily = {
-      id: createId(),
-      partnerIds: [grandparent.id],
-      children: [{ personId: father.id, pedigree: 'biological' as const }],
-    }
+    const father = addPerson(document, {
+      name: { surname: '渡邊', given: '二', surnameKana: 'わたなべ' },
+    })
+    document = father.doc
 
-    const original: FamilyTreeData = {
-      people: [grandparent, father, stepMother, biologicalMother, child],
-      families: [
-        marriageWithBiologicalMother,
-        remarriageWithStepMother,
-        grandparentFamily,
-      ],
-    }
+    const bio = addSpouse(document, father.personId, {
+      name: { given: '四子' },
+    })
+    document = bio.doc
+    document = updateFamily(document, bio.familyId, { kind: 'married' })
 
-    const text = exportFamilyTreeJsonText(original)
+    const birthDate = parseDateInput('明治10年頃')
+    expect(birthDate.ok).toBe(true)
+
+    const child = addChild(document, father.personId, {
+      name: { surname: '渡邊', given: '五郎' },
+      birth: birthDate.ok
+        ? { type: 'birth', date: birthDate.value }
+        : undefined,
+    })
+    document = child.doc
+
+    const step = addSpouse(document, father.personId, {
+      name: { given: '三子' },
+    })
+    document = step.doc
+    document = updateFamily(document, step.familyId, { kind: 'common-law' })
+    document = addChildLink(document, step.familyId, child.childId, 'step')
+    document = addFamilyEvent(document, bio.familyId, {
+      type: 'divorce',
+      place: '東京',
+    })
+
+    const text = exportFamilyTreeJsonText(document)
     const result = importFamilyTreeJson(text)
 
     expect(result.success).toBe(true)
     if (!result.success) return
 
-    expect(result.data).toEqual(original)
+    expect(result.document).toEqual(document)
   })
 })

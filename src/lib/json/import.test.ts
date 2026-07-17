@@ -1,34 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { createId } from '../../domain/id'
-import type { FamilyTreeData } from '../../domain/model'
+import { createTreeDocument } from '../../domain/helpers'
+import { addPerson } from '../../domain/commands'
 import { exportFamilyTreeJsonText } from './export'
 import { importFamilyTreeJson } from './import'
 
 describe('importFamilyTreeJson', () => {
   it('本アプリがエクスポートしたJSONを正常にインポートする', () => {
-    const data: FamilyTreeData = {
-      people: [{ id: createId(), name: { given: '太郎' } }],
-      families: [],
-    }
-    const text = exportFamilyTreeJsonText(data)
+    let document = createTreeDocument()
+    document = addPerson(document, { name: { given: '太郎' } }).doc
+    const text = exportFamilyTreeJsonText(document)
 
     const result = importFamilyTreeJson(text)
 
     expect(result.success).toBe(true)
     if (!result.success) return
-    expect(result.data.people).toHaveLength(1)
-    expect(result.data.people[0].name?.given).toBe('太郎')
+    expect(Object.keys(result.document.persons)).toHaveLength(1)
   })
 
   it('構文が不正なJSONは中断する', () => {
     const result = importFamilyTreeJson('{ invalid json')
-
     expect(result.success).toBe(false)
   })
 
   it('schemaVersionが無いJSONは中断する', () => {
     const result = importFamilyTreeJson(
-      JSON.stringify({ people: [], families: [] }),
+      JSON.stringify({ persons: {}, families: {} }),
     )
 
     expect(result.success).toBe(false)
@@ -38,7 +34,14 @@ describe('importFamilyTreeJson', () => {
 
   it('未知のschemaVersionは中断する', () => {
     const result = importFamilyTreeJson(
-      JSON.stringify({ schemaVersion: 999, people: [], families: [] }),
+      JSON.stringify({
+        schemaVersion: 999,
+        id: 'x',
+        title: 't',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        persons: {},
+        families: {},
+      }),
     )
 
     expect(result.success).toBe(false)
@@ -51,9 +54,11 @@ describe('importFamilyTreeJson', () => {
     const result = importFamilyTreeJson(
       JSON.stringify({
         schemaVersion: 1,
-        exportedAt: '2026-01-01T00:00:00.000Z',
-        people: [{ id: 'p1', name: { given: 123 } }],
-        families: [],
+        id: 'x',
+        title: 't',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        persons: { p1: { id: 'p1', name: { given: 123 }, gender: 'unknown' } },
+        families: {},
       }),
     )
 

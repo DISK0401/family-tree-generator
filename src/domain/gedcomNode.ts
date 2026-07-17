@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 /**
- * GEDCOMの汎用ツリー表現。意味を解釈できないタグ・サブツリーを
- * Person/Family の保全領域(unmappedTags)にそのまま格納するために使う。
+ * GEDCOMの汎用ツリー表現(構文層)。level/xref/tag/valueの解析結果を
+ * 保持し、意味層(lib/gedcom)がPerson/Family/TreeDocumentへ変換する。
  */
 export interface GedcomNode {
   tag: string

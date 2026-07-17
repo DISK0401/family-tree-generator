@@ -1,10 +1,10 @@
 import { z } from 'zod'
-import type { FamilyTreeData } from '../../domain/model'
-import { familyTreeExportSchemaV1 } from './schema'
+import { SCHEMA_VERSION, type TreeDocument } from '../../domain/types'
+import { treeDocumentSchema } from './schema'
 
 export interface JsonImportSuccess {
   success: true
-  data: FamilyTreeData
+  document: TreeDocument
 }
 
 export interface JsonImportFailure {
@@ -20,7 +20,7 @@ const versionProbeSchema = z
 
 /**
  * ネイティブJSON形式をインポートする。schemaVersionの欠落・未知バージョン・
- * スキーマ不一致の場合はインポートを中断し、既存データは変更しない(design.md D7)。
+ * スキーマ不一致の場合はインポートを中断し、既存データは変更しない。
  */
 export function importFamilyTreeJson(text: string): JsonImportResult {
   let parsed: unknown
@@ -47,8 +47,8 @@ export function importFamilyTreeJson(text: string): JsonImportResult {
     }
   }
 
-  if (version === 1) {
-    const result = familyTreeExportSchemaV1.safeParse(parsed)
+  if (version === SCHEMA_VERSION) {
+    const result = treeDocumentSchema.safeParse(parsed)
     if (!result.success) {
       const details = result.error.issues
         .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
@@ -58,10 +58,7 @@ export function importFamilyTreeJson(text: string): JsonImportResult {
         reason: `JSONファイルの内容が不正です(${details})`,
       }
     }
-    return {
-      success: true,
-      data: { people: result.data.people, families: result.data.families },
-    }
+    return { success: true, document: result.data as TreeDocument }
   }
 
   return {

@@ -1,22 +1,24 @@
-import type { ChildPedigree } from '../../domain/family'
+import type { Pedigree } from '../../domain/types'
 import type { GedcomVersion } from './version'
 
-const EXPORT_PEDI_551: Record<ChildPedigree, string> = {
+const EXPORT_PEDI_551: Record<Pedigree, string> = {
   biological: 'birth',
   adopted: 'adopted',
   foster: 'foster',
   step: 'other',
+  unknown: 'unknown',
 }
 
-const EXPORT_PEDI_70: Record<ChildPedigree, string> = {
+const EXPORT_PEDI_70: Record<Pedigree, string> = {
   biological: 'BIRTH',
   adopted: 'ADOPTED',
   foster: 'FOSTER',
   step: 'OTHER',
+  unknown: 'UNKNOWN',
 }
 
-export function childPedigreeToPedi(
-  pedigree: ChildPedigree,
+export function pedigreeToPedi(
+  pedigree: Pedigree,
   version: GedcomVersion,
 ): string {
   return version === '7.0'
@@ -24,29 +26,22 @@ export function childPedigreeToPedi(
     : EXPORT_PEDI_551[pedigree]
 }
 
-const IMPORT_PEDI: Record<string, ChildPedigree> = {
+const IMPORT_PEDI: Record<string, Pedigree> = {
   BIRTH: 'biological',
   ADOPTED: 'adopted',
   FOSTER: 'foster',
   OTHER: 'step',
+  UNKNOWN: 'unknown',
   SEALING: 'biological',
 }
 
-export interface PedigreeImportResult {
-  pedigree: ChildPedigree
-  unrecognized: boolean
-}
-
-/** PEDIタグの値を続柄種別へ変換する。値がない場合は実子として扱う(GEDCOM慣行)。 */
-export function pediToChildPedigree(
-  value: string | undefined,
-): PedigreeImportResult {
+/**
+ * PEDIタグの値を続柄種別へ変換する。値が全く無い場合(他ツールが実子を
+ * 省略記述する慣行)は実子として扱う。未知の値は`unknown`とする。
+ */
+export function pediToPedigree(value: string | undefined): Pedigree {
   if (!value) {
-    return { pedigree: 'biological', unrecognized: false }
+    return 'biological'
   }
-  const mapped = IMPORT_PEDI[value.trim().toUpperCase()]
-  if (mapped) {
-    return { pedigree: mapped, unrecognized: false }
-  }
-  return { pedigree: 'biological', unrecognized: true }
+  return IMPORT_PEDI[value.trim().toUpperCase()] ?? 'unknown'
 }

@@ -1,6 +1,5 @@
-import type { DateQualifier, LifeDate } from '../../domain/date'
+import type { CalendarDate, DateQualifier, FuzzyDate } from '../../domain/types'
 import type { GedcomNode } from '../../domain/gedcomNode'
-import { japaneseToGregorian } from '../wareki/toGregorian'
 import type { GedcomVersion } from './version'
 import { findChild } from './nodeHelpers'
 
@@ -27,35 +26,43 @@ const MONTH_INDEX: Record<string, number> = MONTHS.reduce(
   {} as Record<string, number>,
 )
 
-const QUALIFIER_PREFIX: Record<DateQualifier, string> = {
+const QUALIFIER_PREFIX: Partial<Record<DateQualifier, string>> = {
   about: 'ABT',
   before: 'BEF',
   after: 'AFT',
-  estimated: 'EST',
 }
 
 const QUALIFIER_BY_PREFIX: Record<string, DateQualifier> = {
   ABT: 'about',
   BEF: 'before',
   AFT: 'after',
-  EST: 'estimated',
-  CAL: 'estimated',
+  EST: 'about',
+  CAL: 'about',
 }
 
-function formatGregorianDatePart(
-  year: number,
-  month?: number,
-  day?: number,
-): string {
+function formatDatePart(date: CalendarDate): string {
   const parts: string[] = []
-  if (day !== undefined) {
-    parts.push(String(day))
+  if (date.day !== undefined) {
+    parts.push(String(date.day))
   }
-  if (month !== undefined) {
-    parts.push(MONTHS[month - 1])
+  if (date.month !== undefined) {
+    parts.push(MONTHS[date.month - 1])
   }
-  parts.push(String(year))
+  parts.push(String(date.year))
   return parts.join(' ')
+}
+
+function formatDateValue(date: FuzzyDate): string | undefined {
+  if (!date.date) {
+    return undefined
+  }
+  if (date.qualifier === 'between' && date.date2) {
+    return `BET ${formatDatePart(date.date)} AND ${formatDatePart(date.date2)}`
+  }
+  const prefix = QUALIFIER_PREFIX[date.qualifier]
+  return prefix
+    ? `${prefix} ${formatDatePart(date.date)}`
+    : formatDatePart(date.date)
 }
 
 export interface DateExportResult {
@@ -66,111 +73,44 @@ export interface DateExportResult {
 }
 
 /**
- * LifeDate をGEDCOMのDATE構造へ変換する。西暦換算できる場合は構造化DATE値を
- * 出力し、原文は7.0ではPHRASE、5.5.1ではNOTE(構造化できた場合)または
- * 丸括弧の日付句(構造化できない場合)で保全する(design.md D4)。
+ * FuzzyDate をGEDCOMのDATE構造へ変換する。7.0では原文をPHRASEで保全し、
+ * 5.5.1では構造化DATE値のみを出力しつつ原文をNOTEで補足する
+ * (docs/gedcom-mapping.md「FuzzyDate ↔ DATE」参照。5.5.1固有の扱いは本変更で追加)。
  */
-export function lifeDateToGedcomNode(
-  date: LifeDate,
+export function fuzzyDateToGedcomNode(
+  date: FuzzyDate,
   version: GedcomVersion,
 ): DateExportResult {
-  const qualifierPrefix = date.qualifier
-    ? QUALIFIER_PREFIX[date.qualifier]
-    : undefined
+  const value = formatDateValue(date)
 
-  let gregorian: { year: number; month?: number; day?: number } | undefined
-
-  if (date.calendar === 'gregorian' && date.year !== undefined) {
-    gregorian = { year: date.year, month: date.month, day: date.day }
-  } else if (
-    date.calendar === 'japanese' &&
-    date.era !== undefined &&
-    date.year !== undefined
-  ) {
-    const converted = japaneseToGregorian({
-      era: date.era,
-      year: date.year,
-      month: date.month,
-      day: date.day,
-    })
-    if (converted.success) {
-      gregorian = converted.value
+  if (version === '7.0') {
+    return {
+      dateNode: {
+        tag: 'DATE',
+        value,
+        children: [{ tag: 'PHRASE', value: date.original, children: [] }],
+      },
+      siblingNodes: [],
     }
   }
 
-  if (!gregorian) {
-    if (version === '7.0') {
-      return {
-        dateNode: {
-          tag: 'DATE',
-          children: [{ tag: 'PHRASE', value: date.original, children: [] }],
-        },
-        siblingNodes: [],
-      }
-    }
+  if (!value) {
     return {
       dateNode: { tag: 'DATE', value: `(${date.original})`, children: [] },
       siblingNodes: [],
     }
   }
 
-  const datePart = formatGregorianDatePart(
-    gregorian.year,
-    gregorian.month,
-    gregorian.day,
-  )
-  const value = qualifierPrefix ? `${qualifierPrefix} ${datePart}` : datePart
-
-  if (date.calendar === 'japanese') {
-    if (version === '7.0') {
-      return {
-        dateNode: {
-          tag: 'DATE',
-          value,
-          children: [{ tag: 'PHRASE', value: date.original, children: [] }],
-        },
-        siblingNodes: [],
-      }
-    }
-    return {
-      dateNode: { tag: 'DATE', value, children: [] },
-      siblingNodes: [
-        { tag: 'NOTE', value: `元の表記: ${date.original}`, children: [] },
-      ],
-    }
-  }
-
   return {
     dateNode: { tag: 'DATE', value, children: [] },
-    siblingNodes: [],
+    siblingNodes: [
+      { tag: 'NOTE', value: `元の表記: ${date.original}`, children: [] },
+    ],
   }
 }
 
-/** GEDCOMのDATEノードを LifeDate へ変換する。解釈できない場合は原文のみを返す。 */
-export function gedcomDateNodeToLifeDate(node: GedcomNode): LifeDate {
-  const phrase = findChild(node, 'PHRASE')?.value
-  const raw = node.value?.trim()
-
-  if (!raw) {
-    return { original: phrase ?? '' }
-  }
-
-  const phraseMatch = /^\((.*)\)$/.exec(raw)
-  if (phraseMatch) {
-    return { original: phrase ?? phraseMatch[1] }
-  }
-
-  let rest = raw
-  let qualifier: DateQualifier | undefined
-  for (const [prefix, mapped] of Object.entries(QUALIFIER_BY_PREFIX)) {
-    if (rest.startsWith(`${prefix} `)) {
-      qualifier = mapped
-      rest = rest.slice(prefix.length + 1)
-      break
-    }
-  }
-
-  const tokens = rest.split(/\s+/).filter(Boolean)
+function parseGedcomDatePart(text: string): CalendarDate | undefined {
+  const tokens = text.trim().split(/\s+/).filter(Boolean)
   let day: number | undefined
   let month: number | undefined
   let year: number | undefined
@@ -187,15 +127,47 @@ export function gedcomDateNodeToLifeDate(node: GedcomNode): LifeDate {
   }
 
   if (year === undefined || Number.isNaN(year)) {
-    return { original: phrase ?? raw }
+    return undefined
+  }
+  return { year, month, day: tokens.length === 3 ? day : undefined }
+}
+
+/** GEDCOMのDATEノードを FuzzyDate へ変換する。解釈できない場合は原文のみを返す。 */
+export function gedcomNodeToFuzzyDate(node: GedcomNode): FuzzyDate {
+  const phrase = findChild(node, 'PHRASE')?.value
+  const raw = node.value?.trim()
+
+  if (!raw) {
+    return { original: phrase ?? '', qualifier: 'exact' }
   }
 
-  return {
-    original: phrase ?? raw,
-    calendar: 'gregorian',
-    year,
-    month,
-    day: tokens.length === 3 ? day : undefined,
-    qualifier,
+  const parenMatch = /^\((.*)\)$/.exec(raw)
+  if (parenMatch) {
+    return { original: phrase ?? parenMatch[1], qualifier: 'exact' }
   }
+
+  const betweenMatch = /^BET\s+(.+?)\s+AND\s+(.+)$/i.exec(raw)
+  if (betweenMatch) {
+    const date = parseGedcomDatePart(betweenMatch[1])
+    const date2 = parseGedcomDatePart(betweenMatch[2])
+    if (date) {
+      return { original: phrase ?? raw, qualifier: 'between', date, date2 }
+    }
+  }
+
+  let rest = raw
+  let qualifier: DateQualifier = 'exact'
+  for (const [prefix, mapped] of Object.entries(QUALIFIER_BY_PREFIX)) {
+    if (rest.startsWith(`${prefix} `)) {
+      qualifier = mapped
+      rest = rest.slice(prefix.length + 1)
+      break
+    }
+  }
+
+  const date = parseGedcomDatePart(rest)
+  if (!date) {
+    return { original: phrase ?? raw, qualifier: 'exact' }
+  }
+  return { original: phrase ?? raw, qualifier, date }
 }

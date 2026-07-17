@@ -1,7 +1,9 @@
 import type { GedcomNode } from '../../domain/gedcomNode'
-import type { ConversionResult } from '../wareki/types'
 
 export type GedcomVersion = '7.0' | '5.5.1'
+
+export type ConversionResult<T> =
+  { success: true; value: T } | { success: false; reason: string }
 
 function findChild(node: GedcomNode, tag: string): GedcomNode | undefined {
   return node.children.find((child) => child.tag === tag)
