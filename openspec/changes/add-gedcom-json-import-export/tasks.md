@@ -79,4 +79,4 @@
   - 完了条件: README の記載だけで対応フォーマットと制限事項が把握できる
 - [ ] 8.4 品質ゲートを全通過させ、develop へのPRを作成して dev 環境で動作確認する
   - 完了条件: lint / typecheck / test / build が全て成功し、dev 環境URLでインポート→エクスポートの一連操作が動作する
-  - 進捗: `npm run lint` / `npm run typecheck` / `npm run format:check` / `npm run test`(124件全成功) / `npm run build` をすべてローカルで実行し成功を確認済み。develop へのPR作成はユーザーの明示的な依頼を待って実施する(セッション方針により無断でのPR作成は行わない)。
+  - 進捗: `npm run lint` / `npm run typecheck` / `npm run format:check` / `npm run test`(124件全成功) / `npm run build` をすべてローカルで実行し成功を確認済み。PR #12(`claude/gedcom-json-import-export-yz6rph` → `develop`)を作成済み。dev環境(Cloudflare)でのデプロイ後動作確認は未実施。
