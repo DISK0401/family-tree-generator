@@ -44,6 +44,29 @@ function toGender(gender: Person['gender']): 'M' | 'F' | 'U' {
   return 'U'
 }
 
+/**
+ * 指定人物から親をたどれるだけたどった祖先(既知の中で最も上の代)を返す。
+ *
+ * family-chartは`main_id`を起点に祖先/子孫を展開する単一視点の描画方式のため、
+ * 選択人物をそのままmain_idにすると、選択人物から見た祖先(=main_idにとっての
+ * 祖先ではない祖父母等)の配偶者や、傍系親族(祖先の他の子)が描画から漏れる
+ * (family-chart内部の`is_ancestry`フラグによる制約。setupSpouses等参照)。
+ * 選択人物ではなくその最上位祖先をmain_idにすることで、この漏れを最小化する。
+ */
+export function findRootAncestor(doc: TreeDocument, personId: PersonId): PersonId {
+  let current = personId
+  const visited = new Set<PersonId>([current])
+  for (;;) {
+    const parentFamily = Object.values(doc.families).find((f) =>
+      f.children.some((c) => c.childId === current),
+    )
+    const nextParent = parentFamily?.spouseIds[0]
+    if (!nextParent || visited.has(nextParent)) return current
+    visited.add(nextParent)
+    current = nextParent
+  }
+}
+
 export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
   const spouseSets = new Map<PersonId, Set<PersonId>>()
   const childrenSets = new Map<PersonId, Set<PersonId>>()
