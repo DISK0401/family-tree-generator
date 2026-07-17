@@ -111,7 +111,12 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     card.setCardDim({ w: CARD_WIDTH, h: CARD_HEIGHT, img: false })
     card.setOnCardClick((_e: Event, d: TreeDatum) => {
       const personId = (d.data as unknown as FamilyChartDatum).data.personId
-      onSelectPersonRef.current(personId === selectedIdRef.current ? null : personId)
+      const nextSelected = personId === selectedIdRef.current ? null : personId
+      // family-chartは初期main_id(最初に作成した人物)の祖先側ノードの配偶者を
+      // 描画しない制約があるため、選択のたびにmain_idを選択人物へ追従させる
+      // (design.md リスク「family-chartの表現力限界」参照)
+      if (nextSelected) chart.updateMainId(nextSelected)
+      onSelectPersonRef.current(nextSelected)
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
       const person = (d.data as unknown as FamilyChartDatum).data
