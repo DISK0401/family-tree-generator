@@ -1,9 +1,63 @@
-.placeholder {
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.import-panel,
+.import-summary,
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.import-dropzone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  min-height: 100svh;
+  gap: 8px;
+  padding: 32px 16px;
+  border: 2px dashed #999;
+  border-radius: 8px;
+  cursor: pointer;
   text-align: center;
+}
+
+.import-dropzone--active {
+  border-color: #3366cc;
+  background-color: rgba(51, 102, 204, 0.06);
+}
+
+.import-dropzone__input {
+  display: none;
+}
+
+.import-panel__error {
+  color: #c0392b;
+}
+
+.export-panel__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.export-panel__notice {
+  font-size: 0.9em;
+  color: #555;
+}
+
+.export-panel__warnings,
+.import-summary__warnings {
+  color: #8a6100;
 }
