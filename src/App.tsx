@@ -1,37 +1,73 @@
 import { useState } from 'react'
 import './App.css'
-import { createEmptyFamilyTreeData, type FamilyTreeData } from './domain/model'
-import type { GedcomVersion } from './lib/gedcom/version'
-import {
-  ImportPanel,
-  type ImportSummaryInfo,
-} from './features/import-export/ImportPanel'
-import { ImportSummary } from './features/import-export/ImportSummary'
-import { ExportPanel } from './features/import-export/ExportPanel'
+import { EmptyStateGuide } from './components/EmptyStateGuide'
+import { PersonPanel } from './components/PersonPanel'
+import { SettingsMenu } from './components/SettingsMenu'
+import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
+import { FamilyTreeCanvas } from './rendering/FamilyTreeCanvas'
+import { useTreeStore } from './store/tree-store'
+
+function saveStatusText(status: PersistenceStatus): string {
+  switch (status.phase) {
+    case 'loading':
+      return '読み込み中…'
+    case 'blocked':
+      return `新しいバージョンのデータのため読み込めません(保存データ v${status.storedVersion} / このアプリ v${status.currentVersion})`
+    case 'ready':
+      switch (status.saveState) {
+        case 'idle':
+          return 'この端末にのみ保存されます'
+        case 'saving':
+          return '保存中…'
+        case 'saved':
+          return '保存済み(この端末にのみ保存されます)'
+      }
+  }
+}
 
 function App() {
-  const [data, setData] = useState<FamilyTreeData>(createEmptyFamilyTreeData())
-  const [summary, setSummary] = useState<ImportSummaryInfo | undefined>()
-
-  const handleImported = (
-    importedData: FamilyTreeData,
-    importSummary: ImportSummaryInfo,
-  ) => {
-    setData(importedData)
-    setSummary(importSummary)
-  }
-
-  const sourceVersion: GedcomVersion | undefined =
-    summary?.format === 'gedcom' ? summary.gedcomVersion : undefined
+  const { status, resetAllData } = usePersistedTree()
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
+  const personCount = useTreeStore((s) => Object.keys(s.document.persons).length)
+  const blocked = status.phase === 'blocked'
+  const ready = status.phase === 'ready'
+  const empty = ready && personCount === 0
 
   return (
-    <main className="app">
-      <h1>家系図作成サービス</h1>
-      <p>GEDCOM・JSON形式で家系図データをインポート・エクスポートできます。</p>
-      <ImportPanel onImported={handleImported} />
-      {summary && <ImportSummary summary={summary} />}
-      <ExportPanel data={data} sourceVersion={sourceVersion} />
-    </main>
+    <div className="app-frame">
+      <header className="app-header">
+        <h1 className="app-title">家系図</h1>
+        <div className="app-header-right">
+          <p className="app-header-status" aria-live="polite">
+            {saveStatusText(status)}
+          </p>
+          <SettingsMenu onReset={resetAllData} />
+        </div>
+      </header>
+      <main className="app-canvas" aria-label="家系図キャンバス">
+        {blocked ? (
+          <p className="app-blocked-message" role="alert">
+            {saveStatusText(status)}
+          </p>
+        ) : null}
+        {empty ? <EmptyStateGuide /> : null}
+        {ready && !empty ? (
+          <FamilyTreeCanvas
+            selectedPersonId={selectedPersonId}
+            onSelectPerson={setSelectedPersonId}
+          />
+        ) : null}
+      </main>
+      <aside className="app-panel" aria-label="編集パネル" hidden={!selectedPersonId}>
+        {selectedPersonId ? (
+          <PersonPanel
+            personId={selectedPersonId}
+            onDeleted={() => setSelectedPersonId(null)}
+            onClose={() => setSelectedPersonId(null)}
+          />
+        ) : null}
+      </aside>
+    </div>
   )
 }
 

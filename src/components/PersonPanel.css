@@ -1,0 +1,108 @@
+.person-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.person-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.person-panel-name {
+  font-size: var(--text-lg);
+  letter-spacing: 0.05em;
+}
+
+.person-panel-close {
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1;
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.person-panel-close:hover {
+  border-color: var(--ai);
+  color: var(--ai-strong);
+}
+
+.person-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.person-panel-action-button {
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  flex: 1;
+  min-width: max-content;
+}
+
+.person-panel-action-button:hover {
+  border-color: var(--ai);
+  color: var(--ai-strong);
+}
+
+.person-panel-action-button[aria-pressed='true'] {
+  border-color: var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+.person-panel-relation-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-sunken);
+}
+
+.person-panel-relation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.person-panel-relation-actions button {
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.person-panel-relation-actions button[type='submit'] {
+  border: 1px solid var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+.person-panel-relation-actions button[type='submit']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.person-panel-relation-actions button[type='button'] {
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+}

@@ -1,0 +1,16 @@
+.data-reset-trigger {
+  display: block;
+  width: 100%;
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius);
+}
+
+.data-reset-trigger:hover {
+  background: var(--danger-wash);
+}
