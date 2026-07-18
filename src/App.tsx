@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import './App.css'
+import './components/confirm-dialog.css'
 import { EmptyStateGuide } from './components/EmptyStateGuide'
 import { PersonPanel } from './components/PersonPanel'
 import { SettingsMenu } from './components/SettingsMenu'
-import { usePersistedTree, type PersistenceStatus } from './persistence/use-persisted-tree'
+import {
+  usePersistedTree,
+  type PersistenceStatus,
+} from './persistence/use-persisted-tree'
 import { FamilyTreeCanvas } from './rendering/FamilyTreeCanvas'
+import { useSampleLoader } from './samples/use-sample-loader'
 import { useTreeStore } from './store/tree-store'
 
 function saveStatusText(status: PersistenceStatus): string {
@@ -28,10 +33,14 @@ function saveStatusText(status: PersistenceStatus): string {
 function App() {
   const { status, resetAllData } = usePersistedTree()
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
-  const personCount = useTreeStore((s) => Object.keys(s.document.persons).length)
+  const personCount = useTreeStore(
+    (s) => Object.keys(s.document.persons).length,
+  )
   const blocked = status.phase === 'blocked'
   const ready = status.phase === 'ready'
   const empty = ready && personCount === 0
+  const { pendingSample, confirmOverwrite, cancelOverwrite } =
+    useSampleLoader(ready)
 
   return (
     <div className="app-frame">
@@ -58,7 +67,40 @@ function App() {
           />
         ) : null}
       </main>
-      <aside className="app-panel" aria-label="編集パネル" hidden={!selectedPersonId}>
+      {pendingSample ? (
+        <div className="confirm-dialog-overlay">
+          <div
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sample-overwrite-title"
+          >
+            <h2 id="sample-overwrite-title">サンプルで置き換えますか?</h2>
+            <p>
+              サンプル「{pendingSample.title}」を開くと、現在の家系図(人物
+              {personCount}
+              名)は置き換えられ、元に戻す(undo)こともできなくなります。残しておきたい場合はキャンセルし、設定メニューからエクスポートしてください。
+            </p>
+            <div className="confirm-dialog-actions">
+              <button type="button" onClick={cancelOverwrite}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="confirm-dialog-danger-button"
+                onClick={confirmOverwrite}
+              >
+                置き換えて開く
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <aside
+        className="app-panel"
+        aria-label="編集パネル"
+        hidden={!selectedPersonId}
+      >
         {selectedPersonId ? (
           <PersonPanel
             personId={selectedPersonId}

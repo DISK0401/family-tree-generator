@@ -1,0 +1,414 @@
+/* 製品紹介(ランディング)ページ。色・書体・余白はすべてtokens.css経由で参照する */
+
+.landing {
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.landing main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}
+
+/* ---- ヘッダー ---- */
+
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+
+.landing-brand {
+  font-family: var(--font-mincho);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.landing-header-app-link {
+  font-size: var(--text-sm);
+  text-decoration: none;
+  color: var(--ai);
+  border: 1px solid var(--ai);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+}
+
+.landing-header-app-link:hover {
+  background: var(--ai-wash);
+}
+
+/* ---- ヒーロー ---- */
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  align-items: center;
+  gap: var(--space-7);
+  padding: var(--space-7) 0;
+}
+
+.landing-hero-copy h1 {
+  font-size: var(--text-3xl);
+  line-height: 1.35;
+  letter-spacing: 0.06em;
+}
+
+.landing-hero-lead {
+  margin-top: var(--space-5);
+  color: var(--ink-soft);
+  line-height: 2;
+}
+
+.landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.landing-cta {
+  display: inline-block;
+  padding: var(--space-3) var(--space-6);
+  background: var(--ai);
+  color: var(--paper);
+  text-decoration: none;
+  font-size: var(--text-lg);
+  border-radius: var(--radius);
+  border: 1px solid var(--ai);
+}
+
+.landing-cta:hover {
+  background: var(--ai-strong);
+  border-color: var(--ai-strong);
+}
+
+.landing-cta-secondary {
+  display: inline-block;
+  padding: var(--space-3) var(--space-5);
+  color: var(--ai);
+  text-decoration: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.landing-cta-secondary:hover {
+  background: var(--paper-raised);
+}
+
+.landing-hero-note {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.landing-hero-figure {
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-raised);
+}
+
+/* ---- セクション共通 ---- */
+
+.landing-section {
+  padding: var(--space-7) 0;
+  border-top: 1px solid var(--line);
+}
+
+.landing-section h2 {
+  font-size: var(--text-2xl);
+  letter-spacing: 0.06em;
+}
+
+.landing-section-lead {
+  margin-top: var(--space-4);
+  color: var(--ink-soft);
+  line-height: 2;
+  max-width: 44em;
+}
+
+/* ---- 機能カード ---- */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.feature-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feature-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--ai);
+}
+
+.feature-card h3 {
+  font-size: var(--text-lg);
+}
+
+.feature-card p {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  line-height: 1.9;
+}
+
+/* Coming Soon: バッジ+彩度・濃度を落として「まだ使えない」ことを示す(design.md D4) */
+.feature-card-coming-soon {
+  background: var(--paper);
+  border-style: dashed;
+}
+
+.feature-card-coming-soon .feature-icon {
+  color: var(--ink-faint);
+}
+
+.feature-card-coming-soon h3 {
+  color: var(--ink-soft);
+}
+
+.feature-card-coming-soon p {
+  color: var(--ink-faint);
+}
+
+.coming-soon-badge {
+  font-size: var(--text-xs);
+  color: var(--warn);
+  background: var(--warn-wash);
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: var(--radius);
+  padding: 2px var(--space-2);
+  letter-spacing: 0.1em;
+}
+
+.landing-coming-soon-heading {
+  margin-top: var(--space-7);
+}
+
+/* ---- 図版(TreeFigure) ---- */
+
+.tree-figure {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tree-figure-edge {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+.tree-figure-edge-dashed {
+  stroke-dasharray: 6 4;
+}
+
+.tree-figure-node rect {
+  fill: var(--paper-raised);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.tree-figure-node-emphasis rect {
+  stroke: var(--shu);
+  stroke-width: 1.8;
+}
+
+.tree-figure-name {
+  fill: var(--ink);
+  font-family: var(--font-mincho);
+  font-size: 14px;
+}
+
+.tree-figure-sub {
+  fill: var(--ink-faint);
+  font-size: 10.5px;
+}
+
+.tree-figure-annotation {
+  fill: var(--ink-faint);
+  font-size: 11px;
+}
+
+/* ---- サンプルギャラリー ---- */
+
+.sample-gallery {
+  margin-top: var(--space-6);
+}
+
+.sample-gallery-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sample-gallery-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2) var(--space-4);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.sample-gallery-tab[aria-selected='true'] {
+  border-color: var(--shu);
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--shu);
+}
+
+.sample-gallery-tab-pattern {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.sample-gallery-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-raised);
+}
+
+.sample-gallery-figure {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.sample-gallery-figure .tree-figure {
+  min-width: 480px;
+}
+
+.sample-gallery-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sample-gallery-detail h3 {
+  font-size: var(--text-xl);
+}
+
+.sample-gallery-description {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  line-height: 1.9;
+}
+
+.sample-gallery-note {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  line-height: 1.8;
+}
+
+.sample-gallery-open {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: var(--space-2) var(--space-4);
+  color: var(--paper);
+  background: var(--ai);
+  border: 1px solid var(--ai);
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+
+.sample-gallery-open:hover {
+  background: var(--ai-strong);
+  border-color: var(--ai-strong);
+}
+
+/* ---- プライバシー ---- */
+
+.landing-privacy p {
+  margin-top: var(--space-4);
+  color: var(--ink-soft);
+  line-height: 2;
+  max-width: 44em;
+}
+
+/* ---- フッター ---- */
+
+.landing-footer {
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-7);
+  padding: var(--space-6) var(--space-5);
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-footer p {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  line-height: 1.9;
+  max-width: 60em;
+}
+
+.landing-footer p + p {
+  margin-top: var(--space-2);
+}
+
+.landing-footer-copyright {
+  margin-top: var(--space-4);
+}
+
+/* ---- レスポンシブ(モバイルファースト調整) ---- */
+
+@media (max-width: 800px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    padding: var(--space-6) 0;
+  }
+
+  .landing-hero-copy h1 {
+    font-size: var(--text-2xl);
+  }
+
+  .sample-gallery-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .landing main {
+    padding: 0 var(--space-4);
+  }
+}

@@ -1,6 +1,29 @@
 # family-tree-generator
 
-日本市場向けWeb家系図作成サービス。個人開発・freemium。
+日本市場向けWeb家系図作成サービス「家系図帖(かけいずちょう)」。個人開発・freemium。
+
+## ページ構成
+
+| パス | 内容 |
+|---|---|
+| `/` | 製品紹介(ランディング)ページ。未定義のパスもここへフォールバックする |
+| `/app` | 家系図エディタ(このリポジトリの根幹機能) |
+| `/app?sample=<id>` | 偉人家系図サンプルをエディタに読み込んで起動する(既存データがある場合は上書き前に確認) |
+
+ランディングページは完全静的で、フォーム・解析タグ・外部リソース読み込みを一切持たない。エディタ(family-chart/D3を含むチャンク)はルート単位のコード分割によりランディング表示時には読み込まれない。
+
+### 偉人家系図サンプル
+
+ランディングの「サンプルで完成イメージを見る」から、以下の4パターンをエディタで開ける(`src/samples/`)。
+
+| サンプルID | 題材 | 見せるパターン |
+|---|---|---|
+| `tokugawa-ieyasu` | 徳川家康 | 複数の配偶者(正室・継室・側室) |
+| `natsume-soseki` | 夏目漱石 | 養子縁組(実父母と養父母) |
+| `shibusawa-eiichi` | 渋沢栄一 | 死別後の再婚・旧字体表記「澁澤榮一」 |
+| `modern-family` | 現代の家族(架空) | 三世代の記録・和暦⇄西暦 |
+
+サンプルの人選は「故人であり、Wikipedia等で系譜が公知の人物」に限定し、実在の存命人物・皇室系譜は扱わない。架空サンプルにはその旨を明記する(`openspec/specs/sample-tree-gallery/spec.md` 参照)。
 
 ## 機能(無料版)
 
@@ -31,7 +54,7 @@ npm install
 npm run dev
 ```
 
-`http://localhost:5173` で家系図作成画面が表示されます。
+`http://localhost:5173` で製品紹介ページが、`http://localhost:5173/app` で家系図作成画面が表示されます。
 
 ## GEDCOM / JSON インポート・エクスポート
 
@@ -83,13 +106,28 @@ npm run dev
 - `src/lib/gedcom/`: GEDCOM 7.0/5.5.1の構文層(パーサ/シリアライザ)・意味層(氏名/日付/続柄/家族関係種別マッピング、インポート/エクスポート)。
 - `src/lib/json/`: アプリ独自JSON形式(`TreeDocument`直列化)の入出力・zodスキーマ検証。
 - `src/components/`: 編集UI(サイドパネル、日付入力、確認ダイアログ、インポート/エクスポート等)。
+- `src/pages/`: 製品紹介(ランディング)ページと図版(トークン準拠の軽量SVG。family-chart非依存)。
+- `src/samples/`: 偉人家系図サンプルのデータ(`TreeDocument`形式)と `/app?sample=<id>` 読み込み処理。データ本体はエディタ側チャンクから動的importされる。
+- `src/routes.ts` / `src/Root.tsx`: パス判定によるランディング/エディタの出し分けとルート単位のコード分割(ルータライブラリ不使用)。
 - `docs/gedcom-mapping.md`: 内部データモデルとGEDCOM 7.0タグの対応表(GEDCOM入出力の実装リファレンス)。
 
 設計判断の詳細は `openspec/changes/*/design.md` を参照。
 
 ### 外部送信ゼロの検証方法
 
-無料版の「サーバへ一切送信しない」制約は、ブラウザの開発者ツールでネットワークタブを開いた状態で家系図を操作し、自オリジン(`http://localhost:5173` 等)以外へのリクエストが発生しないことで確認できる。
+無料版の「サーバへ一切送信しない」制約は、ブラウザの開発者ツールでネットワークタブを開いた状態で家系図を操作し、自オリジン(`http://localhost:5173` 等)以外へのリクエストが発生しないことで確認できる。ランディングページ・サンプル読み込みも同様に外部リクエストゼロである。
+
+### OGP画像の運用
+
+`public/ogp.png`(1200×630)はSNS共有用の1枚絵で、テーマには追従しない。デザイン刷新時は `docs/assets/ogp-source.html` を編集して再生成する。
+
+```bash
+npm i --no-save playwright-core @fontsource/noto-serif-jp @fontsource/noto-sans-jp
+# docs/assets/ogp-source.html を 1200x630 でスクリーンショットして public/ogp.png へ保存する
+# (playwright-core の chromium.launch → page.goto(file://...) → page.screenshot)
+```
+
+`index.html` の `og:image` は `/ogp.png`(自オリジン相対)を指す。カスタムドメイン確定後は絶対URLへの変更を検討する。
 
 ## ブランチ運用とデプロイフロー
 
