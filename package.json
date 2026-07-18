@@ -21,6 +21,12 @@
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "1.1.5",
+    "@rolldown/binding-darwin-x64": "1.1.5",
+    "@rolldown/binding-linux-x64-gnu": "1.1.5",
+    "@rolldown/binding-win32-x64-msvc": "1.1.5"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260715.1",
     "@eslint/js": "^10.0.1",

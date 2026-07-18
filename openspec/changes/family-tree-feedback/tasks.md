@@ -55,10 +55,10 @@
 
 ## 9. Windows開発環境の改善(D11)
 
-- [ ] 9.1 現在解決されている `rolldown` のバージョンに合わせ、`win32-x64-msvc` / `darwin-arm64` / `darwin-x64` / `linux-x64-gnu` の `@rolldown/binding-*` をルート `package.json` の `optionalDependencies` に追加する(完了条件: `package.json` に該当エントリが追加される)
-- [ ] 9.2 `package-lock.json` を再生成する(完了条件: 追加した全プラットフォーム分の `@rolldown/binding-*` が `node_modules/...` エントリとしてロックファイルに書き込まれる)
-- [ ] 9.3 再生成後に `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build` を実行し、`optionalDependencies` 追加以外の意図しない依存バージョン変動がないことを `git diff` で確認する(完了条件: 4コマンドすべてが成功し、diffが追加分のみであることを確認する)
-- [ ] 9.4 README.mdのセットアップ手順から、Windows向けの手動インストール手順(該当する記載があれば)を削除する(完了条件: README.mdに `npm install` のみで完結する旨が記載されている)
+- [x] 9.1 現在解決されている `rolldown` のバージョンに合わせ、`win32-x64-msvc` / `darwin-arm64` / `darwin-x64` / `linux-x64-gnu` の `@rolldown/binding-*` をルート `package.json` の `optionalDependencies` に追加する(完了条件: `package.json` に該当エントリが追加される)
+- [x] 9.2 `package-lock.json` を再生成する(完了条件: 追加した全プラットフォーム分の `@rolldown/binding-*` が `node_modules/...` エントリとしてロックファイルに書き込まれる)
+- [x] 9.3 再生成後に `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build` を実行し、`optionalDependencies` 追加以外の意図しない依存バージョン変動がないことを `git diff` で確認する(完了条件: 4コマンドすべてが成功し、diffが追加分のみであることを確認する)
+- [x] 9.4 README.mdのセットアップ手順から、Windows向けの手動インストール手順(該当する記載があれば)を削除する(完了条件: README.mdに `npm install` のみで完結する旨が記載されている)
 
 ## 10. ブランディング統一(D12)
 
