@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DataResetControl } from './DataResetControl'
+import { ImportExportControl } from './ImportExportControl'
 import './SettingsMenu.css'
 
 interface SettingsMenuProps {
@@ -39,6 +40,7 @@ export function SettingsMenu({ onReset }: SettingsMenuProps) {
       </button>
       {open && (
         <div className="settings-menu-panel" role="menu">
+          <ImportExportControl />
           <DataResetControl onReset={onReset} />
         </div>
       )}
