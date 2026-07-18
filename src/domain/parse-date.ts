@@ -32,6 +32,8 @@ const eraNames = ERA_TABLE.map((e) => e.name).join('|')
 const WAREKI_RE = new RegExp(`^(${eraNames})(元|\\d{1,2})年(?:(\\d{1,2})月(?:(\\d{1,2})日)?)?$`)
 const GREGORIAN_KANJI_RE = /^(\d{3,4})年(?:(\d{1,2})月(?:(\d{1,2})日)?)?$/
 const GREGORIAN_SEP_RE = /^(\d{3,4})(?:[/-](\d{1,2})(?:[/-](\d{1,2}))?)?$/
+/** 区切りなし8桁数字(例: 19641010)。曖昧さを避けるため4桁年+2桁月+2桁日のみを対象とする */
+const GREGORIAN_COMPACT_RE = /^(\d{4})(\d{2})(\d{2})$/
 
 function isValidCalendarDate(year: number, month?: number, day?: number): boolean {
   if (month === undefined) return true
@@ -57,7 +59,7 @@ function parseCore(core: string): WarekiResult<CalendarDate> {
     })
   }
 
-  const g = GREGORIAN_KANJI_RE.exec(s) ?? GREGORIAN_SEP_RE.exec(s)
+  const g = GREGORIAN_KANJI_RE.exec(s) ?? GREGORIAN_SEP_RE.exec(s) ?? GREGORIAN_COMPACT_RE.exec(s)
   if (g) {
     const [, y, m, d] = g
     const date: CalendarDate = {

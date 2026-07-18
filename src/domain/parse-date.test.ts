@@ -35,8 +35,24 @@ describe('parseDateInput: 西暦', () => {
     ['1964年', { year: 1964 }],
     ['1964', { year: 1964 }],
     ['1988', { year: 1988 }],
+    ['19641010', { year: 1964, month: 10, day: 10 }],
+    ['20000101', { year: 2000, month: 1, day: 1 }],
   ])('%s', (input, expected) => {
     expect(expectOk(input).date).toEqual(expected)
+  })
+})
+
+describe('parseDateInput: 区切りなし8桁数字', () => {
+  it('存在しない日付(20000230)はエラーになる', () => {
+    const r = parseDateInput('20000230')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.message).toContain('存在しない日付です')
+  })
+
+  it('修飾子と組み合わせられる(20000101頃)', () => {
+    const v = expectOk('20000101頃')
+    expect(v.qualifier).toBe('about')
+    expect(v.date).toEqual({ year: 2000, month: 1, day: 1 })
   })
 })
 
