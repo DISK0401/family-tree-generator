@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/noto-serif-jp/600.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/noto-sans-jp/400.css" />
+    <style>
+      /* tokens.css(ライトテーマ)の値を転記。OGPは1枚絵なのでテーマ追従は不要 */
+      :root {
+        --ink: #2b2a27;
+        --ink-soft: #625b4e;
+        --ink-faint: #8f8672;
+        --paper: #f2ede1;
+        --paper-raised: #fbf7ec;
+        --line: #d8d2c4;
+        --line-strong: #a89f8a;
+        --ai: #274a78;
+        --shu: #c73e3a;
+      }
+      * {
+        margin: 0;
+        box-sizing: border-box;
+      }
+      body {
+        width: 1200px;
+        height: 630px;
+        background: var(--paper);
+        font-family: 'Noto Sans JP', sans-serif;
+        color: var(--ink);
+        overflow: hidden;
+        position: relative;
+      }
+      .frame {
+        position: absolute;
+        inset: 24px;
+        border: 2px solid var(--line-strong);
+        display: flex;
+        align-items: center;
+        gap: 48px;
+        padding: 0 64px;
+      }
+      .copy {
+        flex: 1 1 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .brand h1 {
+        font-family: 'Noto Serif JP', serif;
+        font-weight: 600;
+        font-size: 88px;
+        letter-spacing: 0.12em;
+      }
+      .seal {
+        width: 64px;
+        height: 64px;
+        background: var(--shu);
+        color: var(--paper-raised);
+        font-family: 'Noto Serif JP', serif;
+        font-size: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+      }
+      .kana {
+        margin-top: 8px;
+        font-size: 24px;
+        color: var(--ink-faint);
+        letter-spacing: 0.3em;
+      }
+      .tagline {
+        margin-top: 36px;
+        font-family: 'Noto Serif JP', serif;
+        font-size: 40px;
+        line-height: 1.6;
+        color: var(--ink);
+      }
+      .points {
+        margin-top: 32px;
+        font-size: 26px;
+        color: var(--ink-soft);
+        line-height: 1.8;
+      }
+      .points strong {
+        color: var(--ai);
+        font-weight: 400;
+      }
+      .figure {
+        flex: 0 0 380px;
+        background: var(--paper-raised);
+        border: 1px solid var(--line);
+        box-shadow: 0 2px 10px rgb(33 29 22 / 0.12);
+        padding: 24px;
+      }
+      svg text {
+        font-family: 'Noto Serif JP', serif;
+        fill: var(--ink);
+        font-size: 15px;
+        text-anchor: middle;
+      }
+      svg .sub {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 10px;
+        fill: var(--ink-faint);
+      }
+      svg rect {
+        fill: var(--paper);
+        stroke: var(--line-strong);
+      }
+      svg polyline {
+        fill: none;
+        stroke: var(--line-strong);
+        stroke-width: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="copy">
+        <div class="brand">
+          <h1>家系図帖</h1>
+          <div class="seal">帖</div>
+        </div>
+        <p class="kana">かけいずちょう</p>
+        <p class="tagline">家族の歴史を、<br />一枚の系図に。</p>
+        <p class="points">
+          ブラウザだけで作れる無料の家系図サービス<br />
+          データは端末の中だけ・<strong>サーバーに送信しません</strong><br />
+          和暦対応・養子や再婚もきれいに・GEDCOM対応
+        </p>
+      </div>
+      <div class="figure">
+        <svg viewBox="0 0 330 300" width="330" height="300">
+          <!-- 架空の三世代: 太郎=うめ → 一夫=京子 → 直樹・美穂 -->
+          <polyline points="115,34 205,34" />
+          <polyline points="160,34 160,100 60,100 60,120" />
+          <polyline points="115,144 205,144" />
+          <polyline points="160,144 160,216 90,216 90,240" />
+          <polyline points="160,144 160,216 230,216 230,240" />
+          <rect x="5" y="10" width="110" height="48" rx="2" />
+          <text x="60" y="31">山田 太郎</text>
+          <text x="60" y="48" class="sub">大正13年生</text>
+          <rect x="205" y="10" width="110" height="48" rx="2" />
+          <text x="260" y="31">山田 うめ</text>
+          <text x="260" y="48" class="sub">昭和2年生</text>
+          <rect x="5" y="120" width="110" height="48" rx="2" />
+          <text x="60" y="141">山田 一夫</text>
+          <text x="60" y="158" class="sub">昭和24年生</text>
+          <rect x="205" y="120" width="110" height="48" rx="2" />
+          <text x="260" y="141">山田 京子</text>
+          <text x="260" y="158" class="sub">昭和27年生</text>
+          <rect x="35" y="240" width="110" height="48" rx="2" />
+          <text x="90" y="261">山田 直樹</text>
+          <text x="90" y="278" class="sub">昭和51年生</text>
+          <rect x="175" y="240" width="110" height="48" rx="2" />
+          <text x="230" y="261">山田 美穂</text>
+          <text x="230" y="278" class="sub">昭和54年生</text>
+        </svg>
+      </div>
+    </div>
+  </body>
+</html>
