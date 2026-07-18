@@ -77,6 +77,10 @@
   --space-6: 32px;
   --space-7: 48px;
 
+  /* ヘッダー余白 — ランディングとエディタで共通のトークンを参照し、見た目の高さを揃える(design.md D12) */
+  --header-padding-y: var(--space-3);
+  --header-padding-x: var(--space-5);
+
   /* 造形 — 帳簿の直線的な佇まい。丸角は最小限 */
   --radius: 2px;
   --shadow-raised:

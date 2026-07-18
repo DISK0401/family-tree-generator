@@ -79,7 +79,7 @@ function App() {
   return (
     <div className="app-frame">
       <header className="app-header">
-        <h1 className="app-title">家系図</h1>
+        <h1 className="app-title">家系図帖</h1>
         <div className="app-header-right">
           <p className="app-header-status" aria-live="polite">
             {saveStatusText(status)}
