@@ -11,10 +11,12 @@
 
 .app-header {
   grid-area: header;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  min-height: var(--header-min-height);
   padding: var(--header-padding-y) var(--header-padding-x);
   border-bottom: 1px solid var(--line);
   background: var(--paper);

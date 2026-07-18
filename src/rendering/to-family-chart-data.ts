@@ -152,27 +152,39 @@ export function findMaxCoverageRoot(doc: TreeDocument): PersonId | undefined {
   return representative === undefined ? undefined : findRootAncestor(doc, representative)
 }
 
+/** 折りたたみ表示時の非表示人数バッジ1件分の情報(design.md D6) */
+export interface HiddenNeighborInfo {
+  /** 境界人物から辿れる非表示クラスタの人数 */
+  count: number
+  /** バッジをクリックした際に視点(main_id)を追従させる先の、直接の非表示隣接人物 */
+  revealId: PersonId
+}
+
 /**
  * 折りたたみ表示時の非表示人数バッジ(design.md D6)。
  * `visibleIds`(現在family-chartが実際に描画している人物ID集合)に含まれない隣接人物を
  * 「境界」として検出し、境界ごとに非表示クラスタのサイズを幅優先探索で数える。
  * 同一の非表示クラスタが複数の境界から到達可能な場合は、`Object.keys(doc.persons)` の
  * 順で最初に見つかった境界にのみ計上する(二重計上を避ける)。
- * 戻り値は、非表示人物を1人以上持つ可視人物のIDから人数へのMap。
+ * `revealId` はバッジをクリックして視点を追従させる先の人物(design.md リスク
+ * 「養子縁組を持つ人物からもう一方の親族側へ戻れない」への対応)。
+ * 戻り値は、非表示人物を1人以上持つ可視人物のIDから{count, revealId}へのMap。
  */
 export function computeHiddenCounts(
   doc: TreeDocument,
   visibleIds: ReadonlySet<PersonId>,
-): Map<PersonId, number> {
+): Map<PersonId, HiddenNeighborInfo> {
   const adjacency = buildAdjacency(doc)
   const countedHidden = new Set<PersonId>()
-  const result = new Map<PersonId, number>()
+  const result = new Map<PersonId, HiddenNeighborInfo>()
 
   for (const personId of Object.keys(doc.persons)) {
     if (!visibleIds.has(personId)) continue
     let hiddenTotal = 0
+    let revealId: PersonId | undefined
     for (const neighbor of adjacency.get(personId) ?? []) {
       if (visibleIds.has(neighbor) || countedHidden.has(neighbor)) continue
+      if (revealId === undefined) revealId = neighbor
       countedHidden.add(neighbor)
       const cluster: PersonId[] = [neighbor]
       const queue = [neighbor]
@@ -188,7 +200,7 @@ export function computeHiddenCounts(
       }
       hiddenTotal += cluster.length
     }
-    if (hiddenTotal > 0) result.set(personId, hiddenTotal)
+    if (hiddenTotal > 0 && revealId !== undefined) result.set(personId, { count: hiddenTotal, revealId })
   }
   return result
 }

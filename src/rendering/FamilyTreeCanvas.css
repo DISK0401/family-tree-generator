@@ -39,6 +39,8 @@
 }
 
 /* 折りたたみ時、この人物の先に隠れている人数を示すバッジ(design.md D6) */
+/* クリックすると、隠れている人物側へ視点を追従させる(design.md リスク
+   「養子縁組を持つ人物からもう一方の親族側へ戻れない」への対応) */
 .tree-card-hidden-badge {
   position: absolute;
   top: -8px;
@@ -55,6 +57,11 @@
   line-height: 18px;
   text-align: center;
   box-shadow: 0 0 0 2px var(--paper-raised);
+  cursor: pointer;
+}
+
+.tree-card-hidden-badge:hover {
+  background: var(--ai-strong);
 }
 
 .tree-card:hover {
@@ -142,13 +149,21 @@
   filter: drop-shadow(0 3px 0 var(--line-strong));
 }
 
-.tree-legend {
+/* 全体表示トグル・凡例をまとめて1つの縦積みブロックとして配置し、互いに重ならないようにする */
+.tree-corner-panel {
   /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
      タップ/クリックを奪われるため、明示的なz-indexが必須 */
   z-index: 10;
   position: absolute;
   left: var(--space-3);
   bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.tree-legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -177,18 +192,20 @@
   border-top-style: dashed;
 }
 
+/* 性別インジケーターの凡例。カード上のtree-card-gender-*と同じ形状・色を、
+   カード用の position:absolute は継がずにここでは静的なスウォッチとして表示する */
+.tree-legend-gender-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
 .tree-legend-hint {
   margin: var(--space-1) 0 0;
   padding-top: var(--space-1);
   border-top: 1px solid var(--line);
   color: var(--ink-faint);
-}
-
-.tree-mode-controls {
-  z-index: 10;
-  position: absolute;
-  left: var(--space-3);
-  bottom: var(--space-3);
 }
 
 .tree-show-all-toggle {

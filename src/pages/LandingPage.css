@@ -18,9 +18,11 @@
   position: sticky;
   top: 0;
   z-index: 5;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: var(--header-min-height);
   padding: var(--header-padding-y) var(--header-padding-x);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);

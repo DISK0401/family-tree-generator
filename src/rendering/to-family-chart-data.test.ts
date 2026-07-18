@@ -448,7 +448,8 @@ describe('computeHiddenCounts', () => {
     // AとBのみが可視(C・D・Eは非表示)と仮定する
     const visibleIds = new Set([a.personId, spouse.spouseId])
     const hidden = computeHiddenCounts(doc, visibleIds)
-    expect(hidden.get(spouse.spouseId)).toBe(3) // C, D, E
+    expect(hidden.get(spouse.spouseId)?.count).toBe(3) // C, D, E
+    expect(hidden.get(spouse.spouseId)?.revealId).toBe(otherSpouse.spouseId)
     expect(hidden.has(a.personId)).toBe(false)
   })
 
@@ -471,8 +472,36 @@ describe('computeHiddenCounts', () => {
 
     const visibleIds = new Set([a.personId, b.personId])
     const hidden = computeHiddenCounts(doc, visibleIds)
-    const total = [...hidden.values()].reduce((sum, n) => sum + n, 0)
+    const total = [...hidden.values()].reduce((sum, info) => sum + info.count, 0)
     // 非表示人物はXの1人のみであり、AかBどちらか一方にのみ計上される(合計1)
     expect(total).toBe(1)
+  })
+
+  it('revealIdはクリックした際に視点を追従させる先の直接の非表示隣接人物になる(夏目漱石サンプル相当)', () => {
+    let doc = createTreeDocument()
+    const naokatsu = addPerson(doc, { name: { given: '直克' } })
+    doc = naokatsu.doc
+    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    doc = soseki.doc
+    const shiobara = addPerson(doc, { name: { given: '昌之助' } })
+    doc = shiobara.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-shiobara': {
+          id: 'f-shiobara',
+          spouseIds: [shiobara.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: soseki.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+
+    // 実親側(直克)が可視、養親側(昌之助)が非表示の状態を想定する
+    const visibleIds = new Set([naokatsu.personId, soseki.childId])
+    const hidden = computeHiddenCounts(doc, visibleIds)
+    expect(hidden.get(soseki.childId)).toEqual({ count: 1, revealId: shiobara.personId })
   })
 })

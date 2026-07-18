@@ -14,6 +14,7 @@ import {
   sortSpousesByMarriageDate,
   toFamilyChartData,
   type FamilyChartDatum,
+  type HiddenNeighborInfo,
 } from './to-family-chart-data'
 import './FamilyTreeCanvas.css'
 
@@ -175,8 +176,8 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
 
     // 折りたたみ時の非表示人数バッジ(design.md D6)。カード描画のたびに毎回計算し直すと
     // O(人数^2)になるため、直前に使った`store.getTree()`の参照が変わっていない間は使い回す
-    let hiddenCountsCache: { tree: unknown; counts: Map<string, number> } | null = null
-    function getHiddenCounts(): Map<string, number> {
+    let hiddenCountsCache: { tree: unknown; counts: Map<string, HiddenNeighborInfo> } | null = null
+    function getHiddenCounts(): Map<string, HiddenNeighborInfo> {
       if (showAllRef.current) return new Map()
       const tree = chart.store.getTree()
       if (hiddenCountsCache && hiddenCountsCache.tree === tree) return hiddenCountsCache.counts
@@ -191,7 +192,19 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     const card = chart.setCardHtml()
     card.setStyle('rect')
     card.setCardDim({ w: CARD_WIDTH, h: CARD_HEIGHT, img: false })
-    card.setOnCardClick((_e: Event, d: TreeDatum) => {
+    card.setOnCardClick((e: Event, d: TreeDatum) => {
+      // 非表示人数バッジのクリックは、選択状態を変えずに視点だけをその隠れた人物側へ
+      // 追従させる(design.md リスク「養子縁組を持つ人物からもう一方の親族側へ戻れない」への対応)
+      const revealId = (e.target as HTMLElement | null)?.closest<HTMLElement>('.tree-card-hidden-badge')
+        ?.dataset.revealId
+      if (revealId) {
+        chart.updateMainId(findRootAncestor(documentRef.current, revealId))
+        // 選択状態(selectedPersonId)は変えないため、[selectedPersonId]依存のuseEffectでは
+        // updateTreeが呼ばれない。ここで明示的に再描画をトリガーする必要がある
+        chart.updateTree({ tree_position: 'fit' })
+        return
+      }
+
       const personId = (d.data as unknown as FamilyChartDatum).data.personId
       const nextSelected = personId === selectedIdRef.current ? null : personId
       // family-chartは初期main_id(最初に作成した人物)の祖先側ノードの配偶者・傍系親族を
@@ -225,10 +238,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
           : `<div class="tree-card-given">${escapeHtml(person.displayName)}</div>`
       // 折りたたみ表示時、この人物の先に隠れている人数をバッジで示す(design.md D6)。
       // 全体表示モード中は表示しない
-      const hiddenCount = getHiddenCounts().get(person.personId)
+      const hidden = getHiddenCounts().get(person.personId)
       const badgeHtml =
-        hiddenCount !== undefined
-          ? `<div class="tree-card-hidden-badge" title="非表示の人物が${hiddenCount}人います">+${hiddenCount}</div>`
+        hidden !== undefined
+          ? `<div class="tree-card-hidden-badge" data-reveal-id="${escapeHtml(hidden.revealId)}" title="非表示の人物が${hidden.count}人います。クリックすると表示します">+${hidden.count}</div>`
           : ''
       // 性別を色のみに依存せず形状(四角/丸/破線ひし形)でも判別できるようにする(design.md D7)
       const genderClass =
@@ -278,6 +291,11 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       // 以降はクリックしてもこの視点(main_id)を動かさない
       const root = findMaxCoverageRoot(documentRef.current)
       if (root) chart.updateMainId(root)
+    } else if (selectedIdRef.current) {
+      // 無効化時、選択中の人物がいればその祖先へ即座に再追従させる。
+      // これを省略すると次にカードをクリックするまで表示が変化せず、
+      // 「折りたたみ表示に戻す」を押しても何も起きていないように見えてしまう
+      chart.updateMainId(findRootAncestor(documentRef.current, selectedIdRef.current))
     }
     chart.updateTree({ tree_position: 'fit' })
   }, [showAll])
@@ -302,18 +320,7 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       style={{ ['--tree-card-w' as string]: `${CARD_WIDTH}px`, ['--tree-card-h' as string]: `${CARD_HEIGHT}px` }}
     >
       <div ref={containerRef} className="f3 tree-canvas-root" />
-      <div className="tree-legend">
-        <div className="tree-legend-item">
-          <span className="tree-legend-swatch" />
-          <span>実子</span>
-        </div>
-        <div className="tree-legend-item">
-          <span className="tree-legend-swatch adopted" />
-          <span>養子・継子・里子・不明</span>
-        </div>
-        <p className="tree-legend-hint">カードを選ぶと編集できます</p>
-      </div>
-      <div className="tree-mode-controls">
+      <div className="tree-corner-panel">
         <button
           type="button"
           className="tree-show-all-toggle"
@@ -322,6 +329,29 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         >
           {showAll ? '折りたたみ表示に戻す' : '全体表示モード'}
         </button>
+        <div className="tree-legend">
+          <div className="tree-legend-item">
+            <span className="tree-legend-swatch" />
+            <span>実子</span>
+          </div>
+          <div className="tree-legend-item">
+            <span className="tree-legend-swatch adopted" />
+            <span>養子・継子・里子・不明</span>
+          </div>
+          <div className="tree-legend-item">
+            <span className="tree-legend-gender-swatch tree-card-gender-male" />
+            <span>男</span>
+          </div>
+          <div className="tree-legend-item">
+            <span className="tree-legend-gender-swatch tree-card-gender-female" />
+            <span>女</span>
+          </div>
+          <div className="tree-legend-item">
+            <span className="tree-legend-gender-swatch tree-card-gender-unknown" />
+            <span>不明</span>
+          </div>
+          <p className="tree-legend-hint">カードを選ぶと編集できます</p>
+        </div>
       </div>
       <div className="tree-zoom-controls" role="group" aria-label="表示倍率">
         <button type="button" onClick={() => zoomBy(1.3)} aria-label="拡大">
