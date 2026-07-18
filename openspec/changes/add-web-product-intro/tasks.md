@@ -77,6 +77,22 @@
 
 - いずれもWikipedia等で公知の系譜情報の範囲に簡略化し、ランディングの図版・注記に「公知情報を基に簡略化したサンプル」と表示している。
 
+### 10.1 dev環境デプロイ(2026-07-18、部分完了)
+
+- PR #15 を `develop` へマージ(マージコミット `97f7841`)。quality gate は修正2件(jsdom向けDOMMatrixスタブ追加・lintエラー修正)の後に成功。
+- deploy.yml run 29639276212 が成功し、dev環境 `https://family-tree-generator-dev.disk0401.workers.dev` へデプロイ完了(Version ID: 285f6dcc-a3b4-4147-85fa-02e9621b4906)。
+- デプロイログで以下を確認済み: `index.html`・`ogp.png`・ランディング/エディタ/サンプル各チャンクの計13アセットがアップロードされ、`ENVIRONMENT="dev"` バインディング(noindexヘッダ付与の条件)が有効。
+- **未完(要手動確認)**: 実URLへのHTTPアクセス検証は、作業セッションのネットワークポリシー(外部サイトへの接続不可)のため実施できていない。以下をブラウザまたはcurlで確認すること:
+  ```bash
+  BASE=https://family-tree-generator-dev.disk0401.workers.dev
+  curl -sI "$BASE/"                              # 200・X-Robots-Tag: noindex
+  curl -s "$BASE/" | grep og:                    # OGPメタ
+  curl -sI "$BASE/app"                           # 200(SPAフォールバック)
+  curl -sI "$BASE/app?sample=tokugawa-ieyasu"    # 200
+  curl -sI "$BASE/ogp.png"                       # 200 image/png
+  ```
+  ブラウザでは `/` のランディング表示・サンプルギャラリー・「エディタで開く」でのサンプル展開を目視確認する。
+
 ### 8.3 / 8.4 品質確認結果
 
 - `npm run lint` / `npm run typecheck` / `npm run test`(193件) / `npm run build` すべて成功。
