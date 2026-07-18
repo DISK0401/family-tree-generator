@@ -67,6 +67,103 @@ export function findRootAncestor(doc: TreeDocument, personId: PersonId): PersonI
   }
 }
 
+/** 親子・配偶者関係を無向グラフとして表した隣接リストを構築する(全体表示モード・非表示人数バッジ共通) */
+function buildAdjacency(doc: TreeDocument): Map<PersonId, Set<PersonId>> {
+  const adjacency = new Map<PersonId, Set<PersonId>>()
+  function link(a: PersonId, b: PersonId): void {
+    if (!adjacency.has(a)) adjacency.set(a, new Set())
+    if (!adjacency.has(b)) adjacency.set(b, new Set())
+    adjacency.get(a)?.add(b)
+    adjacency.get(b)?.add(a)
+  }
+  for (const family of Object.values(doc.families)) {
+    for (let i = 0; i < family.spouseIds.length; i++) {
+      for (let j = i + 1; j < family.spouseIds.length; j++) link(family.spouseIds[i], family.spouseIds[j])
+    }
+    for (const child of family.children) {
+      for (const spouseId of family.spouseIds) link(spouseId, child.childId)
+    }
+  }
+  return adjacency
+}
+
+/**
+ * 全体表示モード(design.md D5)用に、`TreeDocument` 内で最大の連結範囲(親子・配偶者関係を
+ * 辿って到達できる人数が最大)を持つ根(最上位祖先)を返す。人物が1人もいない場合は
+ * `undefined` を返す。完全に非連結な複数クラスタが存在する場合、最大のクラスタ以外は
+ * この根からは辿れない(design.md 既知の限界)。
+ */
+export function findMaxCoverageRoot(doc: TreeDocument): PersonId | undefined {
+  const personIds = Object.keys(doc.persons)
+  if (personIds.length === 0) return undefined
+  const adjacency = buildAdjacency(doc)
+
+  const visited = new Set<PersonId>()
+  let largestComponent: PersonId[] = []
+  for (const startId of personIds) {
+    if (visited.has(startId)) continue
+    const component: PersonId[] = []
+    const queue = [startId]
+    visited.add(startId)
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current) break
+      component.push(current)
+      for (const next of adjacency.get(current) ?? []) {
+        if (!visited.has(next)) {
+          visited.add(next)
+          queue.push(next)
+        }
+      }
+    }
+    if (component.length > largestComponent.length) largestComponent = component
+  }
+
+  const representative = largestComponent[0]
+  return representative === undefined ? undefined : findRootAncestor(doc, representative)
+}
+
+/**
+ * 折りたたみ表示時の非表示人数バッジ(design.md D6)。
+ * `visibleIds`(現在family-chartが実際に描画している人物ID集合)に含まれない隣接人物を
+ * 「境界」として検出し、境界ごとに非表示クラスタのサイズを幅優先探索で数える。
+ * 同一の非表示クラスタが複数の境界から到達可能な場合は、`Object.keys(doc.persons)` の
+ * 順で最初に見つかった境界にのみ計上する(二重計上を避ける)。
+ * 戻り値は、非表示人物を1人以上持つ可視人物のIDから人数へのMap。
+ */
+export function computeHiddenCounts(
+  doc: TreeDocument,
+  visibleIds: ReadonlySet<PersonId>,
+): Map<PersonId, number> {
+  const adjacency = buildAdjacency(doc)
+  const countedHidden = new Set<PersonId>()
+  const result = new Map<PersonId, number>()
+
+  for (const personId of Object.keys(doc.persons)) {
+    if (!visibleIds.has(personId)) continue
+    let hiddenTotal = 0
+    for (const neighbor of adjacency.get(personId) ?? []) {
+      if (visibleIds.has(neighbor) || countedHidden.has(neighbor)) continue
+      countedHidden.add(neighbor)
+      const cluster: PersonId[] = [neighbor]
+      const queue = [neighbor]
+      while (queue.length > 0) {
+        const current = queue.shift()
+        if (current === undefined) break
+        for (const next of adjacency.get(current) ?? []) {
+          if (visibleIds.has(next) || countedHidden.has(next)) continue
+          countedHidden.add(next)
+          cluster.push(next)
+          queue.push(next)
+        }
+      }
+      hiddenTotal += cluster.length
+    }
+    if (hiddenTotal > 0) result.set(personId, hiddenTotal)
+  }
+  return result
+}
+
 export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
   const spouseSets = new Map<PersonId, Set<PersonId>>()
   const childrenSets = new Map<PersonId, Set<PersonId>>()

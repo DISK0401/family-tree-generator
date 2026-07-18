@@ -4,6 +4,8 @@ import { createTreeDocument } from '../domain/helpers'
 import type { FamilyChartDatum } from './to-family-chart-data'
 import {
   compareChildrenByBirthThenName,
+  computeHiddenCounts,
+  findMaxCoverageRoot,
   findRootAncestor,
   sortSpousesByMarriageDate,
   toFamilyChartData,
@@ -261,5 +263,101 @@ describe('sortSpousesByMarriageDate', () => {
     }
     sortSpousesByMarriageDate(doc, datum)
     expect(datum.rels.spouses).toEqual([s1.spouseId, s2.spouseId])
+  })
+})
+
+describe('findMaxCoverageRoot', () => {
+  it('人物がいない場合はundefinedを返す', () => {
+    const doc = createTreeDocument()
+    expect(findMaxCoverageRoot(doc)).toBeUndefined()
+  })
+
+  it('単一の連結成分では最上位祖先を返す', () => {
+    let doc = createTreeDocument()
+    const gp = addPerson(doc, { name: { given: '祖父母' } })
+    doc = gp.doc
+    const parent = addChild(doc, gp.personId, { name: { given: '親' } })
+    doc = parent.doc
+    const child = addChild(doc, parent.childId, { name: { given: '子' } })
+    doc = child.doc
+
+    expect(findMaxCoverageRoot(doc)).toBe(gp.personId)
+  })
+
+  it('複数の非連結クラスタがある場合は人数が多い方のクラスタの根を返す', () => {
+    let doc = createTreeDocument()
+    // 大きいクラスタ: 祖父母-親-子1-子2 (4人)
+    const gp = addPerson(doc, { name: { given: '祖父母' } })
+    doc = gp.doc
+    const parent = addChild(doc, gp.personId, { name: { given: '親' } })
+    doc = parent.doc
+    const child1 = addChild(doc, parent.childId, { name: { given: '子1' } })
+    doc = child1.doc
+    const child2 = addChild(doc, parent.childId, { name: { given: '子2' } })
+    doc = child2.doc
+
+    // 小さいクラスタ: 無関係の1人
+    const stranger = addPerson(doc, { name: { given: '無関係の人' } })
+    doc = stranger.doc
+
+    expect(findMaxCoverageRoot(doc)).toBe(gp.personId)
+  })
+})
+
+describe('computeHiddenCounts', () => {
+  it('全員が可視な場合は非表示人数を返さない', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addChild(doc, a.personId, { name: { given: 'B' } })
+    doc = b.doc
+
+    const visibleIds = new Set(Object.keys(doc.persons))
+    expect(computeHiddenCounts(doc, visibleIds).size).toBe(0)
+  })
+
+  it('境界となる可視人物に、その先の非表示クラスタの人数がカウントされる', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const spouse = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = spouse.doc
+    // Bの別の婚姻家族に子2人(Aからは非表示になりうる傍系)
+    const otherSpouse = addSpouse(doc, spouse.spouseId, { name: { given: 'C' } })
+    doc = otherSpouse.doc
+    const child1 = addChild(doc, spouse.spouseId, { name: { given: 'D' } }, { otherParentId: otherSpouse.spouseId })
+    doc = child1.doc
+    const child2 = addChild(doc, spouse.spouseId, { name: { given: 'E' } }, { otherParentId: otherSpouse.spouseId })
+    doc = child2.doc
+
+    // AとBのみが可視(C・D・Eは非表示)と仮定する
+    const visibleIds = new Set([a.personId, spouse.spouseId])
+    const hidden = computeHiddenCounts(doc, visibleIds)
+    expect(hidden.get(spouse.spouseId)).toBe(3) // C, D, E
+    expect(hidden.has(a.personId)).toBe(false)
+  })
+
+  it('同じ非表示人物に複数の境界から到達できても二重計上しない', () => {
+    let doc = createTreeDocument()
+    // 非表示のXは、可視のAの子であり、かつ可視のBの配偶者でもある(2つの境界を持つ)
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addPerson(doc, { name: { given: 'B' } })
+    doc = b.doc
+    const x = addChild(doc, a.personId, { name: { given: 'X' } })
+    doc = x.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-x-b': { id: 'f-x-b', spouseIds: [x.childId, b.personId], kind: 'married', events: [], children: [] },
+      },
+    }
+
+    const visibleIds = new Set([a.personId, b.personId])
+    const hidden = computeHiddenCounts(doc, visibleIds)
+    const total = [...hidden.values()].reduce((sum, n) => sum + n, 0)
+    // 非表示人物はXの1人のみであり、AかBどちらか一方にのみ計上される(合計1)
+    expect(total).toBe(1)
   })
 })

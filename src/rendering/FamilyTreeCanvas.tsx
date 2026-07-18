@@ -1,9 +1,11 @@
 import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
 import {
   compareChildrenByBirthThenName,
+  computeHiddenCounts,
+  findMaxCoverageRoot,
   findRootAncestor,
   sortSpousesByMarriageDate,
   toFamilyChartData,
@@ -93,6 +95,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   const selectedIdRef = useRef<string | null>(selectedPersonId)
   const onSelectPersonRef = useRef(onSelectPerson)
   const documentRef = useRef(document)
+  // 全体表示モード(design.md D5): 折りたたみ(main_idのクリック追従)を止め、
+  // 本人の兄弟姉妹も含めて描画可能な最大範囲を常に表示する
+  const [showAll, setShowAll] = useState(false)
+  const showAllRef = useRef(showAll)
 
   useEffect(() => {
     selectedIdRef.current = selectedPersonId
@@ -101,6 +107,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   useEffect(() => {
     documentRef.current = document
   }, [document])
+
+  useEffect(() => {
+    showAllRef.current = showAll
+  }, [showAll])
 
   useEffect(() => {
     onSelectPersonRef.current = onSelectPerson
@@ -127,6 +137,21 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       .setSortSpousesFunction(sortSpouses)
     chartRef.current = chart
 
+    // 折りたたみ時の非表示人数バッジ(design.md D6)。カード描画のたびに毎回計算し直すと
+    // O(人数^2)になるため、直前に使った`store.getTree()`の参照が変わっていない間は使い回す
+    let hiddenCountsCache: { tree: unknown; counts: Map<string, number> } | null = null
+    function getHiddenCounts(): Map<string, number> {
+      if (showAllRef.current) return new Map()
+      const tree = chart.store.getTree()
+      if (hiddenCountsCache && hiddenCountsCache.tree === tree) return hiddenCountsCache.counts
+      const visibleIds = new Set(
+        (tree?.data ?? []).map((td) => (td.data as unknown as FamilyChartDatum).data.personId),
+      )
+      const counts = computeHiddenCounts(documentRef.current, visibleIds)
+      hiddenCountsCache = { tree, counts }
+      return counts
+    }
+
     const card = chart.setCardHtml()
     card.setStyle('rect')
     card.setCardDim({ w: CARD_WIDTH, h: CARD_HEIGHT, img: false })
@@ -136,8 +161,11 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       // family-chartは初期main_id(最初に作成した人物)の祖先側ノードの配偶者・傍系親族を
       // 描画しない制約があるため、選択人物の最上位祖先へmain_idを追従させる
       // (選択人物自身をmain_idにすると、選択人物からさらに上の祖先の配偶者や
-      // 傍系親族が今度は描画から漏れてしまうため。design.md リスク「family-chartの表現力限界」参照)
-      if (nextSelected) chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
+      // 傍系親族が今度は描画から漏れてしまうため。design.md リスク「family-chartの表現力限界」参照)。
+      // 全体表示モード中は視点(表示範囲)を固定するため、main_idを動かさない(design.md D5)
+      if (nextSelected && !showAllRef.current) {
+        chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
+      }
       onSelectPersonRef.current(nextSelected)
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
@@ -152,7 +180,15 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         person.surname && person.given
           ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}</div>`
           : `<div class="tree-card-given">${escapeHtml(person.displayName)}</div>`
+      // 折りたたみ表示時、この人物の先に隠れている人数をバッジで示す(design.md D6)。
+      // 全体表示モード中は表示しない
+      const hiddenCount = getHiddenCounts().get(person.personId)
+      const badgeHtml =
+        hiddenCount !== undefined
+          ? `<div class="tree-card-hidden-badge" title="非表示の人物が${hiddenCount}人います">+${hiddenCount}</div>`
+          : ''
       return `<div class="tree-card${selectedClass}">
+        ${badgeHtml}
         <div class="tree-card-name-row">${nameHtml}</div>
         ${years ? `<div class="tree-card-years">${escapeHtml(years)}</div>` : ''}
       </div>`
@@ -183,6 +219,19 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     if (!chart) return
     chart.updateTree({ tree_position: 'inherit', transition_time: 0 })
   }, [selectedPersonId])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.setShowSiblingsOfMain(showAll)
+    if (showAll) {
+      // 有効化した瞬間の最大連結範囲の根へ視点を固定する(design.md D5)。
+      // 以降はクリックしてもこの視点(main_id)を動かさない
+      const root = findMaxCoverageRoot(documentRef.current)
+      if (root) chart.updateMainId(root)
+    }
+    chart.updateTree({ tree_position: 'fit' })
+  }, [showAll])
 
   function zoomBy(amount: number) {
     const chart = chartRef.current
@@ -215,6 +264,16 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         </div>
         <p className="tree-legend-hint">カードを選ぶと編集できます</p>
       </div>
+      <div className="tree-mode-controls">
+        <button
+          type="button"
+          className="tree-show-all-toggle"
+          aria-pressed={showAll}
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll ? '折りたたみ表示に戻す' : '全体表示モード'}
+        </button>
+      </div>
       <div className="tree-zoom-controls" role="group" aria-label="表示倍率">
         <button type="button" onClick={() => zoomBy(1.3)} aria-label="拡大">
           +
@@ -222,7 +281,7 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         <button type="button" onClick={() => zoomBy(1 / 1.3)} aria-label="縮小">
           −
         </button>
-        <button type="button" onClick={fitToView} aria-label="全体を表示">
+        <button type="button" onClick={fitToView} aria-label="画面に合わせる">
           ⊡
         </button>
       </div>
