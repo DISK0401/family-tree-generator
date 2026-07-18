@@ -10,9 +10,9 @@ import type { Pedigree, Person, PersonId, TreeDocument } from '../domain/types'
  *
  * 既知の制約: family-chartの各人物は`rels.parents`を1組(最大2人)しか持てないため、
  * 同一人物が複数の家族に「子」として属する場合(実親+養親の両方など)、
- * 描画上の主たる親子線は最初に見つかった家族(Object.values(doc.families)の順)を採用する。
- * これはfamily-chart側の表現力の限界であり、データモデル自体は複数所属を保持し続ける
- * (design.md リスク「family-chartの表現力限界」参照)。
+ * 描画上の主たる親子線は実子(biological)より非実子(養子等)を優先して採用する
+ * (design.md D2)。これはfamily-chart側の表現力の限界であり、データモデル自体は
+ * 複数所属を保持し続ける(design.md リスク「family-chartの表現力限界」参照)。
  */
 
 export interface FamilyChartCardData {
@@ -94,8 +94,12 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
       for (const spouseId of family.spouseIds) {
         ensureSet(childrenSets, spouseId).add(child.childId)
       }
-      // 最初に見つかった家族を主たる親子線として採用する(上記コメント参照)
-      if (!parentsByChild.has(child.childId)) {
+      // 実子(biological)より非実子(養子・継子・里子・不明)を優先して主たる親子線として
+      // 採用する(design.md D2)。実子は特筆すべき情報がないデフォルトの関係である一方、
+      // 養子等は家系図上で明示的に伝えたい情報のため。同一人物が複数の非実子関係を持つ
+      // (通常想定しない)場合は、出現順(Object.values(doc.families)の順)にフォールバックする
+      const currentPedigree = pedigreeByChild.get(child.childId)
+      if (currentPedigree === undefined || (currentPedigree === 'biological' && child.pedigree !== 'biological')) {
         parentsByChild.set(child.childId, family.spouseIds)
         pedigreeByChild.set(child.childId, child.pedigree)
       }
@@ -124,5 +128,50 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
         ...(children && children.size > 0 && { children: [...children] }),
       },
     }
+  })
+}
+
+/**
+ * 子の並び順比較関数(design.md D1)。family-chartの`setSortChildrenFunction`に渡す。
+ * 生年が判明している子は生年昇順、不明な子はその後ろに名前順で並べる。
+ *
+ * family-chartは指定した比較関数の適用後に内部関数`sortChildrenWithSpouses`を必ず実行し、
+ * 親カードの性別(`data.gender === 'M'`かどうか)で昇順/降順を反転させる。単婚(半きょうだいが
+ * いない)の子リストでは比較キーが全員同値になり安定ソートでこの並び順が維持されるが、
+ * 複数婚で半きょうだいが混在する場合は婚姻単位の再グルーピングが優先される(design.md D1参照)。
+ */
+export function compareChildrenByBirthThenName(a: FamilyChartDatum, b: FamilyChartDatum): number {
+  const yearA = a.data.birthYear
+  const yearB = b.data.birthYear
+  if (yearA !== undefined && yearB !== undefined) return yearA - yearB
+  if (yearA !== undefined) return -1
+  if (yearB !== undefined) return 1
+  return a.data.displayName.localeCompare(b.data.displayName, 'ja')
+}
+
+/** personIdとspouseIdの間で最初に成立した婚姻イベントの年を返す(復縁がある場合は最初の婚姻年) */
+function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId): number | undefined {
+  const family = Object.values(doc.families).find(
+    (f) => f.spouseIds.includes(personId) && f.spouseIds.includes(spouseId),
+  )
+  const marriage = family?.events.find((e) => e.type === 'marriage')
+  return marriage?.date?.date?.year
+}
+
+/**
+ * 配偶者の並び順(design.md D1)。family-chartの`setSortSpousesFunction`に渡す。
+ * 婚姻イベント日付が判明している婚姻を日付昇順に、不明な婚姻は元の登録順を維持したまま並べる。
+ * family-chartの仕様上、この関数は`datum.rels.spouses`を破壊的に(in-place で)並べ替える。
+ */
+export function sortSpousesByMarriageDate(doc: TreeDocument, datum: FamilyChartDatum): void {
+  const spouses = datum.rels.spouses
+  if (!spouses) return
+  spouses.sort((a, b) => {
+    const yearA = marriageYear(doc, datum.id, a)
+    const yearB = marriageYear(doc, datum.id, b)
+    if (yearA !== undefined && yearB !== undefined) return yearA - yearB
+    if (yearA !== undefined) return -1
+    if (yearB !== undefined) return 1
+    return 0
   })
 }

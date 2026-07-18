@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse } from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
-import { findRootAncestor, toFamilyChartData } from './to-family-chart-data'
+import type { FamilyChartDatum } from './to-family-chart-data'
+import {
+  compareChildrenByBirthThenName,
+  findRootAncestor,
+  sortSpousesByMarriageDate,
+  toFamilyChartData,
+} from './to-family-chart-data'
+
+function makeDatum(id: string, overrides: Partial<FamilyChartDatum['data']> = {}): FamilyChartDatum {
+  return {
+    id,
+    data: { personId: id, gender: 'U', displayName: id, ...overrides },
+    rels: {},
+  }
+}
 
 function byId(data: ReturnType<typeof toFamilyChartData>, id: string) {
   const found = data.find((d) => d.id === id)
@@ -49,9 +63,21 @@ describe('toFamilyChartData: 養子', () => {
     doc = addChildLink(doc, adoptiveFamily.familyId, bioChild.childId, 'adopted')
 
     const data = toFamilyChartData(doc)
-    // 実親家族が先に登録されているため、主たる親子線は実親側(biological)が採用される
-    expect(byId(data, bioChild.childId).data.pedigree).toBe('biological')
-    expect(byId(data, bioChild.childId).rels.parents).toEqual([parent.personId])
+    // 実親家族が先に登録されていても、養子縁組(非実子)側が優先して採用される(design.md D2)
+    expect(byId(data, bioChild.childId).data.pedigree).toBe('adopted')
+    expect(byId(data, bioChild.childId).rels.parents).toEqual([adoptiveParent.personId])
+  })
+
+  it('実親情報を持たず養親のみに記録された人物は、従来どおり養子として射影される', () => {
+    let doc = createTreeDocument()
+    const adoptiveParent = addPerson(doc, { name: { given: '養親' } })
+    doc = adoptiveParent.doc
+    const child = addChild(doc, adoptiveParent.personId, { name: { given: '子' } }, { pedigree: 'adopted' })
+    doc = child.doc
+
+    const data = toFamilyChartData(doc)
+    expect(byId(data, child.childId).data.pedigree).toBe('adopted')
+    expect(byId(data, child.childId).rels.parents).toEqual([adoptiveParent.personId])
   })
 })
 
@@ -166,5 +192,74 @@ describe('findRootAncestor', () => {
     doc = s.doc
 
     expect(findRootAncestor(doc, s.spouseId)).toBe(s.spouseId)
+  })
+})
+
+describe('compareChildrenByBirthThenName', () => {
+  it('生年が判明している子同士は生年昇順になる', () => {
+    const older = makeDatum('older', { birthYear: 1985 })
+    const younger = makeDatum('younger', { birthYear: 1990 })
+    expect(compareChildrenByBirthThenName(older, younger)).toBeLessThan(0)
+    expect(compareChildrenByBirthThenName(younger, older)).toBeGreaterThan(0)
+  })
+
+  it('生年不明の子同士は名前の辞書順になる', () => {
+    const first = makeDatum('first', { displayName: 'あやか' })
+    const second = makeDatum('second', { displayName: 'かずき' })
+    expect(compareChildrenByBirthThenName(first, second)).toBeLessThan(0)
+    expect(compareChildrenByBirthThenName(second, first)).toBeGreaterThan(0)
+  })
+
+  it('生年が判明している子は不明な子より前に並ぶ', () => {
+    const known = makeDatum('known', { birthYear: 2000 })
+    const unknown = makeDatum('unknown', { displayName: 'あ' })
+    expect(compareChildrenByBirthThenName(known, unknown)).toBeLessThan(0)
+    expect(compareChildrenByBirthThenName(unknown, known)).toBeGreaterThan(0)
+  })
+})
+
+describe('sortSpousesByMarriageDate', () => {
+  it('婚姻イベント日付の昇順に配偶者を並べ替える(渋沢栄一サンプル相当)', () => {
+    let doc = createTreeDocument()
+    const eiichi = addPerson(doc, { name: { given: '栄一' } })
+    doc = eiichi.doc
+    const kaneko = addSpouse(doc, eiichi.personId, { name: { given: '兼子' } })
+    doc = kaneko.doc
+    doc = addFamilyEvent(doc, kaneko.familyId, {
+      type: 'marriage',
+      date: { original: '明治16年', qualifier: 'about', date: { year: 1883 } },
+    })
+    const chiyo = addSpouse(doc, eiichi.personId, { name: { given: '千代' } })
+    doc = chiyo.doc
+    doc = addFamilyEvent(doc, chiyo.familyId, {
+      type: 'marriage',
+      date: { original: '安政5年', qualifier: 'about', date: { year: 1858 } },
+    })
+
+    const datum: FamilyChartDatum = {
+      id: eiichi.personId,
+      data: { personId: eiichi.personId, gender: 'M', displayName: '栄一' },
+      rels: { spouses: [kaneko.spouseId, chiyo.spouseId] },
+    }
+    sortSpousesByMarriageDate(doc, datum)
+    expect(datum.rels.spouses).toEqual([chiyo.spouseId, kaneko.spouseId])
+  })
+
+  it('婚姻日付が不明な場合は元の登録順を維持する', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s1 = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s1.doc
+    const s2 = addSpouse(doc, a.personId, { name: { given: 'C' } })
+    doc = s2.doc
+
+    const datum: FamilyChartDatum = {
+      id: a.personId,
+      data: { personId: a.personId, gender: 'M', displayName: 'A' },
+      rels: { spouses: [s1.spouseId, s2.spouseId] },
+    }
+    sortSpousesByMarriageDate(doc, datum)
+    expect(datum.rels.spouses).toEqual([s1.spouseId, s2.spouseId])
   })
 })

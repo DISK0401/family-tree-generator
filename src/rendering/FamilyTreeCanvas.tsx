@@ -2,11 +2,19 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef } from 'react'
 import { useTreeStore } from '../store/tree-store'
-import { findRootAncestor, toFamilyChartData, type FamilyChartDatum } from './to-family-chart-data'
+import {
+  compareChildrenByBirthThenName,
+  findRootAncestor,
+  sortSpousesByMarriageDate,
+  toFamilyChartData,
+  type FamilyChartDatum,
+} from './to-family-chart-data'
 import './FamilyTreeCanvas.css'
 
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
 type ChartInstance = ReturnType<typeof f3.createChart>
+type SortChildrenFn = Parameters<ChartInstance['setSortChildrenFunction']>[0]
+type SortSpousesFn = Parameters<ChartInstance['setSortSpousesFunction']>[0]
 
 // カード寸法。setCardHtml()にsetCardInnerHtmlCreatorを渡すとfamily-chart側の
 // カードサイズCSS(.f3 div.card-rect 等)は適用されないため、ここで定義した値を
@@ -103,12 +111,20 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     if (!container) return
 
     const initialData = toFamilyChartData(document) as unknown as never
+    // 子・配偶者の並び順は決定的な比較関数として実装し、`main_id`(視点)には依存させない
+    // (design.md D1: 性別未設定時にクリックで並び順が入れ替わるバグの修正を兼ねる)
+    const sortChildren: SortChildrenFn = (a, b) =>
+      compareChildrenByBirthThenName(a as unknown as FamilyChartDatum, b as unknown as FamilyChartDatum)
+    const sortSpouses: SortSpousesFn = (d) =>
+      sortSpousesByMarriageDate(documentRef.current, d as unknown as FamilyChartDatum)
     const chart = f3
       .createChart(container, initialData)
       .setTransitionTime(prefersReducedMotion() ? 0 : 700)
       .setCardYSpacing(170)
       .setCardXSpacing(180)
       .setSingleParentEmptyCard(false)
+      .setSortChildrenFunction(sortChildren)
+      .setSortSpousesFunction(sortSpouses)
     chartRef.current = chart
 
     const card = chart.setCardHtml()
