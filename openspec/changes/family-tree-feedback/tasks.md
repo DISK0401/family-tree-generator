@@ -72,6 +72,6 @@
 
 ## 12. 最終確認
 
-- [ ] 12.1 `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build` をすべて実行し成功することを確認する(完了条件: 4コマンドすべてが非ゼロ終了しない)
-- [ ] 12.2 `openspec validate family-tree-feedback --type change --strict` を実行し、specとの整合を確認する(完了条件: validが返る)
-- [ ] 12.3 夏目漱石サンプル・渋沢栄一サンプルをエディタで開き、養子縁組・再婚がそれぞれ視覚的に分かりやすく表示されることを目視確認する(完了条件: バグ報告で指摘された2点が解消されていることを確認する)
+- [x] 12.1 `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build` をすべて実行し成功することを確認する(完了条件: 4コマンドすべてが非ゼロ終了しない)
+- [x] 12.2 `openspec validate family-tree-feedback --type change --strict` を実行し、specとの整合を確認する(完了条件: validが返る)
+- [x] 12.3 夏目漱石サンプル・渋沢栄一サンプルをエディタで開き、養子縁組・再婚がそれぞれ視覚的に分かりやすく表示されることを目視確認する(完了条件: バグ報告で指摘された2点が解消されていることを確認する)
