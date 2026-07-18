@@ -8,6 +8,7 @@ import 'fake-indexeddb/auto'
  * これが無いと、人物ありでFamilyTreeCanvasを描画するテストが
  * 未処理例外(WebKitCSSMatrix is not defined)でvitestをexit 1にしてしまう。
  */
+// 引数(CSS transform文字列)は無視して常に恒等行列として振る舞う
 class DOMMatrixStub {
   a = 1
   b = 0
@@ -16,7 +17,6 @@ class DOMMatrixStub {
   e = 0
   f = 0
   isIdentity = true
-  constructor(_init?: string) {}
 }
 
 if (typeof globalThis.DOMMatrix !== 'function') {
