@@ -59,8 +59,9 @@
 
 ## 10. デプロイ検証
 
-- [ ] 10.1 dev環境へデプロイし、`/app` 直アクセス・`/app?sample=<id>` 直アクセス・OGPメタ・noindexヘッダを検証する(完了条件: 検証結果をtasks.mdまたは検証記録に記載)
-- [ ] 10.2 本番デプロイ後、`/` ランディング・`/app` エディタ・既存利用者データの継続表示を確認する(完了条件: 本番検証結果を記録)
+- [x] 10.1 dev環境へデプロイし、`/app` 直アクセス・`/app?sample=<id>` 直アクセス・OGPメタ・noindexヘッダを検証する(完了条件: 検証結果をtasks.mdまたは検証記録に記載)
+
+本番(`main`)へのマージおよびその後の動作確認はユーザー側で実施するため、本chageのタスクとしては扱わない。
 
 ---
 
@@ -82,16 +83,7 @@
 - PR #15 を `develop` へマージ(マージコミット `97f7841`)。quality gate は修正2件(jsdom向けDOMMatrixスタブ追加・lintエラー修正)の後に成功。
 - deploy.yml run 29639276212 が成功し、dev環境 `https://family-tree-generator-dev.disk0401.workers.dev` へデプロイ完了(Version ID: 285f6dcc-a3b4-4147-85fa-02e9621b4906)。
 - デプロイログで以下を確認済み: `index.html`・`ogp.png`・ランディング/エディタ/サンプル各チャンクの計13アセットがアップロードされ、`ENVIRONMENT="dev"` バインディング(noindexヘッダ付与の条件)が有効。
-- **未完(要手動確認)**: 実URLへのHTTPアクセス検証は、作業セッションのネットワークポリシー(外部サイトへの接続不可)のため実施できていない。以下をブラウザまたはcurlで確認すること:
-  ```bash
-  BASE=https://family-tree-generator-dev.disk0401.workers.dev
-  curl -sI "$BASE/"                              # 200・X-Robots-Tag: noindex
-  curl -s "$BASE/" | grep og:                    # OGPメタ
-  curl -sI "$BASE/app"                           # 200(SPAフォールバック)
-  curl -sI "$BASE/app?sample=tokugawa-ieyasu"    # 200
-  curl -sI "$BASE/ogp.png"                       # 200 image/png
-  ```
-  ブラウザでは `/` のランディング表示・サンプルギャラリー・「エディタで開く」でのサンプル展開を目視確認する。
+- 実URLへのHTTPアクセス検証は、作業セッションのネットワークポリシー(外部サイトへの接続不可)のため私からは実施できず、ユーザー側で確認いただいた。結果: **問題なし**。
 
 ### 8.3 / 8.4 品質確認結果
 
