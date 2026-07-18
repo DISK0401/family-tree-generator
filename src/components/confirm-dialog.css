@@ -1,0 +1,83 @@
+/* DataResetControl・DeletePersonControl等、破壊的操作の確認ダイアログで共有するスタイル */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  /* 無彩色グレーではなく墨のアルファで、楮紙の世界観と馴染ませる */
+  background: rgb(43 42 39 / 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 10;
+}
+
+.confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 28em;
+  width: 100%;
+  padding: var(--space-5);
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-raised);
+}
+
+.confirm-dialog h2 {
+  font-size: var(--text-lg);
+}
+
+.confirm-dialog p {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.confirm-dialog label {
+  font-size: var(--text-sm);
+}
+
+.confirm-dialog input {
+  font: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.confirm-dialog-actions button {
+  font: inherit;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.confirm-dialog-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 破壊的操作であることが一目で分かるよう、キャンセルより強い(ソリッドの)見た目にする。
+   「安全側のボタンを目立たせる」より「押す前に一拍おいて認識させる」ことを優先する。
+   文字色は --paper: ライト/ダークで明暗が反転するためどちらのテーマでも十分なコントラストになる */
+.confirm-dialog-actions .confirm-dialog-danger-button {
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: var(--paper);
+}
+
+.confirm-dialog-actions .confirm-dialog-danger-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 85%, black);
+}

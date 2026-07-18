@@ -1,0 +1,32 @@
+.wareki-date-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.wareki-date-input input {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.wareki-date-input input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.wareki-date-input-hint {
+  font-size: var(--text-xs);
+  color: var(--ai-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.wareki-date-input-error {
+  font-size: var(--text-xs);
+  color: var(--danger);
+}

@@ -1,0 +1,159 @@
+/*
+ * デザイントークン — 「帳簿・系譜がもつ墨と紙の世界を、現代のツールとして再構成する」
+ *
+ * 4役 + セマンティック:
+ *   墨 (ink)     … テキスト・系線。帳簿の墨書き
+ *   楮紙 (paper) … 地・面。和紙の生成り
+ *   藍 (ai)      … インタラクティブの印(リンク・操作・フォーカス)
+ *   朱 (shu)     … 選択の印。朱印のように「ここぞ」の一点のみに使う
+ *   semantic     … 危険(削除)・警告。朱とは役割で区別する
+ *
+ * コンポーネントは必ずこのトークン経由で色・書体を参照すること。
+ * テーマはトークンの再定義のみで切り替わる(ライト=昼の帳簿 / ダーク=夜の帳簿)。
+ */
+
+:root {
+  /* 墨 — テキスト */
+  --ink: #2b2a27;
+  --ink-soft: #625b4e;
+  --ink-faint: #8f8672;
+
+  /* 楮紙 — 地と面 */
+  --paper: #f2ede1;
+  --paper-raised: #fbf7ec;
+  --paper-sunken: #e8e1d0;
+  --line: #d8d2c4;
+  --line-strong: #a89f8a;
+
+  /* 藍 — インタラクティブ */
+  --ai: #274a78;
+  --ai-strong: #17324f;
+  --ai-wash: #e1e7ef;
+
+  /* 朱 — 選択の印。他のどの役割にも流用しない(選択状態の一意性を保つ) */
+  --shu: #c73e3a;
+  --shu-wash: #f5e1dc;
+
+  /* セマンティック(朱と同じ暖色系だが別トークン: 危険操作は選択と役割が異なるため区別する) */
+  --danger: #a8382c;
+  --danger-wash: #f0ddd6;
+  --warn: #8a5a12;
+  --warn-wash: #f1e6cd;
+
+  /*
+   * 書体 — 明朝は人名・見出し、ゴシックはUI操作系。
+   * --font-mincho は和文明朝フォントが1つも無い環境(Noto Serif CJK系未導入のLinux等)への
+   * フォールバックとして和文ゴシックを挟んでからserifに落ちる。CJK非対応の欧文serifへ
+   * フォールバックすると、writing-mode:vertical-rlのグリフが崩れて表示されるため、
+   * 「明朝の字形が使えないなら可読なゴシックで表示する」を優先する
+   */
+  --font-mincho:
+    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP',
+    'Noto Serif JP', 'IPAMincho', 'IPAPMincho', 'IPAGothic', 'Noto Sans CJK JP',
+    'Noto Sans JP', sans-serif;
+  --font-gothic:
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic', 'Noto Sans CJK JP',
+    'Noto Sans JP', 'IPAGothic', system-ui, sans-serif;
+
+  /* タイプスケール(1rem = 16px) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.4375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.5rem;
+
+  /* 余白(4px基調) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* 造形 — 帳簿の直線的な佇まい。丸角は最小限 */
+  --radius: 2px;
+  --shadow-raised:
+    0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+
+  color-scheme: light;
+}
+
+/* 夜の帳簿 — 墨黒の地に生成りの文字。青系ではなく暖色系で「紙」の質感を保つ(単純反転にしない) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e9e4d8;
+    --ink-soft: #b3ab97;
+    --ink-faint: #847c69;
+
+    --paper: #191714;
+    --paper-raised: #221f1b;
+    --paper-sunken: #121110;
+    --line: #4a463f;
+    --line-strong: #6b6558;
+
+    --ai: #7e9cc4;
+    --ai-strong: #a9c0dd;
+    --ai-wash: #202b3a;
+
+    --shu: #d0604f;
+    --shu-wash: #3a2620;
+
+    --danger: #ce6c58;
+    --danger-wash: #35231e;
+    --warn: #cfa14a;
+    --warn-wash: #352c18;
+
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+
+    color-scheme: dark;
+  }
+}
+
+/* 明示的なテーマ指定はOS設定より優先(双方向) */
+:root[data-theme='light'] {
+  --ink: #2b2a27;
+  --ink-soft: #625b4e;
+  --ink-faint: #8f8672;
+  --paper: #f2ede1;
+  --paper-raised: #fbf7ec;
+  --paper-sunken: #e8e1d0;
+  --line: #d8d2c4;
+  --line-strong: #a89f8a;
+  --ai: #274a78;
+  --ai-strong: #17324f;
+  --ai-wash: #e1e7ef;
+  --shu: #c73e3a;
+  --shu-wash: #f5e1dc;
+  --danger: #a8382c;
+  --danger-wash: #f0ddd6;
+  --warn: #8a5a12;
+  --warn-wash: #f1e6cd;
+  --shadow-raised:
+    0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --ink: #e9e4d8;
+  --ink-soft: #b3ab97;
+  --ink-faint: #847c69;
+  --paper: #191714;
+  --paper-raised: #221f1b;
+  --paper-sunken: #121110;
+  --line: #4a463f;
+  --line-strong: #6b6558;
+  --ai: #7e9cc4;
+  --ai-strong: #a9c0dd;
+  --ai-wash: #202b3a;
+  --shu: #d0604f;
+  --shu-wash: #3a2620;
+  --danger: #ce6c58;
+  --danger-wash: #35231e;
+  --warn: #cfa14a;
+  --warn-wash: #352c18;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+  color-scheme: dark;
+}
