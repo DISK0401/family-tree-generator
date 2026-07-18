@@ -46,6 +46,10 @@
 
 **代替案として検討したもの**: 同一人物を複数箇所に「分身ノード」として複製描画する方式は、family-chart の `id` ベースのD3データ結合(`FamilyTreeCanvas.tsx` のコメント参照)と衝突しリスクが高いため見送る。優先順位ルールによる解決は実装コストが小さく、フィードバックの実害(「養子が表示されない」)を直接解消する。
 
+**実装時に判明した追加修正(D1と同様の理由)**: `parentsByChild` は `rels.parents`(カードの「主たる親」ポインタ)にのみ作用し、`rels.children`(親→子の forward ポインタ)は依然として全家族分の子を保持する。そのため、実装当初は次の2つの副作用が残っていた。
+1. **系線スタイルの誤り**: `markLinkStyles` が人物単位の `pedigree` 値だけで破線/実線を決めていたため、実親側の辺(本来は実線)まで人物カードの `pedigree`(養子縁組後は`adopted`)に引きずられて破線になってしまう。→ `buildPedigreeByEdge(doc)` で親子ペア単位の続柄マップを構築し、`markLinkStyles` を辺(source/targetの実際の親子ペア)単位の判定に変更した。
+2. **`findRootAncestor` が非実子優先ロジックと無関係だった**: `findRootAncestor` は独自に「最初に見つかった家族」で祖先をたどっており、`parentsByChild` の優先順位変更と食い違っていた(クリックで祖先へ追従しても養親側にはたどり着かない)。→ 優先順位判定を `findPrimaryParentFamily(doc, childId)` として切り出し、`toFamilyChartData` の `parentsByChild` 相当のロジックと `findRootAncestor` の両方から同じ優先順位で参照するようにした。これにより、養子縁組を持つ人物(またはその子孫)をクリックすると、`main_id` が養親側の祖先へ追従し、養親が表示範囲に入り、実親側は非表示人数バッジ(D6)で示される。
+
 ### D3. 未確定変更の検知と確認ダイアログ
 `PersonEditForm` に `onDirtyChange(isDirty: boolean)` コールバックを追加し、ローカル状態(氏名・性別・生没日等)が `person` プロパティと異なる場合に `true` を通知する。`PersonPanel` はこれを中継し、`App.tsx` が選択人物切り替え(`onSelectPerson`)・パネルを閉じる操作(`onClose`)を **直接 `setSelectedPersonId` を呼ばず**、次のガード関数を経由するよう変更する:
 

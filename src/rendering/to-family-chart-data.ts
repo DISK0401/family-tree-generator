@@ -1,5 +1,6 @@
+import { computeAge } from '../domain/age'
 import { displayName } from '../domain/helpers'
-import type { Pedigree, Person, PersonId, TreeDocument } from '../domain/types'
+import type { Family, Pedigree, Person, PersonId, TreeDocument } from '../domain/types'
 
 /**
  * TreeDocument → family-chart描画用データへの変換アダプタ。
@@ -24,7 +25,11 @@ export interface FamilyChartCardData {
   given?: string
   birthYear?: number
   deathYear?: number
-  /** この人物の主たる親子線(rels.parents)に対応する続柄種別。線のスタイル分岐(6.4)に使う */
+  /** 現年齢(故人は没年齢)。生没年月日が年のみしか判明していない場合はundefined(design.md D8) */
+  age?: number
+  /** この人物の主たる親子線(rels.parents)に対応する続柄種別。findRootAncestorの祖先方向判定に使う。
+   * 系線のスタイル分岐は人物単位のこの値ではなく、辺(エッジ)単位の`buildPedigreeByEdge`を使う
+   * (design.md リスク「family-chartの表現力限界」: 非主たる家族の辺も描画されうるため) */
   pedigree?: Pedigree
 }
 
@@ -45,6 +50,27 @@ function toGender(gender: Person['gender']): 'M' | 'F' | 'U' {
 }
 
 /**
+ * 子の主たる親family(design.md D2)を返す。実子(biological)より非実子(養子・継子・里子・
+ * 不明)を優先して採用し、同一人物が複数の非実子関係を持つ場合は出現順
+ * (Object.values(doc.families)の順)にフォールバックする。`toFamilyChartData`の
+ * `parentsByChild`(カードの`rels.parents`用)と`findRootAncestor`(祖先へのmain_id追従用)の
+ * 両方が同じ優先順位で祖先方向をたどれるよう、判定ロジックをここに集約する。
+ */
+export function findPrimaryParentFamily(doc: TreeDocument, childId: PersonId): Family | undefined {
+  let candidate: Family | undefined
+  let candidatePedigree: Pedigree | undefined
+  for (const family of Object.values(doc.families)) {
+    const childLink = family.children.find((c) => c.childId === childId)
+    if (!childLink) continue
+    if (candidate === undefined || (candidatePedigree === 'biological' && childLink.pedigree !== 'biological')) {
+      candidate = family
+      candidatePedigree = childLink.pedigree
+    }
+  }
+  return candidate
+}
+
+/**
  * 指定人物から親をたどれるだけたどった祖先(既知の中で最も上の代)を返す。
  *
  * family-chartは`main_id`を起点に祖先/子孫を展開する単一視点の描画方式のため、
@@ -52,14 +78,14 @@ function toGender(gender: Person['gender']): 'M' | 'F' | 'U' {
  * 祖先ではない祖父母等)の配偶者や、傍系親族(祖先の他の子)が描画から漏れる
  * (family-chart内部の`is_ancestry`フラグによる制約。setupSpouses等参照)。
  * 選択人物ではなくその最上位祖先をmain_idにすることで、この漏れを最小化する。
+ * 親をたどる際は`findPrimaryParentFamily`と同じ優先順位(非実子を優先)を用いるため、
+ * 養子縁組を含む人物を選択すると養親側の祖先へたどり着く(design.md D2)。
  */
 export function findRootAncestor(doc: TreeDocument, personId: PersonId): PersonId {
   let current = personId
   const visited = new Set<PersonId>([current])
   for (;;) {
-    const parentFamily = Object.values(doc.families).find((f) =>
-      f.children.some((c) => c.childId === current),
-    )
+    const parentFamily = findPrimaryParentFamily(doc, current)
     const nextParent = parentFamily?.spouseIds[0]
     if (!nextParent || visited.has(nextParent)) return current
     visited.add(nextParent)
@@ -164,6 +190,25 @@ export function computeHiddenCounts(
   return result
 }
 
+/**
+ * 親子ペア(parentId, childId)ごとの続柄を保持するマップを構築する(主たる親子線に限らず全家族分)。
+ * family-chartは1人につき`rels.children`を通じて複数の家族の子を同時に把握しうるため
+ * (例: 実親のfamilyにも養親のfamilyにも子として登録されている場合)、系線のスタイル分岐は
+ * 人物単位の`pedigree`ではなく、実際に描画される辺(どの親とどの子を結ぶ線か)に対応する
+ * この続柄を使わなければ、非主たる家族の辺が誤って主たる家族の続柄で描画されてしまう。
+ */
+export function buildPedigreeByEdge(doc: TreeDocument): Map<string, Pedigree> {
+  const map = new Map<string, Pedigree>()
+  for (const family of Object.values(doc.families)) {
+    for (const child of family.children) {
+      for (const spouseId of family.spouseIds) {
+        map.set(`${spouseId}|${child.childId}`, child.pedigree)
+      }
+    }
+  }
+  return map
+}
+
 export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
   const spouseSets = new Map<PersonId, Set<PersonId>>()
   const childrenSets = new Map<PersonId, Set<PersonId>>()
@@ -217,6 +262,7 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
         given: person.name.given,
         birthYear: person.birth?.date?.date?.year,
         deathYear: person.death?.date?.date?.year,
+        age: computeAge(person),
         pedigree: pedigreeByChild.get(person.id),
       },
       rels: {

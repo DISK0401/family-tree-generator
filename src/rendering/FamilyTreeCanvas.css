@@ -61,7 +61,7 @@
   border-color: var(--line-strong);
 }
 
-/* 選択状態のみを朱で表す(性別による色分けはしない。design.md D6 / Fableレビュー反映) */
+/* 選択状態は朱で表す(性別インジケーターとは別配色。design.md D7) */
 .tree-card.selected {
   border-color: var(--shu);
   border-width: 2px;
@@ -86,6 +86,34 @@
   font-size: var(--text-md);
   letter-spacing: 0.15em;
   color: var(--ink);
+}
+
+/*
+ * 性別インジケーター(design.md D7)。色のみに依存せず形状でも判別できるよう、
+ * 男=四角・女=丸・不明=破線ひし形(推測しないことを示す)を使い分ける。
+ * 選択強調の「朱」とは別トークン(--gender-male/--gender-female)を使う
+ */
+.tree-card-gender {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  width: 10px;
+  height: 10px;
+}
+
+.tree-card-gender-male {
+  background: var(--gender-male);
+}
+
+.tree-card-gender-female {
+  background: var(--gender-female);
+  border-radius: 50%;
+}
+
+.tree-card-gender-unknown {
+  background: transparent;
+  border: 1.5px dashed var(--ink-faint);
+  transform: rotate(45deg);
 }
 
 /* 生没年は氏名に次いで重要な情報のため、横書きで常に読める大きさ・向きで表示する */

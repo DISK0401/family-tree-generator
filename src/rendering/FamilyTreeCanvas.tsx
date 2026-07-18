@@ -2,7 +2,9 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
+import type { Pedigree } from '../domain/types'
 import {
+  buildPedigreeByEdge,
   compareChildrenByBirthThenName,
   computeHiddenCounts,
   findMaxCoverageRoot,
@@ -46,6 +48,16 @@ interface LinkDatum {
   target: TreeDatum | TreeDatum[]
   /** 婚姻線であることを示すfamily-chart内部フラグ */
   spouse?: boolean
+  /**
+   * 祖先方向(選択人物→親)の辺かどうか。createLinksの実装上、祖先方向は
+   * source=子・target=親、子孫方向(親→子)はsource=親・target=子と向きが逆になるため、
+   * どちらが親でどちらが子かを判定するのに必須(handlers.ts参照)
+   */
+  is_ancestry?: boolean
+}
+
+function personIdOf(node: TreeDatum | undefined): string | undefined {
+  return (node?.data as unknown as FamilyChartDatum | undefined)?.data.personId
 }
 
 /**
@@ -53,21 +65,31 @@ interface LinkDatum {
  * D3が管理する既存ノードへclassList.toggleするだけに留め、DOM構造(ノード数)を
  * 変更しない(cloneNode等で複製すると次回updateTreeのD3データ結合が壊れるため)。
  * 二重線自体はCSSの drop-shadow(0 3px 0 ...) で複製せず表現する。
+ *
+ * 続柄は人物単位ではなく、辺(具体的にどの親とどの子を結ぶ線か)単位で判定する
+ * (`pedigreeByEdge`)。1人が複数の家族に子として属する場合(実親+養親等)、
+ * 主たる家族でない側の辺(例: 実親側)まで一律「養子スタイル」になってしまう不具合を
+ * 防ぐため(design.md D2 / リスク「family-chartの表現力限界」)。
  */
-function markLinkStyles(container: HTMLElement): void {
+function markLinkStyles(container: HTMLElement, pedigreeByEdge: Map<string, Pedigree>): void {
   const links = container.querySelectorAll<SVGPathElement>('path.link')
   links.forEach((el) => {
     const datum = (el as unknown as { __data__?: LinkDatum }).__data__
     if (!datum) return
-    const nodes = [datum.source, datum.target].flat()
-    // 続柄は実子/養子/継子/里子/不明の5種類あるが、系線では「実子かどうか」のみを
-    // 区別する(実子以外はすべて破線)。design.md/specは養子との区別のみを要求するが、
-    // 編集UIの選択肢(続柄セレクト)には養子以外の非実子種別もあるため、それらを選んでも
-    // 実子と見分けがつかなくなる不整合を避ける
-    const isNonBiological = nodes.some((n) => {
-      const pedigree = (n?.data as unknown as FamilyChartDatum | undefined)?.data.pedigree
-      return pedigree !== undefined && pedigree !== 'biological'
-    })
+    let isNonBiological = false
+    if (!datum.spouse) {
+      const childNodes = datum.is_ancestry ? datum.source : datum.target
+      const parentNodes = datum.is_ancestry ? datum.target : datum.source
+      const children = (Array.isArray(childNodes) ? childNodes : [childNodes]).map(personIdOf)
+      const parents = (Array.isArray(parentNodes) ? parentNodes : [parentNodes]).map(personIdOf)
+      isNonBiological = children.some((childId) =>
+        parents.some((parentId) => {
+          if (!childId || !parentId) return false
+          const pedigree = pedigreeByEdge.get(`${parentId}|${childId}`)
+          return pedigree !== undefined && pedigree !== 'biological'
+        }),
+      )
+    }
     el.classList.toggle('adopted-link', isNonBiological)
     el.classList.toggle('spouse-link', datum.spouse === true)
   })
@@ -170,10 +192,12 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
       const person = (d.data as unknown as FamilyChartDatum).data
-      // 選択状態のみを朱で表現する。性別による色分けはしない
-      // (朱=選択の一意性を保つため。伝統的な家系図も性別を色で区別しない)
+      // 選択状態は朱で表現する(朱=選択の一意性を保つため、他の用途に流用しない)。
+      // 性別インジケーターは朱と別配色のトークンを使う(design.md D7)
       const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
       const years = [person.birthYear, person.deathYear].filter((y) => y !== undefined).join(' – ')
+      const ageLabel =
+        person.age !== undefined ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)` : ''
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
       // どちらか一方しかない場合は単一列にフォールバックする
       const nameHtml =
@@ -187,15 +211,21 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         hiddenCount !== undefined
           ? `<div class="tree-card-hidden-badge" title="非表示の人物が${hiddenCount}人います">+${hiddenCount}</div>`
           : ''
+      // 性別を色のみに依存せず形状(四角/丸/破線ひし形)でも判別できるようにする(design.md D7)
+      const genderClass =
+        person.gender === 'M' ? 'tree-card-gender-male' : person.gender === 'F' ? 'tree-card-gender-female' : 'tree-card-gender-unknown'
+      const genderTitle = person.gender === 'M' ? '男' : person.gender === 'F' ? '女' : '性別不明'
+      const genderHtml = `<div class="tree-card-gender ${genderClass}" title="${genderTitle}"></div>`
       return `<div class="tree-card${selectedClass}">
+        ${genderHtml}
         ${badgeHtml}
         <div class="tree-card-name-row">${nameHtml}</div>
-        ${years ? `<div class="tree-card-years">${escapeHtml(years)}</div>` : ''}
+        ${years ? `<div class="tree-card-years">${escapeHtml(years)}${ageLabel ? ` ${escapeHtml(ageLabel)}` : ''}</div>` : ''}
       </div>`
     })
 
     // 系線の意味づけ: 養子は破線、婚姻線は二重線。updateTreeのたびに再適用が必要
-    chart.setAfterUpdate(() => markLinkStyles(container))
+    chart.setAfterUpdate(() => markLinkStyles(container, buildPedigreeByEdge(documentRef.current)))
 
     chart.updateTree({ initial: true, tree_position: 'fit' })
 

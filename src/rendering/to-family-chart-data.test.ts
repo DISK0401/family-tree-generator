@@ -3,9 +3,11 @@ import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse
 import { createTreeDocument } from '../domain/helpers'
 import type { FamilyChartDatum } from './to-family-chart-data'
 import {
+  buildPedigreeByEdge,
   compareChildrenByBirthThenName,
   computeHiddenCounts,
   findMaxCoverageRoot,
+  findPrimaryParentFamily,
   findRootAncestor,
   sortSpousesByMarriageDate,
   toFamilyChartData,
@@ -144,6 +146,20 @@ describe('toFamilyChartData: 基本フィールド', () => {
     expect(datum.data.gender).toBe('M')
     expect(datum.data.birthYear).toBe(1935)
     expect(datum.data.deathYear).toBeUndefined()
+    // 生年が年のみ判明の場合は年齢を射影しない(design.md D8)
+    expect(datum.data.age).toBeUndefined()
+  })
+
+  it('生年月日が年月日まで判明している場合は年齢がdataへ射影される', () => {
+    let doc = createTreeDocument()
+    const p = addPerson(doc, {
+      name: { given: '存命' },
+      birth: { type: 'birth', date: { original: '1990-05-01', qualifier: 'exact', date: { year: 1990, month: 5, day: 1 } } },
+    })
+    doc = p.doc
+
+    const datum = byId(toFamilyChartData(doc), p.personId)
+    expect(typeof datum.data.age).toBe('number')
   })
 
   it('関係のない人物はrels.spouses/childrenを持たない(parentsのみ、あるいは空)', () => {
@@ -194,6 +210,105 @@ describe('findRootAncestor', () => {
     doc = s.doc
 
     expect(findRootAncestor(doc, s.spouseId)).toBe(s.spouseId)
+  })
+
+  it('実親・養親の両方を持つ人物からは養親側の祖先へたどる(夏目漱石サンプル相当)', () => {
+    let doc = createTreeDocument()
+    const naokatsu = addPerson(doc, { name: { given: '直克' } })
+    doc = naokatsu.doc
+    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    doc = soseki.doc
+    const shiobara = addPerson(doc, { name: { given: '昌之助' } })
+    doc = shiobara.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-shiobara': {
+          id: 'f-shiobara',
+          spouseIds: [shiobara.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: soseki.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+
+    expect(findRootAncestor(doc, soseki.childId)).toBe(shiobara.personId)
+  })
+})
+
+describe('findPrimaryParentFamily', () => {
+  it('実子のみの場合はその家族を返す', () => {
+    let doc = createTreeDocument()
+    const parent = addPerson(doc, { name: { given: '親' } })
+    doc = parent.doc
+    const child = addChild(doc, parent.personId, { name: { given: '子' } })
+    doc = child.doc
+
+    expect(findPrimaryParentFamily(doc, child.childId)?.spouseIds).toEqual([parent.personId])
+  })
+
+  it('実親・養親の両方がある場合は養親側の家族を優先して返す', () => {
+    let doc = createTreeDocument()
+    const bioParent = addPerson(doc, { name: { given: '実親' } })
+    doc = bioParent.doc
+    const child = addChild(doc, bioParent.personId, { name: { given: '子' } })
+    doc = child.doc
+    const adoptiveParent = addPerson(doc, { name: { given: '養親' } })
+    doc = adoptiveParent.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-adoptive': {
+          id: 'f-adoptive',
+          spouseIds: [adoptiveParent.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: child.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+
+    expect(findPrimaryParentFamily(doc, child.childId)?.spouseIds).toEqual([adoptiveParent.personId])
+  })
+
+  it('親を持たない人物にはundefinedを返す', () => {
+    let doc = createTreeDocument()
+    const p = addPerson(doc, { name: { given: '独身' } })
+    doc = p.doc
+    expect(findPrimaryParentFamily(doc, p.personId)).toBeUndefined()
+  })
+})
+
+describe('buildPedigreeByEdge', () => {
+  it('実親・養親それぞれの辺に、その家族固有の続柄が記録される(主たる家族に限らない)', () => {
+    let doc = createTreeDocument()
+    const bioParent = addPerson(doc, { name: { given: '実親' } })
+    doc = bioParent.doc
+    const child = addChild(doc, bioParent.personId, { name: { given: '子' } })
+    doc = child.doc
+    const adoptiveParent = addPerson(doc, { name: { given: '養親' } })
+    doc = adoptiveParent.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-adoptive': {
+          id: 'f-adoptive',
+          spouseIds: [adoptiveParent.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: child.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+
+    const edges = buildPedigreeByEdge(doc)
+    // 主たる親子線はadoptedを優先するが、実親側の辺そのものはbiologicalのまま保持される
+    expect(edges.get(`${bioParent.personId}|${child.childId}`)).toBe('biological')
+    expect(edges.get(`${adoptiveParent.personId}|${child.childId}`)).toBe('adopted')
   })
 })
 
