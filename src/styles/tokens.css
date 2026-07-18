@@ -48,11 +48,12 @@
    * 「明朝の字形が使えないなら可読なゴシックで表示する」を優先する
    */
   --font-mincho:
-    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP', 'Noto Serif JP',
-    'IPAMincho', 'IPAPMincho', 'IPAGothic', 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
+    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP',
+    'Noto Serif JP', 'IPAMincho', 'IPAPMincho', 'IPAGothic', 'Noto Sans CJK JP',
+    'Noto Sans JP', sans-serif;
   --font-gothic:
-    'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic', 'Noto Sans CJK JP', 'Noto Sans JP',
-    'IPAGothic', system-ui, sans-serif;
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic', 'Noto Sans CJK JP',
+    'Noto Sans JP', 'IPAGothic', system-ui, sans-serif;
 
   /* タイプスケール(1rem = 16px) */
   --text-xs: 0.75rem;
@@ -61,6 +62,7 @@
   --text-lg: 1.1875rem;
   --text-xl: 1.4375rem;
   --text-2xl: 1.75rem;
+  --text-3xl: 2.5rem;
 
   /* 余白(4px基調) */
   --space-1: 4px;
@@ -73,7 +75,8 @@
 
   /* 造形 — 帳簿の直線的な佇まい。丸角は最小限 */
   --radius: 2px;
-  --shadow-raised: 0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+  --shadow-raised:
+    0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
 
   color-scheme: light;
 }
@@ -128,7 +131,8 @@
   --danger-wash: #f0ddd6;
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
-  --shadow-raised: 0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+  --shadow-raised:
+    0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
   color-scheme: light;
 }
 
