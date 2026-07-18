@@ -25,7 +25,11 @@ describe('Root(パスによる出し分け)', () => {
     render(<Root />)
     // lazyなエディタチャンク(family-chart含む)の解決はデフォルトの1秒を超えることがある
     expect(
-      await screen.findByRole('main', { name: '家系図キャンバス' }, { timeout: 10000 }),
+      await screen.findByRole(
+        'main',
+        { name: '家系図キャンバス' },
+        { timeout: 10000 },
+      ),
     ).toBeInTheDocument()
   }, 15000)
 
