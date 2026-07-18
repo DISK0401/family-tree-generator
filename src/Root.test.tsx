@@ -23,10 +23,11 @@ describe('Root(パスによる出し分け)', () => {
   it('/app ではエディタが表示される', async () => {
     window.history.replaceState(null, '', '/app')
     render(<Root />)
+    // lazyなエディタチャンク(family-chart含む)の解決はデフォルトの1秒を超えることがある
     expect(
-      await screen.findByRole('main', { name: '家系図キャンバス' }),
+      await screen.findByRole('main', { name: '家系図キャンバス' }, { timeout: 10000 }),
     ).toBeInTheDocument()
-  })
+  }, 15000)
 
   it('未知のパスではランディングにフォールバックする', async () => {
     window.history.replaceState(null, '', '/unknown-path')
