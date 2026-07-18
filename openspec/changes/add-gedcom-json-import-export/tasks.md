@@ -72,6 +72,9 @@
   - 完了条件: README の記載だけで対応フォーマットと制限事項が把握できる
 - [x] 8.3 OpenSpecアーティファクト(proposal/design/specs)を方針転換後の実装内容に合わせて更新する
   - 完了条件: `family-data-model` をNew Capabilitiesから除去し、gedcom-import-export/json-import-exportのシナリオを実際のフィールド名・タグ名に合わせ、design.mdに転換の経緯とRisksを記録する。`openspec validate` に合格する
-- [ ] 8.4 品質ゲートを全通過させ、develop へのPRで dev 環境動作確認する
+- [x] 8.4 インターネット上の実在するGEDCOMサンプルファイルでインポート・再エクスポートを検証する
+  - 完了条件: GEDCOM公式テストスイート(`gedcom7code/test-files`、7.0/5.5.1双方の代表的エッジケース27種)と実データ(`royal92.ged`欧州王族3,010人、5.5.1仕様書サンプル)をダウンロードし、クラッシュなく処理できることを確認する。仕様どおり拒否されるべきファイル(GEDC.VERS欠落、ANSEL)は明確なエラーメッセージで中断されることを確認する
+  - 結果: 27/30ファイルが正常取込・両バージョン再エクスポート成功、3件(バージョン情報欠落1件・ANSEL 2件)は仕様どおり中断。検証中に2件の実装不備を発見し修正した: (1) BOMなしUTF-16ファイルが未検出だった問題(ヒューリスティック検出`detectBomlessUtf16`を追加)、(2) JULIAN等の未対応暦種別接頭辞・FROM等の範囲表現を年のみとして誤読していた問題(認識できない月トークンがある場合は部分成功させず原文保持のみへフォールバックするよう修正)。回帰テストを追加(`encoding.test.ts`・`dateMapping.test.ts`)。詳細はdesign.mdの「実ファイルでの検証」を参照
+- [ ] 8.5 品質ゲートを全通過させ、develop へのPRで dev 環境動作確認する
   - 完了条件: lint / typecheck / test / build が全て成功し、dev 環境URLでインポート→エクスポートの一連操作が動作する
-  - 進捗: `npm run lint` / `npm run typecheck` / `npm run format:check` / `npm run test`(170件全成功) / `npm run build` をすべてローカルで実行し成功を確認済み。PR #12(`claude/gedcom-json-import-export-yz6rph` → `develop`)を作成済み、方針転換の反映をプッシュ予定。dev環境(Cloudflare)でのデプロイ後動作確認は未実施。
+  - 進捗: `npm run lint` / `npm run typecheck` / `npm run format:check` / `npm run test`(174件全成功) / `npm run build` をすべてローカルで実行し成功を確認済み。PR #12(`claude/gedcom-json-import-export-yz6rph` → `develop`)を作成済み。dev環境(Cloudflare)でのデプロイ後動作確認は未実施。

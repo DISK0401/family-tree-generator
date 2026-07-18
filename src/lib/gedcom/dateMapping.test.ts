@@ -87,6 +87,26 @@ describe('gedcomNodeToFuzzyDate', () => {
     })
   })
 
+  it('JULIAN等の未対応の暦種別接頭辞は年だけの誤読をせず原文のみにフォールバックする', () => {
+    // 実在するGEDCOM 7.0テストファイル(gedcom7code/test-files date-all.ged)で
+    // 「JULIAN 1401」等の暦種別接頭辞を年のみとして誤読していた不具合の回帰テスト
+    const date = gedcomNodeToFuzzyDate({
+      tag: 'DATE',
+      value: 'JULIAN 1401',
+      children: [],
+    })
+    expect(date).toEqual({ original: 'JULIAN 1401', qualifier: 'exact' })
+  })
+
+  it('FROM等の未対応の範囲キーワードは年だけの誤読をせず原文のみにフォールバックする', () => {
+    const date = gedcomNodeToFuzzyDate({
+      tag: 'DATE',
+      value: 'FROM 730',
+      children: [],
+    })
+    expect(date).toEqual({ original: 'FROM 730', qualifier: 'exact' })
+  })
+
   it('ABT修飾子をqualifierに変換する', () => {
     const date = gedcomNodeToFuzzyDate({
       tag: 'DATE',

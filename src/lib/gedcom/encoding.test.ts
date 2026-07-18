@@ -13,18 +13,31 @@ function utf8Bytes(text: string, withBom = false): Uint8Array {
   return combined
 }
 
-function utf16LeBytes(text: string): Uint8Array {
+function utf16LeBytes(text: string, withBom = true): Uint8Array {
   const body = new Uint8Array(text.length * 2)
   for (let i = 0; i < text.length; i += 1) {
     const code = text.charCodeAt(i)
     body[i * 2] = code & 0xff
     body[i * 2 + 1] = (code >> 8) & 0xff
   }
+  if (!withBom) {
+    return body
+  }
   const bom = new Uint8Array([0xff, 0xfe])
   const combined = new Uint8Array(bom.length + body.length)
   combined.set(bom, 0)
   combined.set(body, bom.length)
   return combined
+}
+
+function utf16BeBytes(text: string): Uint8Array {
+  const body = new Uint8Array(text.length * 2)
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i)
+    body[i * 2] = (code >> 8) & 0xff
+    body[i * 2 + 1] = code & 0xff
+  }
+  return body
 }
 
 // '0 @I1@ INDI\n1 NAME 山田/太郎/\n' の Shift_JIS バイト表現
@@ -52,6 +65,20 @@ describe('decodeGedcomBytes', () => {
   it('UTF-16(LE, BOM付き)を判定してデコードする', () => {
     const text = '0 HEAD\n1 CHAR UNICODE\n'
     const result = decodeGedcomBytes(utf16LeBytes(text))
+
+    expect(result).toEqual({ success: true, encoding: 'utf-16', text })
+  })
+
+  it('BOMなしUTF-16LEをヒューリスティックで判定してデコードする(実在するGEDCOM 5.5.1テストファイルに存在するパターン)', () => {
+    const text = '0 HEAD\n1 SOUR conversion test\n1 CHAR UTF-8\n'
+    const result = decodeGedcomBytes(utf16LeBytes(text, false))
+
+    expect(result).toEqual({ success: true, encoding: 'utf-16', text })
+  })
+
+  it('BOMなしUTF-16BEをヒューリスティックで判定してデコードする', () => {
+    const text = '0 HEAD\n1 SOUR conversion test\n1 CHAR UTF-8\n'
+    const result = decodeGedcomBytes(utf16BeBytes(text))
 
     expect(result).toEqual({ success: true, encoding: 'utf-16', text })
   })

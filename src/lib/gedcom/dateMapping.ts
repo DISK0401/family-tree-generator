@@ -109,27 +109,42 @@ export function fuzzyDateToGedcomNode(
   }
 }
 
+/**
+ * GEDCOMの日付本体("DAY MON YEAR" / "MON YEAR" / "YEAR")を解釈する。
+ * 月トークンがGEDCOMの月略称として認識できない場合(JULIAN等の暦種別接頭辞、
+ * FROM/TOのような本パーサ未対応の範囲表現等)は、年だけを取り出して誤った
+ * 精度の値を返すのではなく、解釈不能として undefined を返す(実在するGEDCOM
+ * テストファイル(date-all.ged)で判明した「暦種別を無視して年だけ誤読する」
+ * 問題への対応。原文は呼び出し元でoriginalとして保持されるため情報は失わない)。
+ */
 function parseGedcomDatePart(text: string): CalendarDate | undefined {
   const tokens = text.trim().split(/\s+/).filter(Boolean)
-  let day: number | undefined
-  let month: number | undefined
-  let year: number | undefined
 
   if (tokens.length === 3) {
-    day = Number(tokens[0])
-    month = MONTH_INDEX[tokens[1].toUpperCase()]
-    year = Number(tokens[2])
-  } else if (tokens.length === 2) {
-    month = MONTH_INDEX[tokens[0].toUpperCase()]
-    year = Number(tokens[1])
-  } else if (tokens.length === 1) {
-    year = Number(tokens[0])
+    const day = Number(tokens[0])
+    const month = MONTH_INDEX[tokens[1].toUpperCase()]
+    const year = Number(tokens[2])
+    if (month === undefined || Number.isNaN(day) || Number.isNaN(year)) {
+      return undefined
+    }
+    return { year, month, day }
   }
-
-  if (year === undefined || Number.isNaN(year)) {
-    return undefined
+  if (tokens.length === 2) {
+    const month = MONTH_INDEX[tokens[0].toUpperCase()]
+    const year = Number(tokens[1])
+    if (month === undefined || Number.isNaN(year)) {
+      return undefined
+    }
+    return { year, month }
   }
-  return { year, month, day: tokens.length === 3 ? day : undefined }
+  if (tokens.length === 1) {
+    const year = Number(tokens[0])
+    if (Number.isNaN(year)) {
+      return undefined
+    }
+    return { year }
+  }
+  return undefined
 }
 
 /** GEDCOMのDATEノードを FuzzyDate へ変換する。解釈できない場合は原文のみを返す。 */

@@ -42,9 +42,43 @@ function hasUtf16BeBom(bytes: Uint8Array): boolean {
 }
 
 /**
+ * BOMを持たないUTF-16ファイルをヒューリスティックに検出する。GEDCOMは常に
+ * ASCII互換の "0 HEAD" 等で始まるため、先頭付近で1バイトおきに0x00が
+ * 高い割合で現れるかどうかで判定できる(実在するGEDCOM 5.5.1テストファイルに
+ * BOMなしUTF-16が存在することが判明したため追加した判定)。
+ */
+function detectBomlessUtf16(
+  bytes: Uint8Array,
+): 'utf-16be' | 'utf-16le' | undefined {
+  const sampleLength =
+    Math.min(bytes.length, 40) - (Math.min(bytes.length, 40) % 2)
+  if (sampleLength < 8) {
+    return undefined
+  }
+  let evenZero = 0
+  let oddZero = 0
+  for (let i = 0; i < sampleLength; i += 2) {
+    if (bytes[i] === 0x00) {
+      evenZero += 1
+    }
+    if (bytes[i + 1] === 0x00) {
+      oddZero += 1
+    }
+  }
+  const pairs = sampleLength / 2
+  if (evenZero / pairs > 0.9) {
+    return 'utf-16be'
+  }
+  if (oddZero / pairs > 0.9) {
+    return 'utf-16le'
+  }
+  return undefined
+}
+
+/**
  * GEDCOMファイルのバイト列から文字コードを判定してデコードする。
- * 判定順序: ANSEL宣言の検出(中断)→ UTF-16 BOM → UTF-8(BOM有無とも)
- * → Shift_JIS(国産ソフト由来ファイル対策のフォールバック)。
+ * 判定順序: ANSEL宣言の検出(中断)→ UTF-16 BOM → BOMなしUTF-16(ヒューリスティック)
+ * → UTF-8(BOM有無とも)→ Shift_JIS(国産ソフト由来ファイル対策のフォールバック)。
  */
 export function decodeGedcomBytes(bytes: Uint8Array): EncodingDetectionResult {
   if (declaresAnsel(bytes)) {
@@ -67,6 +101,15 @@ export function decodeGedcomBytes(bytes: Uint8Array): EncodingDetectionResult {
       success: true,
       encoding: 'utf-16',
       text: new TextDecoder('utf-16be').decode(bytes),
+    }
+  }
+
+  const bomlessUtf16 = detectBomlessUtf16(bytes)
+  if (bomlessUtf16) {
+    return {
+      success: true,
+      encoding: 'utf-16',
+      text: new TextDecoder(bomlessUtf16).decode(bytes),
     }
   }
 
