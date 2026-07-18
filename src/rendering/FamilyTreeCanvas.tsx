@@ -3,6 +3,8 @@ import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
 import type { Pedigree } from '../domain/types'
+import { useDisplaySettingsStore } from '../settings/display-settings-store'
+import { formatDateForDisplay } from '../settings/display-settings'
 import {
   buildPedigreeByEdge,
   compareChildrenByBirthThenName,
@@ -121,6 +123,11 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   // 本人の兄弟姉妹も含めて描画可能な最大範囲を常に表示する
   const [showAll, setShowAll] = useState(false)
   const showAllRef = useRef(showAll)
+  // 表示設定(design.md D9): カードの生年月日・没年月日の表示粒度
+  const birthDateGranularity = useDisplaySettingsStore((s) => s.birthDateGranularity)
+  const deathDateGranularity = useDisplaySettingsStore((s) => s.deathDateGranularity)
+  const birthGranularityRef = useRef(birthDateGranularity)
+  const deathGranularityRef = useRef(deathDateGranularity)
 
   useEffect(() => {
     selectedIdRef.current = selectedPersonId
@@ -133,6 +140,13 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   useEffect(() => {
     showAllRef.current = showAll
   }, [showAll])
+
+  useEffect(() => {
+    birthGranularityRef.current = birthDateGranularity
+    deathGranularityRef.current = deathDateGranularity
+    // 粒度変更をカードへ即時反映する(データ自体は変わらないため、再描画のみ促す)
+    chartRef.current?.updateTree({ tree_position: 'inherit', transition_time: 0 })
+  }, [birthDateGranularity, deathDateGranularity])
 
   useEffect(() => {
     onSelectPersonRef.current = onSelectPerson
@@ -195,7 +209,12 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       // 選択状態は朱で表現する(朱=選択の一意性を保つため、他の用途に流用しない)。
       // 性別インジケーターは朱と別配色のトークンを使う(design.md D7)
       const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
-      const years = [person.birthYear, person.deathYear].filter((y) => y !== undefined).join(' – ')
+      const years = [
+        formatDateForDisplay(person.birthDate, birthGranularityRef.current),
+        formatDateForDisplay(person.deathDate, deathGranularityRef.current),
+      ]
+        .filter((y) => y !== undefined)
+        .join(' – ')
       const ageLabel =
         person.age !== undefined ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)` : ''
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。

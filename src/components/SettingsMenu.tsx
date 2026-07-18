@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DisplaySettingsControl } from '../settings/DisplaySettingsControl'
 import { DataResetControl } from './DataResetControl'
 import { ImportExportControl } from './ImportExportControl'
 import './SettingsMenu.css'
@@ -40,6 +41,7 @@ export function SettingsMenu({ onReset }: SettingsMenuProps) {
       </button>
       {open && (
         <div className="settings-menu-panel" role="menu">
+          <DisplaySettingsControl />
           <ImportExportControl />
           <DataResetControl onReset={onReset} />
         </div>

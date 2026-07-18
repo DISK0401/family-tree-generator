@@ -1,6 +1,6 @@
 import { computeAge } from '../domain/age'
 import { displayName } from '../domain/helpers'
-import type { Family, Pedigree, Person, PersonId, TreeDocument } from '../domain/types'
+import type { CalendarDate, Family, Pedigree, Person, PersonId, TreeDocument } from '../domain/types'
 
 /**
  * TreeDocument → family-chart描画用データへの変換アダプタ。
@@ -25,6 +25,9 @@ export interface FamilyChartCardData {
   given?: string
   birthYear?: number
   deathYear?: number
+  /** 表示粒度設定(design.md D9)に応じた書式化に使う完全な生年月日・没年月日 */
+  birthDate?: CalendarDate
+  deathDate?: CalendarDate
   /** 現年齢(故人は没年齢)。生没年月日が年のみしか判明していない場合はundefined(design.md D8) */
   age?: number
   /** この人物の主たる親子線(rels.parents)に対応する続柄種別。findRootAncestorの祖先方向判定に使う。
@@ -262,6 +265,8 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
         given: person.name.given,
         birthYear: person.birth?.date?.date?.year,
         deathYear: person.death?.date?.date?.year,
+        birthDate: person.birth?.date?.date,
+        deathDate: person.death?.date?.date,
         age: computeAge(person),
         pedigree: pedigreeByChild.get(person.id),
       },
