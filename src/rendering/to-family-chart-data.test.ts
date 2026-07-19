@@ -10,6 +10,7 @@ import {
   findPrimaryParentFamily,
   findRootAncestor,
   FULL_VIEW_ROOT_ID,
+  marriageDate,
   sortSpousesByMarriageDate,
   toFamilyChartData,
   toFullViewFamilyChartData,
@@ -28,6 +29,95 @@ function byId(data: ReturnType<typeof toFamilyChartData>, id: string) {
   if (!found) throw new Error(`not found: ${id}`)
   return found
 }
+
+describe('toFamilyChartData: ふりがな・生没地の射影', () => {
+  it('ふりがな・出生地・没地がカードデータに反映される', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, {
+      name: { surname: '山田', given: '太郎', surnameKana: 'やまだ', givenKana: 'たろう' },
+      birth: { type: 'birth', place: '東京都' },
+      death: { type: 'death', place: '大阪府' },
+    })
+    doc = a.doc
+
+    const data = toFamilyChartData(doc)
+    const datum = byId(data, a.personId)
+    expect(datum.data.surnameKana).toBe('やまだ')
+    expect(datum.data.givenKana).toBe('たろう')
+    expect(datum.data.birthPlace).toBe('東京都')
+    expect(datum.data.deathPlace).toBe('大阪府')
+  })
+
+  it('未設定の場合はundefinedのままになる', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: '太郎' } })
+    doc = a.doc
+
+    const datum = byId(toFamilyChartData(doc), a.personId)
+    expect(datum.data.surnameKana).toBeUndefined()
+    expect(datum.data.givenKana).toBeUndefined()
+    expect(datum.data.birthPlace).toBeUndefined()
+    expect(datum.data.deathPlace).toBeUndefined()
+  })
+})
+
+describe('marriageDate(design.md D9: 婚姻線ラベル用)', () => {
+  it('婚姻イベントの日付を返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+    doc = addFamilyEvent(doc, s.familyId, {
+      type: 'marriage',
+      date: { original: '1990-04-01', qualifier: 'exact', date: { year: 1990, month: 4, day: 1 } },
+    })
+
+    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({ year: 1990, month: 4, day: 1 })
+    // 配偶者側から見ても同じ結果になる(対称)
+    expect(marriageDate(doc, s.spouseId, a.personId)).toEqual({ year: 1990, month: 4, day: 1 })
+  })
+
+  it('復縁がある場合は最初の婚姻日を返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+    doc = addFamilyEvent(doc, s.familyId, {
+      type: 'marriage',
+      date: { original: '1980-01-01', qualifier: 'exact', date: { year: 1980, month: 1, day: 1 } },
+    })
+    doc = addFamilyEvent(doc, s.familyId, { type: 'divorce' })
+    doc = addFamilyEvent(doc, s.familyId, {
+      type: 'marriage',
+      date: { original: '1990-04-01', qualifier: 'exact', date: { year: 1990, month: 4, day: 1 } },
+    })
+
+    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({ year: 1980, month: 1, day: 1 })
+  })
+
+  it('該当する家族がない場合はundefinedを返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addPerson(doc, { name: { given: 'B' } })
+    doc = b.doc
+
+    expect(marriageDate(doc, a.personId, b.personId)).toBeUndefined()
+  })
+
+  it('婚姻イベントに日付が記録されていない場合はundefinedを返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+    doc = addFamilyEvent(doc, s.familyId, { type: 'marriage' })
+
+    expect(marriageDate(doc, a.personId, s.spouseId)).toBeUndefined()
+  })
+})
 
 describe('toFamilyChartData: 再婚', () => {
   it('同一人物の複数配偶者がspousesの和集合として射影される', () => {

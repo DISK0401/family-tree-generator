@@ -11,6 +11,7 @@ import {
   computeHiddenCounts,
   findRootAncestor,
   FULL_VIEW_ROOT_ID,
+  marriageDate,
   sortSpousesByMarriageDate,
   toFamilyChartData,
   toFullViewFamilyChartData,
@@ -142,6 +143,14 @@ export function FamilyTreeCanvas({
   const deathDateGranularity = useDisplaySettingsStore((s) => s.deathDateGranularity)
   const birthGranularityRef = useRef(birthDateGranularity)
   const deathGranularityRef = useRef(deathDateGranularity)
+  // 表示設定(design.md D4/D8): 和暦表示モード・カードへ表示する項目の選択
+  const calendarMode = useDisplaySettingsStore((s) => s.calendarMode)
+  const visibleCardFields = useDisplaySettingsStore((s) => s.visibleCardFields)
+  const calendarModeRef = useRef(calendarMode)
+  const visibleCardFieldsRef = useRef(visibleCardFields)
+  // 表示設定(design.md D9): 婚姻線への婚姻日ラベル表示
+  const showMarriageDateOnLink = useDisplaySettingsStore((s) => s.showMarriageDateOnLink)
+  const showMarriageDateOnLinkRef = useRef(showMarriageDateOnLink)
 
   useEffect(() => {
     selectedIdRef.current = selectedPersonId
@@ -158,9 +167,12 @@ export function FamilyTreeCanvas({
   useEffect(() => {
     birthGranularityRef.current = birthDateGranularity
     deathGranularityRef.current = deathDateGranularity
-    // 粒度変更をカードへ即時反映する(データ自体は変わらないため、再描画のみ促す)
+    calendarModeRef.current = calendarMode
+    visibleCardFieldsRef.current = visibleCardFields
+    showMarriageDateOnLinkRef.current = showMarriageDateOnLink
+    // 表示設定の変更をカードへ即時反映する(データ自体は変わらないため、再描画のみ促す)
     chartRef.current?.updateTree({ tree_position: 'inherit', transition_time: 0 })
-  }, [birthDateGranularity, deathDateGranularity])
+  }, [birthDateGranularity, deathDateGranularity, calendarMode, visibleCardFields, showMarriageDateOnLink])
 
   useEffect(() => {
     onSelectPersonRef.current = onSelectPerson
@@ -185,6 +197,21 @@ export function FamilyTreeCanvas({
       .setSingleParentEmptyCard(false)
       .setSortChildrenFunction(sortChildren)
       .setSortSpousesFunction(sortSpouses)
+      // 婚姻線への婚姻日ラベル(design.md D9)。family-chart組み込みのAPIを使う
+      // (手動でSVG path中点を計算する方式は、D3のtransition中に古い座標を読んでしまい
+      // 大きなツリーで表示位置が大きくずれる不具合があったため、レイアウト計算そのものが
+      // 使う座標(sp1.y等)をそのまま使うこの方式に置き換えた)。
+      // showMarriageDateOnLinkがオフの場合は空文字を返し、ラベル自体を表示しない
+      .setLinkSpouseText((sp1: TreeDatum, sp2: TreeDatum) => {
+        if (!showMarriageDateOnLinkRef.current) return ''
+        const personAId = personIdOf(sp1)
+        const personBId = personIdOf(sp2)
+        if (!personAId || !personBId) return ''
+        const date = marriageDate(documentRef.current, personAId, personBId)
+        if (!date) return ''
+        // 粒度設定は新設せず常にフル精度で表示し、和暦表示モードには追従する(design.md D9)
+        return formatDateForDisplay(date, 'full', calendarModeRef.current) ?? ''
+      })
     chartRef.current = chart
 
     // 折りたたみ時の非表示人数バッジ(design.md D6)。カード描画のたびに毎回計算し直すと
@@ -244,22 +271,48 @@ export function FamilyTreeCanvas({
       // 性別インジケーターは朱と別配色のトークンを使う(design.md D7)
       const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
       const deceasedClass = person.deceased ? ' deceased' : ''
+      // カード表示項目の選択(design.md D8)。項目ごとに「表示対象かつデータが存在する」場合のみ描く
+      const fields = visibleCardFieldsRef.current
       const years = [
-        formatDateForDisplay(person.birthDate, birthGranularityRef.current),
-        formatDateForDisplay(person.deathDate, deathGranularityRef.current),
+        fields.birthDate
+          ? formatDateForDisplay(person.birthDate, birthGranularityRef.current, calendarModeRef.current)
+          : undefined,
+        fields.deathDate
+          ? formatDateForDisplay(person.deathDate, deathGranularityRef.current, calendarModeRef.current)
+          : undefined,
       ]
         .filter((y) => y !== undefined)
         .join(' – ')
       const ageLabel =
-        person.age !== undefined ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)` : ''
-      // 故人は伝統的な系譜記法にならい名の下に「†」を付す(カードのマーカー色と対応)
-      const deceasedMark = person.deceased ? '<span class="tree-card-deceased-mark">†</span>' : ''
+        fields.age && person.age !== undefined
+          ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)`
+          : ''
+      // 故人は伝統的な系譜記法にならい「†」を付す(カードのマーカー色と対応)。
+      // 名前の縦書き列の中に文字として埋め込むと、ふりがな・生没地等の追加項目で
+      // 列の縦方向スペースが狭まった際に、†が意図しない別列へ折り返されて名前の
+      // 前に浮いて見える不具合が起きるため、名前列とは独立した固定位置バッジとして描く
+      const deceasedMarkHtml = person.deceased
+        ? '<div class="tree-card-deceased-mark" title="故人">†</div>'
+        : ''
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
-      // どちらか一方しかない場合は単一列にフォールバックする
+      // 表示対象かつデータが存在する方だけを対象にし、両方非表示の場合は名前欄を空にする
+      // (データはあるのに未入力と誤解させないため、未入力時のフォールバック文言は出さない。design.md D8)
+      const surnameText = fields.surname ? person.surname : undefined
+      const givenText = fields.given ? person.given : undefined
       const nameHtml =
-        person.surname && person.given
-          ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}${deceasedMark}</div>`
-          : `<div class="tree-card-given">${escapeHtml(person.displayName)}${deceasedMark}</div>`
+        surnameText && givenText
+          ? `<div class="tree-card-surname">${escapeHtml(surnameText)}</div><div class="tree-card-given">${escapeHtml(givenText)}</div>`
+          : surnameText
+            ? `<div class="tree-card-given">${escapeHtml(surnameText)}</div>`
+            : givenText
+              ? `<div class="tree-card-given">${escapeHtml(givenText)}</div>`
+              : ''
+      const kanaText = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : ''
+      const kanaHtml = kanaText ? `<div class="tree-card-kana">${escapeHtml(kanaText)}</div>` : ''
+      const placesText = [fields.birthPlace ? person.birthPlace : undefined, fields.deathPlace ? person.deathPlace : undefined]
+        .filter((p): p is string => !!p)
+        .join(' / ')
+      const placesHtml = placesText ? `<div class="tree-card-places">${escapeHtml(placesText)}</div>` : ''
       // 折りたたみ表示時、この人物の先に隠れている人数をバッジで示す(design.md D6)。
       // 全体表示モード中は表示しない
       const hidden = getHiddenCounts().get(person.personId)
@@ -271,12 +324,17 @@ export function FamilyTreeCanvas({
       const genderClass =
         person.gender === 'M' ? 'tree-card-gender-male' : person.gender === 'F' ? 'tree-card-gender-female' : 'tree-card-gender-unknown'
       const genderTitle = person.gender === 'M' ? '男' : person.gender === 'F' ? '女' : '性別不明'
-      const genderHtml = `<div class="tree-card-gender ${genderClass}" title="${genderTitle}"></div>`
+      const genderHtml = fields.genderIcon
+        ? `<div class="tree-card-gender ${genderClass}" title="${genderTitle}"></div>`
+        : ''
       return `<div class="tree-card${selectedClass}${deceasedClass}">
         ${genderHtml}
+        ${deceasedMarkHtml}
         ${badgeHtml}
+        ${kanaHtml}
         <div class="tree-card-name-row">${nameHtml}</div>
         ${years ? `<div class="tree-card-years">${escapeHtml(years)}${ageLabel ? ` ${escapeHtml(ageLabel)}` : ''}</div>` : ''}
+        ${placesHtml}
       </div>`
     })
 

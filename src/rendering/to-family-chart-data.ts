@@ -23,11 +23,17 @@ export interface FamilyChartCardData {
   /** カード表示用。姓・名を別の縦書き列として描くために分離して持つ(6.3) */
   surname?: string
   given?: string
+  /** ふりがな(design.md D8、表示設定でオン/オフを選べる) */
+  surnameKana?: string
+  givenKana?: string
   birthYear?: number
   deathYear?: number
   /** 表示粒度設定(design.md D9)に応じた書式化に使う完全な生年月日・没年月日 */
   birthDate?: CalendarDate
   deathDate?: CalendarDate
+  /** 生没地(design.md D8、表示設定でオン/オフを選べる) */
+  birthPlace?: string
+  deathPlace?: string
   /** 現年齢(故人は没年齢)。生没年月日が年のみしか判明していない場合はundefined(design.md D8) */
   age?: number
   /** 没の記録(年不明でも)があれば故人として描く。カードのマーカー・†表示に使う */
@@ -358,10 +364,14 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
         displayName: displayName(person),
         surname: person.name.surname,
         given: person.name.given,
+        surnameKana: person.name.surnameKana,
+        givenKana: person.name.givenKana,
         birthYear: person.birth?.date?.date?.year,
         deathYear: person.death?.date?.date?.year,
         birthDate: person.birth?.date?.date,
         deathDate: person.death?.date?.date,
+        birthPlace: person.birth?.place,
+        deathPlace: person.death?.place,
         age: computeAge(person),
         deceased: person.death !== undefined,
         pedigree: pedigreeByChild.get(person.id),
@@ -498,13 +508,21 @@ export function compareChildrenByBirthThenName(a: FamilyChartDatum, b: FamilyCha
   return a.data.displayName.localeCompare(b.data.displayName, 'ja')
 }
 
-/** personIdとspouseIdの間で最初に成立した婚姻イベントの年を返す(復縁がある場合は最初の婚姻年) */
-function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId): number | undefined {
+/**
+ * personIdとspouseIdの間で最初に成立した婚姻イベントの日付を返す(復縁がある場合は最初の婚姻日)。
+ * 該当する家族がない、または婚姻イベントに日付が記録されていない場合はundefined(design.md D9、婚姻線ラベル用)
+ */
+export function marriageDate(doc: TreeDocument, personId: PersonId, spouseId: PersonId): CalendarDate | undefined {
   const family = Object.values(doc.families).find(
     (f) => f.spouseIds.includes(personId) && f.spouseIds.includes(spouseId),
   )
   const marriage = family?.events.find((e) => e.type === 'marriage')
-  return marriage?.date?.date?.year
+  return marriage?.date?.date
+}
+
+/** personIdとspouseIdの間で最初に成立した婚姻イベントの年を返す(復縁がある場合は最初の婚姻年) */
+function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId): number | undefined {
+  return marriageDate(doc, personId, spouseId)?.year
 }
 
 /**

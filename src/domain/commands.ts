@@ -164,6 +164,31 @@ export function addFamilyEvent(
   return touch(putFamily(doc, { ...family, events: [...family.events, event] }))
 }
 
+/**
+ * 指定種別(婚姻/離婚)の最初の1件を置換・新規追加・削除(`event`が`undefined`)する。
+ * UIからの単純な「その家族の婚姻日を設定/更新/削除する」操作用。2件目以降(復縁等)は
+ * 対象にせずそのまま保持する(design.md D3)。複数件を意図的に扱う経路は`addFamilyEvent`を使う
+ */
+export function setFamilyEvent(
+  doc: TreeDocument,
+  familyId: FamilyId,
+  type: FamilyEventType,
+  event: LifeEvent<FamilyEventType> | undefined,
+): TreeDocument {
+  const family = doc.families[familyId]
+  if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
+  const index = family.events.findIndex((e) => e.type === type)
+  let events: LifeEvent<FamilyEventType>[]
+  if (event === undefined) {
+    events = index === -1 ? family.events : family.events.filter((_, i) => i !== index)
+  } else if (index === -1) {
+    events = [...family.events, event]
+  } else {
+    events = family.events.map((e, i) => (i === index ? event : e))
+  }
+  return touch(putFamily(doc, { ...family, events }))
+}
+
 export function updateFamily(
   doc: TreeDocument,
   familyId: FamilyId,

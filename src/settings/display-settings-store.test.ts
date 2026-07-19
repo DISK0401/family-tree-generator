@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { addPerson } from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
 import { useTreeStore } from '../store/tree-store'
+import { DEFAULT_DISPLAY_SETTINGS, loadDisplaySettings } from './display-settings'
 import { useDisplaySettingsStore } from './display-settings-store'
 
 describe('useDisplaySettingsStore', () => {
   beforeEach(() => {
     localStorage.clear()
-    useDisplaySettingsStore.setState({ birthDateGranularity: 'full', deathDateGranularity: 'full' })
+    useDisplaySettingsStore.setState(DEFAULT_DISPLAY_SETTINGS)
     useTreeStore.setState({ document: createTreeDocument(), past: [], future: [] })
   })
 
@@ -33,5 +34,35 @@ describe('useDisplaySettingsStore', () => {
     // 表示設定はundoの影響を受けず維持される
     expect(useDisplaySettingsStore.getState().birthDateGranularity).toBe('year')
     expect(useDisplaySettingsStore.getState().deathDateGranularity).toBe('year-month')
+  })
+
+  it('setCalendarModeで和暦表示モードへ切り替えられ、他の設定は変化しない', () => {
+    useDisplaySettingsStore.getState().setBirthDateGranularity('year')
+    useDisplaySettingsStore.getState().setCalendarMode('wareki')
+
+    expect(useDisplaySettingsStore.getState().calendarMode).toBe('wareki')
+    expect(useDisplaySettingsStore.getState().birthDateGranularity).toBe('year')
+  })
+
+  it('setVisibleCardFieldは指定した項目のみを切り替え、他の項目には影響しない', () => {
+    const before = useDisplaySettingsStore.getState().visibleCardFields
+
+    useDisplaySettingsStore.getState().setVisibleCardField('surname', false)
+
+    expect(useDisplaySettingsStore.getState().visibleCardFields).toEqual({ ...before, surname: false })
+  })
+
+  it('setVisibleCardFieldの変更は再読み込み相当(localStorageからの再読込)後も維持される', () => {
+    useDisplaySettingsStore.getState().setVisibleCardField('furigana', true)
+    expect(loadDisplaySettings().visibleCardFields.furigana).toBe(true)
+  })
+
+  it('setShowMarriageDateOnLinkで婚姻線ラベルの表示を切り替えられ、再読み込み後も維持される', () => {
+    expect(useDisplaySettingsStore.getState().showMarriageDateOnLink).toBe(false)
+
+    useDisplaySettingsStore.getState().setShowMarriageDateOnLink(true)
+
+    expect(useDisplaySettingsStore.getState().showMarriageDateOnLink).toBe(true)
+    expect(loadDisplaySettings().showMarriageDateOnLink).toBe(true)
   })
 })
