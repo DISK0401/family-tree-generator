@@ -9,10 +9,11 @@ import {
   buildPedigreeByEdge,
   compareChildrenByBirthThenName,
   computeHiddenCounts,
-  findMaxCoverageRoot,
   findRootAncestor,
+  FULL_VIEW_ROOT_ID,
   sortSpousesByMarriageDate,
   toFamilyChartData,
+  toFullViewFamilyChartData,
   type FamilyChartDatum,
   type HiddenNeighborInfo,
 } from './to-family-chart-data'
@@ -73,14 +74,22 @@ function personIdOf(node: TreeDatum | undefined): string | undefined {
  * (`pedigreeByEdge`)。1人が複数の家族に子として属する場合(実親+養親等)、
  * 主たる家族でない側の辺(例: 実親側)まで一律「養子スタイル」になってしまう不具合を
  * 防ぐため(design.md D2 / リスク「family-chartの表現力限界」)。
+ *
+ * 全体表示モード(design.md D5)の仮想ルート(`FULL_VIEW_ROOT_ID`)とその子(=各家系の根)を
+ * つなぐ線は実在の関係ではないため、`virtual-root-link`クラスを付けてCSS側で非表示にする。
  */
 function markLinkStyles(container: HTMLElement, pedigreeByEdge: Map<string, Pedigree>): void {
   const links = container.querySelectorAll<SVGPathElement>('path.link')
   links.forEach((el) => {
     const datum = (el as unknown as { __data__?: LinkDatum }).__data__
     if (!datum) return
+    const sourceNodes = Array.isArray(datum.source) ? datum.source : [datum.source]
+    const targetNodes = Array.isArray(datum.target) ? datum.target : [datum.target]
+    const isVirtualRootLink = [...sourceNodes, ...targetNodes]
+      .map(personIdOf)
+      .some((id) => id === FULL_VIEW_ROOT_ID)
     let isNonBiological = false
-    if (!datum.spouse) {
+    if (!datum.spouse && !isVirtualRootLink) {
       const childNodes = datum.is_ancestry ? datum.source : datum.target
       const parentNodes = datum.is_ancestry ? datum.target : datum.source
       const children = (Array.isArray(childNodes) ? childNodes : [childNodes]).map(personIdOf)
@@ -95,6 +104,7 @@ function markLinkStyles(container: HTMLElement, pedigreeByEdge: Map<string, Pedi
     }
     el.classList.toggle('adopted-link', isNonBiological)
     el.classList.toggle('spouse-link', datum.spouse === true)
+    el.classList.toggle('virtual-root-link', isVirtualRootLink)
   })
 }
 
@@ -178,11 +188,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     // O(人数^2)になるため、直前に使った`store.getTree()`の参照が変わっていない間は使い回す
     let hiddenCountsCache: { tree: unknown; counts: Map<string, HiddenNeighborInfo> } | null = null
     function getHiddenCounts(): Map<string, HiddenNeighborInfo> {
-      // 全体表示モードでも、養子縁組など複数の親を持つ人物は依然として一方の親側しか
-      // 同時に描画できない(family-chartは1人につき`rels.parents`を1組しか持てないため、
-      // どのmain_idを選んでも解消できない構造的制約)。バッジを一律非表示にすると、
-      // その「なお隠れている人物」の存在自体に気づく手段が無くなってしまうため、
-      // 全体表示モード中も同じロジックでバッジを計算する(design.md D6)
+      // 全体表示モード(design.md D5)は仮想ルート+スタブカードにより全人物を描画するため、
+      // 通常は非表示クラスタが存在しなくなる。ただし折りたたみ表示では引き続き
+      // 「main_idから辿れる範囲外」が生じるため、同じロジックを両モードで使い回す
+      // (全体表示モード中は実質的に空集合を返す安全網として機能する)
       const tree = chart.store.getTree()
       if (hiddenCountsCache && hiddenCountsCache.tree === tree) return hiddenCountsCache.counts
       const visibleIds = new Set(
@@ -210,6 +219,8 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       }
 
       const personId = (d.data as unknown as FamilyChartDatum).data.personId
+      // 全体表示モードの仮想ルート(design.md D5)自体はクリック対象にしない
+      if (personId === FULL_VIEW_ROOT_ID) return
       const nextSelected = personId === selectedIdRef.current ? null : personId
       // family-chartは初期main_id(最初に作成した人物)の祖先側ノードの配偶者・傍系親族を
       // 描画しない制約があるため、選択人物の最上位祖先へmain_idを追従させる
@@ -223,6 +234,9 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
       const person = (d.data as unknown as FamilyChartDatum).data
+      // 全体表示モードの仮想ルート(design.md D5)自体は実在の人物ではないため、
+      // 見た目上は何も描かない(位置計算のためだけにDOM上には存在させる)
+      if (person.personId === FULL_VIEW_ROOT_ID) return '<div class="tree-card tree-card-virtual-root"></div>'
       // 選択状態は朱で表現する(朱=選択の一意性を保つため、他の用途に流用しない)。
       // 性別インジケーターは朱と別配色のトークンを使う(design.md D7)
       const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
@@ -275,7 +289,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    chart.updateData(toFamilyChartData(document) as unknown as never)
+    // 全体表示モード中にツリーを編集した場合も、通常データへ差し戻さず
+    // 全体表示用データのまま更新する(showAllRef.currentで現在のモードを判定)
+    const data = showAllRef.current ? toFullViewFamilyChartData(document) : toFamilyChartData(document)
+    chart.updateData(data as unknown as never)
     // 人物追加のたびに全体を視界に収める(競合の「レイアウトが崩れる/迷子になる」不満への対応)
     chart.updateTree({ tree_position: 'fit' })
   }, [document])
@@ -289,17 +306,20 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    chart.setShowSiblingsOfMain(showAll)
     if (showAll) {
-      // 有効化した瞬間の最大連結範囲の根へ視点を固定する(design.md D5)。
-      // 以降はクリックしてもこの視点(main_id)を動かさない
-      const root = findMaxCoverageRoot(documentRef.current)
-      if (root) chart.updateMainId(root)
-    } else if (selectedIdRef.current) {
-      // 無効化時、選択中の人物がいればその祖先へ即座に再追従させる。
+      // 実親・養親の両方を持つ人物のような複数所属も、仮想ルート配下の各家系の根から
+      // すべて辿れるよう、全体表示専用データ(仮想ルート+非主たる家族向けスタブカード)に
+      // 差し替える(design.md D5)。以降はクリックしてもこの視点(main_id)を動かさない
+      chart.updateData(toFullViewFamilyChartData(documentRef.current) as unknown as never)
+      chart.updateMainId(FULL_VIEW_ROOT_ID)
+    } else {
+      // 通常データへ戻す。選択中の人物がいればその祖先へ即座に再追従させる。
       // これを省略すると次にカードをクリックするまで表示が変化せず、
       // 「折りたたみ表示に戻す」を押しても何も起きていないように見えてしまう
-      chart.updateMainId(findRootAncestor(documentRef.current, selectedIdRef.current))
+      chart.updateData(toFamilyChartData(documentRef.current) as unknown as never)
+      if (selectedIdRef.current) {
+        chart.updateMainId(findRootAncestor(documentRef.current, selectedIdRef.current))
+      }
     }
     chart.updateTree({ tree_position: 'fit' })
   }, [showAll])

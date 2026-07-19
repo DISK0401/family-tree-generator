@@ -149,6 +149,19 @@
   filter: drop-shadow(0 3px 0 var(--line-strong));
 }
 
+/* 全体表示モード(design.md D5)の仮想ルートと、その子(各家系の根)を結ぶ線は実在の
+   関係ではないため非表示にする。display:noneではなくvisibilityにするのはD3のデータ結合を
+   壊さないため(cloneNode等と同様、ノードそのものはDOMに残す必要がある) */
+.tree-canvas-root path.link.virtual-root-link {
+  visibility: hidden;
+}
+
+/* 全体表示モードの仮想ルート自身のカードは、レイアウト計算のためだけに存在する実体のない
+   ノードのため、見た目に何も表示しない */
+.tree-card-virtual-root {
+  visibility: hidden;
+}
+
 /* 全体表示トグル・凡例をまとめて1つの縦積みブロックとして配置し、互いに重ならないようにする */
 .tree-corner-panel {
   /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと

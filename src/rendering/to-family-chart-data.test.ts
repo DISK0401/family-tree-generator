@@ -5,12 +5,14 @@ import type { FamilyChartDatum } from './to-family-chart-data'
 import {
   buildPedigreeByEdge,
   compareChildrenByBirthThenName,
+  computeFullViewRoots,
   computeHiddenCounts,
-  findMaxCoverageRoot,
   findPrimaryParentFamily,
   findRootAncestor,
+  FULL_VIEW_ROOT_ID,
   sortSpousesByMarriageDate,
   toFamilyChartData,
+  toFullViewFamilyChartData,
 } from './to-family-chart-data'
 
 function makeDatum(id: string, overrides: Partial<FamilyChartDatum['data']> = {}): FamilyChartDatum {
@@ -381,13 +383,13 @@ describe('sortSpousesByMarriageDate', () => {
   })
 })
 
-describe('findMaxCoverageRoot', () => {
-  it('人物がいない場合はundefinedを返す', () => {
+describe('computeFullViewRoots', () => {
+  it('人物がいない場合は空配列を返す', () => {
     const doc = createTreeDocument()
-    expect(findMaxCoverageRoot(doc)).toBeUndefined()
+    expect(computeFullViewRoots(doc)).toEqual([])
   })
 
-  it('単一の連結成分では最上位祖先を返す', () => {
+  it('単一の連結成分では根を1つだけ返す', () => {
     let doc = createTreeDocument()
     const gp = addPerson(doc, { name: { given: '祖父母' } })
     doc = gp.doc
@@ -396,26 +398,136 @@ describe('findMaxCoverageRoot', () => {
     const child = addChild(doc, parent.childId, { name: { given: '子' } })
     doc = child.doc
 
-    expect(findMaxCoverageRoot(doc)).toBe(gp.personId)
+    expect(computeFullViewRoots(doc)).toEqual([gp.personId])
   })
 
-  it('複数の非連結クラスタがある場合は人数が多い方のクラスタの根を返す', () => {
+  it('非連結な複数クラスタがある場合はクラスタごとに根を返す', () => {
     let doc = createTreeDocument()
-    // 大きいクラスタ: 祖父母-親-子1-子2 (4人)
     const gp = addPerson(doc, { name: { given: '祖父母' } })
     doc = gp.doc
     const parent = addChild(doc, gp.personId, { name: { given: '親' } })
     doc = parent.doc
-    const child1 = addChild(doc, parent.childId, { name: { given: '子1' } })
-    doc = child1.doc
-    const child2 = addChild(doc, parent.childId, { name: { given: '子2' } })
-    doc = child2.doc
-
-    // 小さいクラスタ: 無関係の1人
     const stranger = addPerson(doc, { name: { given: '無関係の人' } })
     doc = stranger.doc
 
-    expect(findMaxCoverageRoot(doc)).toBe(gp.personId)
+    expect(computeFullViewRoots(doc).sort()).toEqual([gp.personId, stranger.personId].sort())
+  })
+
+  it('実親・養親の両方を持つ人物がいる場合、両方の家系の根を返す(夏目漱石サンプル相当)', () => {
+    let doc = createTreeDocument()
+    const naokatsu = addPerson(doc, { name: { given: '直克' } })
+    doc = naokatsu.doc
+    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    doc = soseki.doc
+    const shiobara = addPerson(doc, { name: { given: '昌之助' } })
+    doc = shiobara.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-shiobara': {
+          id: 'f-shiobara',
+          spouseIds: [shiobara.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: soseki.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+
+    expect(computeFullViewRoots(doc).sort()).toEqual([naokatsu.personId, shiobara.personId].sort())
+  })
+
+  it('子のいない配偶者だけの家族も、配偶者どちらか一方のみを根として扱う(重複を避ける)', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+
+    expect(computeFullViewRoots(doc)).toEqual([a.personId])
+  })
+})
+
+describe('toFullViewFamilyChartData', () => {
+  it('実親・養親の両方を持つ人物が2枚のカードとして射影される(夏目漱石サンプル相当)', () => {
+    let doc = createTreeDocument()
+    const naokatsu = addPerson(doc, { name: { given: '直克' } })
+    doc = naokatsu.doc
+    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    doc = soseki.doc
+    const shiobara = addPerson(doc, { name: { given: '昌之助' } })
+    doc = shiobara.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-shiobara': {
+          id: 'f-shiobara',
+          spouseIds: [shiobara.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: soseki.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+
+    const data = toFullViewFamilyChartData(doc)
+    // 主たる家族(養親側)の実カード1件+非主たる家族(実親側)向けのスタブカード1件で、
+    // 合計2枚のカードとして射影される
+    const sosekiCards = data.filter((d) => d.data.personId === soseki.childId)
+    expect(sosekiCards).toHaveLength(2)
+
+    const realCard = sosekiCards.find((d) => d.id === soseki.childId)
+    expect(realCard?.rels.parents).toEqual([shiobara.personId])
+
+    // スタブカードはrelsが空(子孫方向へ連鎖しない)。実子(kyoko/fudeko相当)がいてもスタブ配下には現れない
+    const stubCard = sosekiCards.find((d) => d.id !== soseki.childId)
+    expect(stubCard?.rels).toEqual({})
+
+    // 実親(直克)側の子リストには、実カードではなくスタブカードのIDが入る
+    const naokatsuDatum = data.find((d) => d.id === naokatsu.personId)
+    expect(naokatsuDatum?.rels.children).toEqual([stubCard?.id])
+
+    const virtual = data.find((d) => d.id === FULL_VIEW_ROOT_ID)
+    expect(virtual?.rels.children?.sort()).toEqual([naokatsu.personId, shiobara.personId].sort())
+  })
+
+  it('非主たる家族の子(スタブ)の、さらにその子孫は連鎖的に重複しない', () => {
+    let doc = createTreeDocument()
+    const naokatsu = addPerson(doc, { name: { given: '直克' } })
+    doc = naokatsu.doc
+    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    doc = soseki.doc
+    const shiobara = addPerson(doc, { name: { given: '昌之助' } })
+    doc = shiobara.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-shiobara': {
+          id: 'f-shiobara',
+          spouseIds: [shiobara.personId],
+          kind: 'married',
+          events: [],
+          children: [{ childId: soseki.childId, pedigree: 'adopted' }],
+        },
+      },
+    }
+    const kyoko = addChild(doc, soseki.childId, { name: { given: '筆子' } })
+    doc = kyoko.doc
+
+    const data = toFullViewFamilyChartData(doc)
+    // 漱石の実子(筆子相当)は、漱石自身は2枚(実カード+スタブ)になっても、
+    // 連鎖的に重複はせず1枚のみ描画される
+    const kyokoCards = data.filter((d) => d.data.personId === kyoko.childId)
+    expect(kyokoCards).toHaveLength(1)
+  })
+
+  it('根が1つも無い(人物ゼロ)場合は仮想ルートを追加しない', () => {
+    const doc = createTreeDocument()
+    const data = toFullViewFamilyChartData(doc)
+    expect(data.find((d) => d.id === FULL_VIEW_ROOT_ID)).toBeUndefined()
   })
 })
 
