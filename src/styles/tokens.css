@@ -40,6 +40,10 @@
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
 
+  /* 性別インジケーター用。選択の「朱」とは別配色とし、色のみに依存しないよう形状と併用する */
+  --gender-male: #3e6b5c;
+  --gender-female: #7a4a68;
+
   /*
    * 書体 — 明朝は人名・見出し、ゴシックはUI操作系。
    * 先頭は自己ホストのWebフォント(main.tsxで読み込み): Windowsの游明朝/游ゴシックが
@@ -75,6 +79,15 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
+
+  /*
+   * ヘッダー — ランディングとエディタで共通のトークンを参照し、見た目の高さを揃える(design.md D12)。
+   * paddingを揃えるだけでは内部要素(ランディングのCTAボタン等)の高さの違いにより
+   * 全体の高さがずれるため、min-heightも共通トークンとして固定する
+   */
+  --header-padding-y: var(--space-3);
+  --header-padding-x: var(--space-5);
+  --header-min-height: 66px;
 
   /* 造形 — 紙のカードが机上に浮かぶ現代的な佇まい。
      角丸は操作要素(--radius)と面(--radius-lg)の2段、影は接地(raised)と浮遊(floating)の2段 */
@@ -113,6 +126,9 @@
     --warn: #cfa14a;
     --warn-wash: #352c18;
 
+    --gender-male: #7fb3a1;
+    --gender-female: #c98fb3;
+
     --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 14px rgb(0 0 0 / 0.35);
     --shadow-floating: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 36px rgb(0 0 0 / 0.5);
 
@@ -139,6 +155,8 @@
   --danger-wash: #f0ddd6;
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
+  --gender-male: #3e6b5c;
+  --gender-female: #7a4a68;
   --shadow-raised:
     0 1px 2px rgb(33 29 22 / 0.08), 0 4px 12px rgb(33 29 22 / 0.07);
   --shadow-floating:
@@ -164,6 +182,8 @@
   --danger-wash: #35231e;
   --warn: #cfa14a;
   --warn-wash: #352c18;
+  --gender-male: #7fb3a1;
+  --gender-female: #c98fb3;
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 14px rgb(0 0 0 / 0.35);
   --shadow-floating: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 36px rgb(0 0 0 / 0.5);
   color-scheme: dark;

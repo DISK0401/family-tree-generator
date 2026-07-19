@@ -13,6 +13,7 @@ import {
   detectFileFormat,
   downloadBytes,
   downloadText,
+  formatExportTimestamp,
   readFileAsBytes,
 } from '../features/import-export/fileIO'
 import './ImportExportControl.css'
@@ -186,9 +187,12 @@ export function ImportExportControl() {
   }
 
   function handleExport() {
+    // ファイル名にタイムスタンプを付与し、複数回エクスポートしても上書きされないようにする(design.md D10)
+    const timestamp = formatExportTimestamp()
+
     if (exportFormat === 'json') {
       const text = exportFamilyTreeJsonText(document)
-      downloadText(text, 'family-tree.json', 'application/json')
+      downloadText(text, `family-tree-${timestamp}.json`, 'application/json')
       setExportWarnings([])
       return
     }
@@ -197,7 +201,7 @@ export function ImportExportControl() {
     const { text, warnings } = exportGedcom(document, version)
     downloadBytes(
       encodeGedcomTextToBytes(text),
-      version === '7.0' ? 'family-tree.ged' : 'family-tree-5.5.1.ged',
+      version === '7.0' ? `family-tree-${timestamp}.ged` : `family-tree-${timestamp}-5.5.1.ged`,
       'text/vnd.familysearch.gedcom',
     )
     setExportWarnings(warnings)

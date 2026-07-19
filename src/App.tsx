@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import './App.css'
 import './components/confirm-dialog.css'
 import { EmptyStateGuide } from './components/EmptyStateGuide'
@@ -42,6 +42,40 @@ function App() {
   const { pendingSample, confirmOverwrite, cancelOverwrite } =
     useSampleLoader(ready)
 
+  // 未確定の変更がある状態で選択を切り替えようとした場合の確認(design.md D3)。
+  // pendingSelectionは「移動先」を保持し、undefinedは「確認待ちなし」を表す
+  // (nullは「パネルを閉じる」という正当な移動先のため、undefinedと区別する)
+  const [isDirty, setIsDirty] = useState(false)
+  const [pendingSelection, setPendingSelection] = useState<string | null | undefined>(undefined)
+  const editFormRef = useRef<HTMLFormElement | null>(null)
+
+  function requestSelectionChange(next: string | null) {
+    if (isDirty) {
+      setPendingSelection(next)
+      return
+    }
+    setSelectedPersonId(next)
+  }
+
+  function cancelPendingSelection() {
+    setPendingSelection(undefined)
+  }
+
+  function discardAndMove() {
+    if (pendingSelection === undefined) return
+    setIsDirty(false)
+    setSelectedPersonId(pendingSelection)
+    setPendingSelection(undefined)
+  }
+
+  function saveAndMove() {
+    if (pendingSelection === undefined) return
+    editFormRef.current?.requestSubmit()
+    setIsDirty(false)
+    setSelectedPersonId(pendingSelection)
+    setPendingSelection(undefined)
+  }
+
   return (
     <div className="app-frame">
       <header className="app-header">
@@ -63,7 +97,7 @@ function App() {
         {ready && !empty ? (
           <FamilyTreeCanvas
             selectedPersonId={selectedPersonId}
-            onSelectPerson={setSelectedPersonId}
+            onSelectPerson={requestSelectionChange}
           />
         ) : null}
       </main>
@@ -96,6 +130,41 @@ function App() {
           </div>
         </div>
       ) : null}
+      {pendingSelection !== undefined ? (
+        <div className="confirm-dialog-overlay">
+          <div
+            className="confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="unsaved-changes-title"
+          >
+            <h2 id="unsaved-changes-title">保存されていない変更があります</h2>
+            <p>
+              人物情報の変更が確定されていません。このまま移動すると変更は失われます。
+            </p>
+            <div className="confirm-dialog-actions">
+              <button type="button" onClick={cancelPendingSelection}>
+                編集を続ける
+              </button>
+              <button
+                type="button"
+                className="confirm-dialog-danger-button"
+                onClick={discardAndMove}
+              >
+                変更を破棄して移動する
+              </button>
+              <button
+                type="button"
+                className="confirm-dialog-primary-button"
+                autoFocus
+                onClick={saveAndMove}
+              >
+                保存して移動する
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <aside
         className="app-panel"
         aria-label="編集パネル"
@@ -104,8 +173,13 @@ function App() {
         {selectedPersonId ? (
           <PersonPanel
             personId={selectedPersonId}
-            onDeleted={() => setSelectedPersonId(null)}
-            onClose={() => setSelectedPersonId(null)}
+            onDeleted={() => {
+              setIsDirty(false)
+              setSelectedPersonId(null)
+            }}
+            onClose={() => requestSelectionChange(null)}
+            onDirtyChange={setIsDirty}
+            editFormRef={editFormRef}
           />
         ) : null}
       </aside>

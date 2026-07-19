@@ -81,3 +81,14 @@
 .confirm-dialog-actions .confirm-dialog-danger-button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 85%, black);
 }
+
+/* 推奨アクション(データを失わない選択肢)を「藍」で強調する */
+.confirm-dialog-actions .confirm-dialog-primary-button {
+  border: 1px solid var(--ai);
+  background: var(--ai);
+  color: var(--paper);
+}
+
+.confirm-dialog-actions .confirm-dialog-primary-button:hover:not(:disabled) {
+  background: var(--ai-strong);
+}

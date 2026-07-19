@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type RefObject } from 'react'
 import { addChild, addParent, addSpouse, updatePerson } from '../domain/commands'
 import { displayName } from '../domain/helpers'
 import type { Person, PersonId, TreeDocument } from '../domain/types'
@@ -34,6 +34,10 @@ interface PersonPanelProps {
   personId: PersonId
   onDeleted: () => void
   onClose: () => void
+  /** 未確定の変更(ダーティ状態)を親へ通知する(design.md D3) */
+  onDirtyChange?: (isDirty: boolean) => void
+  /** 親から`requestSubmit()`で確定操作をプログラム的に実行できるようにする(design.md D3) */
+  editFormRef?: RefObject<HTMLFormElement | null>
 }
 
 /**
@@ -41,7 +45,7 @@ interface PersonPanelProps {
  * 「図の上で家族を育てる」操作モデル(design.md D7)。フォームはこのパネル内で
  * 完結させ、モーダルで作業を中断させない。
  */
-export function PersonPanel({ personId, onDeleted, onClose }: PersonPanelProps) {
+export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editFormRef }: PersonPanelProps) {
   const apply = useTreeStore((s) => s.apply)
   const person = useTreeStore((s) => s.document.persons[personId])
   const [openAction, setOpenAction] = useState<RelationAction | null>(null)
@@ -131,7 +135,13 @@ export function PersonPanel({ personId, onDeleted, onClose }: PersonPanelProps) 
         </form>
       )}
 
-      <PersonEditForm key={personId} person={person} onSave={handleSave} />
+      <PersonEditForm
+        key={personId}
+        person={person}
+        onSave={handleSave}
+        onDirtyChange={onDirtyChange}
+        formRef={editFormRef}
+      />
 
       <PedigreeEditor personId={personId} />
 

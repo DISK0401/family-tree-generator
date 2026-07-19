@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent, type RefObject } from 'react'
 import type { FuzzyDate, Gender, Person } from '../domain/types'
 import { PersonNameFields } from './PersonNameFields'
 import { WarekiDateInput } from './WarekiDateInput'
@@ -7,6 +7,10 @@ import './PersonEditForm.css'
 interface PersonEditFormProps {
   person: Person
   onSave: (patch: Partial<Omit<Person, 'id'>>) => void
+  /** 未確定の変更(ダーティ状態)を親へ通知する(design.md D3) */
+  onDirtyChange?: (isDirty: boolean) => void
+  /** 親から`requestSubmit()`でプログラム的に確定操作を実行できるようにする(design.md D3「保存して移動する」用) */
+  formRef?: RefObject<HTMLFormElement | null>
 }
 
 const GENDER_LABEL: Record<Gender, string> = {
@@ -15,11 +19,17 @@ const GENDER_LABEL: Record<Gender, string> = {
   unknown: '不明',
 }
 
+function fuzzyDateEqual(a: FuzzyDate | undefined, b: FuzzyDate | undefined): boolean {
+  if (a === undefined && b === undefined) return true
+  if (a === undefined || b === undefined) return false
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 /**
  * 人物情報の編集フォーム(氏名・ふりがな・性別・生没イベント・メモ)。
  * 変更は「確定」操作でまとめて反映する(spec tree-editor)。
  */
-export function PersonEditForm({ person, onSave }: PersonEditFormProps) {
+export function PersonEditForm({ person, onSave, onDirtyChange, formRef }: PersonEditFormProps) {
   const [surname, setSurname] = useState(person.name.surname ?? '')
   const [given, setGiven] = useState(person.name.given ?? '')
   const [surnameKana, setSurnameKana] = useState(person.name.surnameKana ?? '')
@@ -34,6 +44,22 @@ export function PersonEditForm({ person, onSave }: PersonEditFormProps) {
   const birthPlaceId = useId()
   const deathPlaceId = useId()
   const noteId = useId()
+
+  useEffect(() => {
+    const isDirty =
+      surname !== (person.name.surname ?? '') ||
+      given !== (person.name.given ?? '') ||
+      surnameKana !== (person.name.surnameKana ?? '') ||
+      givenKana !== (person.name.givenKana ?? '') ||
+      gender !== person.gender ||
+      !fuzzyDateEqual(birthDate, person.birth?.date) ||
+      birthPlace !== (person.birth?.place ?? '') ||
+      !fuzzyDateEqual(deathDate, person.death?.date) ||
+      deathPlace !== (person.death?.place ?? '') ||
+      note !== (person.note ?? '')
+    onDirtyChange?.(isDirty)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surname, given, surnameKana, givenKana, gender, birthDate, birthPlace, deathDate, deathPlace, note, person])
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -58,7 +84,7 @@ export function PersonEditForm({ person, onSave }: PersonEditFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="person-edit-form">
+    <form ref={formRef} onSubmit={handleSubmit} className="person-edit-form">
       <PersonNameFields
         surname={surname}
         given={given}

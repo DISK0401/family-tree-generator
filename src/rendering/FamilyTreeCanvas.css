@@ -20,8 +20,8 @@
  * 造形は「机上に浮かぶ紙のカード」: 角丸+多層の柔らかい影+ホバーで浮き上がる。
  */
 .tree-card {
-  box-sizing: border-box;
   position: relative;
+  box-sizing: border-box;
   /* setCardInnerHtmlCreator使用時はfamily-chart側のカードサイズCSSが適用されないため、
      コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
   width: var(--tree-card-w, 104px);
@@ -41,6 +41,32 @@
     border-color 0.15s ease,
     box-shadow 0.15s ease,
     translate 0.15s ease;
+}
+
+/* 折りたたみ時、この人物の先に隠れている人数を示すバッジ(design.md D6) */
+/* クリックすると、隠れている人物側へ視点を追従させる(design.md リスク
+   「養子縁組を持つ人物からもう一方の親族側へ戻れない」への対応) */
+.tree-card-hidden-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--ai);
+  color: var(--paper);
+  font-family: var(--font-gothic);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--paper-raised);
+  cursor: pointer;
+}
+
+.tree-card-hidden-badge:hover {
+  background: var(--ai-strong);
 }
 
 .tree-card:hover {
@@ -71,7 +97,7 @@
   background: color-mix(in srgb, var(--paper-raised) 55%, var(--paper-sunken));
 }
 
-/* 選択状態のみを朱で表す(性別による色分けはしない。design.md D6 / Fableレビュー反映) */
+/* 選択状態は朱で表す(性別インジケーターとは別配色。design.md D7) */
 .tree-card.selected {
   border-color: var(--shu);
   border-width: 2px;
@@ -100,6 +126,34 @@
   font-size: var(--text-md);
   letter-spacing: 0.15em;
   color: var(--ink);
+}
+
+/*
+ * 性別インジケーター(design.md D7)。色のみに依存せず形状でも判別できるよう、
+ * 男=四角・女=丸・不明=破線ひし形(推測しないことを示す)を使い分ける。
+ * 選択強調の「朱」とは別トークン(--gender-male/--gender-female)を使う
+ */
+.tree-card-gender {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  width: 10px;
+  height: 10px;
+}
+
+.tree-card-gender-male {
+  background: var(--gender-male);
+}
+
+.tree-card-gender-female {
+  background: var(--gender-female);
+  border-radius: 50%;
+}
+
+.tree-card-gender-unknown {
+  background: transparent;
+  border: 1.5px dashed var(--ink-faint);
+  transform: rotate(45deg);
 }
 
 .tree-card-deceased-mark {
@@ -135,14 +189,35 @@
   filter: drop-shadow(0 3px 0 var(--line-strong));
 }
 
-/* 凡例・ズームは地図アプリの流儀で「図の上に浮かぶ操作面」として描く(半透明+ぼかし+浮遊影) */
-.tree-legend {
+/* 全体表示モード(design.md D5)の仮想ルートと、その子(各家系の根)を結ぶ線は実在の
+   関係ではないため非表示にする。display:noneではなくvisibilityにするのはD3のデータ結合を
+   壊さないため(cloneNode等と同様、ノードそのものはDOMに残す必要がある) */
+.tree-canvas-root path.link.virtual-root-link {
+  visibility: hidden;
+}
+
+/* 全体表示モードの仮想ルート自身のカードは、レイアウト計算のためだけに存在する実体のない
+   ノードのため、見た目に何も表示しない */
+.tree-card-virtual-root {
+  visibility: hidden;
+}
+
+/* 全体表示トグル・凡例をまとめて1つの縦積みブロックとして配置し、互いに重ならないようにする */
+.tree-corner-panel {
   /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
      タップ/クリックを奪われるため、明示的なz-indexが必須 */
   z-index: 10;
   position: absolute;
   left: var(--space-3);
   bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* 凡例・ズームは地図アプリの流儀で「図の上に浮かぶ操作面」として描く(半透明+ぼかし+浮遊影) */
+.tree-legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -174,6 +249,15 @@
   border-top-style: dashed;
 }
 
+/* 性別インジケーターの凡例。カード上のtree-card-gender-*と同じ形状・色を、
+   カード用の position:absolute は継がずにここでは静的なスウォッチとして表示する */
+.tree-legend-gender-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
 /* カードの故人マーカーと同じ描画 */
 .tree-legend-dot {
   box-sizing: border-box;
@@ -190,6 +274,27 @@
   padding-top: var(--space-1);
   border-top: 1px solid var(--line);
   color: var(--ink-faint);
+}
+
+.tree-show-all-toggle {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.tree-show-all-toggle[aria-pressed='true'] {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  border-color: var(--ai);
+}
+
+.tree-show-all-toggle:hover {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
 }
 
 .tree-zoom-controls {

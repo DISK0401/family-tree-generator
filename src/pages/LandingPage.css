@@ -18,10 +18,12 @@
   position: sticky;
   top: 0;
   z-index: 5;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-5);
+  min-height: var(--header-min-height);
+  padding: var(--header-padding-y) var(--header-padding-x);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);
