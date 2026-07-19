@@ -178,7 +178,11 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
     // O(人数^2)になるため、直前に使った`store.getTree()`の参照が変わっていない間は使い回す
     let hiddenCountsCache: { tree: unknown; counts: Map<string, HiddenNeighborInfo> } | null = null
     function getHiddenCounts(): Map<string, HiddenNeighborInfo> {
-      if (showAllRef.current) return new Map()
+      // 全体表示モードでも、養子縁組など複数の親を持つ人物は依然として一方の親側しか
+      // 同時に描画できない(family-chartは1人につき`rels.parents`を1組しか持てないため、
+      // どのmain_idを選んでも解消できない構造的制約)。バッジを一律非表示にすると、
+      // その「なお隠れている人物」の存在自体に気づく手段が無くなってしまうため、
+      // 全体表示モード中も同じロジックでバッジを計算する(design.md D6)
       const tree = chart.store.getTree()
       if (hiddenCountsCache && hiddenCountsCache.tree === tree) return hiddenCountsCache.counts
       const visibleIds = new Set(
