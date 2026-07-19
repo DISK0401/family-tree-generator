@@ -3,6 +3,8 @@ import {
   DEFAULT_DISPLAY_SETTINGS,
   loadDisplaySettings,
   saveDisplaySettings,
+  type CalendarMode,
+  type CardFieldVisibility,
   type DateGranularity,
   type DisplaySettings,
 } from './display-settings'
@@ -14,6 +16,18 @@ import {
 export interface DisplaySettingsStoreState extends DisplaySettings {
   setBirthDateGranularity: (granularity: DateGranularity) => void
   setDeathDateGranularity: (granularity: DateGranularity) => void
+  setCalendarMode: (mode: CalendarMode) => void
+  /** カード表示項目を1件だけオン/オフする(design.md D8) */
+  setVisibleCardField: (field: keyof CardFieldVisibility, value: boolean) => void
+}
+
+function currentSettings(state: DisplaySettingsStoreState): DisplaySettings {
+  return {
+    birthDateGranularity: state.birthDateGranularity,
+    deathDateGranularity: state.deathDateGranularity,
+    calendarMode: state.calendarMode,
+    visibleCardFields: state.visibleCardFields,
+  }
 }
 
 export const useDisplaySettingsStore = create<DisplaySettingsStoreState>((set, get) => ({
@@ -21,11 +35,22 @@ export const useDisplaySettingsStore = create<DisplaySettingsStoreState>((set, g
 
   setBirthDateGranularity: (birthDateGranularity) => {
     set({ birthDateGranularity })
-    saveDisplaySettings({ birthDateGranularity, deathDateGranularity: get().deathDateGranularity })
+    saveDisplaySettings({ ...currentSettings(get()), birthDateGranularity })
   },
 
   setDeathDateGranularity: (deathDateGranularity) => {
     set({ deathDateGranularity })
-    saveDisplaySettings({ birthDateGranularity: get().birthDateGranularity, deathDateGranularity })
+    saveDisplaySettings({ ...currentSettings(get()), deathDateGranularity })
+  },
+
+  setCalendarMode: (calendarMode) => {
+    set({ calendarMode })
+    saveDisplaySettings({ ...currentSettings(get()), calendarMode })
+  },
+
+  setVisibleCardField: (field, value) => {
+    const visibleCardFields = { ...get().visibleCardFields, [field]: value }
+    set({ visibleCardFields })
+    saveDisplaySettings({ ...currentSettings(get()), visibleCardFields })
   },
 }))
