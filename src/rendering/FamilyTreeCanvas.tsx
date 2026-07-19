@@ -31,6 +31,9 @@ type SortSpousesFn = Parameters<ChartInstance['setSortSpousesFunction']>[0]
 const CARD_WIDTH = 104
 const CARD_HEIGHT = 116
 
+// 婚姻線ラベル(design.md D9)を線の真上ではなく少し上に浮かせるためのオフセット(px)
+const MARRIAGE_LABEL_Y_OFFSET = 8
+
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
   onSelectPerson: (personId: string | null) => void
@@ -150,7 +153,8 @@ function renderMarriageLinkLabels(
     text.setAttribute('data-marriage-label', '1')
     text.setAttribute('class', 'tree-marriage-label')
     text.setAttribute('x', String(midpoint.x))
-    text.setAttribute('y', String(midpoint.y))
+    // 線の真上に重なると読みにくいため、線より少し上に浮かせて表示する
+    text.setAttribute('y', String(midpoint.y - MARRIAGE_LABEL_Y_OFFSET))
     text.textContent = label
     path.parentElement?.appendChild(text)
   })
