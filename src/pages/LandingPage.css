@@ -41,8 +41,11 @@
   text-decoration: none;
   color: var(--ai);
   border: 1px solid var(--ai);
-  border-radius: var(--radius);
+  border-radius: 999px;
   padding: var(--space-2) var(--space-4);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .landing-header-app-link:hover {
@@ -79,6 +82,7 @@
   margin-top: var(--space-6);
 }
 
+/* 主要CTAはピル型: 「登録不要ですぐ始められる」軽さを形でも示す */
 .landing-cta {
   display: inline-block;
   padding: var(--space-3) var(--space-6);
@@ -86,13 +90,19 @@
   color: var(--paper);
   text-decoration: none;
   font-size: var(--text-lg);
-  border-radius: var(--radius);
+  border-radius: 999px;
   border: 1px solid var(--ai);
+  box-shadow: var(--shadow-raised);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .landing-cta:hover {
   background: var(--ai-strong);
   border-color: var(--ai-strong);
+  box-shadow: var(--shadow-floating);
 }
 
 .landing-cta-secondary {
@@ -101,7 +111,8 @@
   color: var(--ai);
   text-decoration: none;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
 }
 
 .landing-cta-secondary:hover {
@@ -119,8 +130,8 @@
   padding: var(--space-4);
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-raised);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-floating);
 }
 
 /* ---- セクション共通 ---- */
@@ -158,7 +169,18 @@
   padding: var(--space-5);
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+  transition:
+    translate 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.feature-card:hover {
+  translate: 0 -2px;
+  box-shadow:
+    0 2px 4px rgb(33 29 22 / 0.08),
+    0 8px 20px rgb(33 29 22 / 0.12);
 }
 
 .feature-card-head {
@@ -306,7 +328,7 @@
   padding: var(--space-5);
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-raised);
 }
 

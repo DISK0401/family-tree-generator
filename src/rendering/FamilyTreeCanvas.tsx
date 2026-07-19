@@ -27,8 +27,8 @@ type SortSpousesFn = Parameters<ChartInstance['setSortSpousesFunction']>[0]
 // カード寸法。setCardHtml()にsetCardInnerHtmlCreatorを渡すとfamily-chart側の
 // カードサイズCSS(.f3 div.card-rect 等)は適用されないため、ここで定義した値を
 // setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる
-const CARD_WIDTH = 96
-const CARD_HEIGHT = 108
+const CARD_WIDTH = 104
+const CARD_HEIGHT = 116
 
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
@@ -123,7 +123,10 @@ function escapeHtml(value: string): string {
  * TreeDocumentの変更を購読し、toFamilyChartDataで射影した結果のみで再描画する
  * (family-chart側のデータを保存・編集の正本にしない。design.md D1/D2)。
  */
-export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTreeCanvasProps) {
+export function FamilyTreeCanvas({
+  selectedPersonId,
+  onSelectPerson,
+}: FamilyTreeCanvasProps) {
   const document = useTreeStore((s) => s.document)
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<ChartInstance | null>(null)
@@ -240,6 +243,7 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       // 選択状態は朱で表現する(朱=選択の一意性を保つため、他の用途に流用しない)。
       // 性別インジケーターは朱と別配色のトークンを使う(design.md D7)
       const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
+      const deceasedClass = person.deceased ? ' deceased' : ''
       const years = [
         formatDateForDisplay(person.birthDate, birthGranularityRef.current),
         formatDateForDisplay(person.deathDate, deathGranularityRef.current),
@@ -248,12 +252,14 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         .join(' – ')
       const ageLabel =
         person.age !== undefined ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)` : ''
+      // 故人は伝統的な系譜記法にならい名の下に「†」を付す(カードのマーカー色と対応)
+      const deceasedMark = person.deceased ? '<span class="tree-card-deceased-mark">†</span>' : ''
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
       // どちらか一方しかない場合は単一列にフォールバックする
       const nameHtml =
         person.surname && person.given
-          ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}</div>`
-          : `<div class="tree-card-given">${escapeHtml(person.displayName)}</div>`
+          ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}${deceasedMark}</div>`
+          : `<div class="tree-card-given">${escapeHtml(person.displayName)}${deceasedMark}</div>`
       // 折りたたみ表示時、この人物の先に隠れている人数をバッジで示す(design.md D6)。
       // 全体表示モード中は表示しない
       const hidden = getHiddenCounts().get(person.personId)
@@ -266,7 +272,7 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         person.gender === 'M' ? 'tree-card-gender-male' : person.gender === 'F' ? 'tree-card-gender-female' : 'tree-card-gender-unknown'
       const genderTitle = person.gender === 'M' ? '男' : person.gender === 'F' ? '女' : '性別不明'
       const genderHtml = `<div class="tree-card-gender ${genderClass}" title="${genderTitle}"></div>`
-      return `<div class="tree-card${selectedClass}">
+      return `<div class="tree-card${selectedClass}${deceasedClass}">
         ${genderHtml}
         ${badgeHtml}
         <div class="tree-card-name-row">${nameHtml}</div>
@@ -341,7 +347,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   return (
     <div
       className="tree-canvas-wrapper"
-      style={{ ['--tree-card-w' as string]: `${CARD_WIDTH}px`, ['--tree-card-h' as string]: `${CARD_HEIGHT}px` }}
+      style={{
+        ['--tree-card-w' as string]: `${CARD_WIDTH}px`,
+        ['--tree-card-h' as string]: `${CARD_HEIGHT}px`,
+      }}
     >
       <div ref={containerRef} className="f3 tree-canvas-root" />
       <div className="tree-corner-panel">
@@ -373,6 +382,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
           <div className="tree-legend-item">
             <span className="tree-legend-gender-swatch tree-card-gender-unknown" />
             <span>不明</span>
+          </div>
+          <div className="tree-legend-item">
+            <span className="tree-legend-dot" />
+            <span>故人(†)</span>
           </div>
           <p className="tree-legend-hint">カードを選ぶと編集できます</p>
         </div>

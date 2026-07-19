@@ -18,7 +18,7 @@ import {
 function makeDatum(id: string, overrides: Partial<FamilyChartDatum['data']> = {}): FamilyChartDatum {
   return {
     id,
-    data: { personId: id, gender: 'U', displayName: id, ...overrides },
+    data: { personId: id, gender: 'U', displayName: id, deceased: false, ...overrides },
     rels: {},
   }
 }
@@ -357,7 +357,7 @@ describe('sortSpousesByMarriageDate', () => {
 
     const datum: FamilyChartDatum = {
       id: eiichi.personId,
-      data: { personId: eiichi.personId, gender: 'M', displayName: '栄一' },
+      data: { personId: eiichi.personId, gender: 'M', displayName: '栄一', deceased: false },
       rels: { spouses: [kaneko.spouseId, chiyo.spouseId] },
     }
     sortSpousesByMarriageDate(doc, datum)
@@ -375,7 +375,7 @@ describe('sortSpousesByMarriageDate', () => {
 
     const datum: FamilyChartDatum = {
       id: a.personId,
-      data: { personId: a.personId, gender: 'M', displayName: 'A' },
+      data: { personId: a.personId, gender: 'M', displayName: 'A', deceased: false },
       rels: { spouses: [s1.spouseId, s2.spouseId] },
     }
     sortSpousesByMarriageDate(doc, datum)

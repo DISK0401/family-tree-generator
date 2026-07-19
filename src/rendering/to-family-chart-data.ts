@@ -30,6 +30,8 @@ export interface FamilyChartCardData {
   deathDate?: CalendarDate
   /** 現年齢(故人は没年齢)。生没年月日が年のみしか判明していない場合はundefined(design.md D8) */
   age?: number
+  /** 没の記録(年不明でも)があれば故人として描く。カードのマーカー・†表示に使う */
+  deceased: boolean
   /** この人物の主たる親子線(rels.parents)に対応する続柄種別。findRootAncestorの祖先方向判定に使う。
    * 系線のスタイル分岐は人物単位のこの値ではなく、辺(エッジ)単位の`buildPedigreeByEdge`を使う
    * (design.md リスク「family-chartの表現力限界」: 非主たる家族の辺も描画されうるため) */
@@ -84,7 +86,10 @@ export function findPrimaryParentFamily(doc: TreeDocument, childId: PersonId): F
  * 親をたどる際は`findPrimaryParentFamily`と同じ優先順位(非実子を優先)を用いるため、
  * 養子縁組を含む人物を選択すると養親側の祖先へたどり着く(design.md D2)。
  */
-export function findRootAncestor(doc: TreeDocument, personId: PersonId): PersonId {
+export function findRootAncestor(
+  doc: TreeDocument,
+  personId: PersonId,
+): PersonId {
   let current = personId
   const visited = new Set<PersonId>([current])
   for (;;) {
@@ -339,6 +344,7 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
         birthDate: person.birth?.date?.date,
         deathDate: person.death?.date?.date,
         age: computeAge(person),
+        deceased: person.death !== undefined,
         pedigree: pedigreeByChild.get(person.id),
       },
       rels: {
@@ -410,7 +416,7 @@ export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[]
   if (roots.length === 0) return persons
   const virtualRoot: FamilyChartDatum = {
     id: FULL_VIEW_ROOT_ID,
-    data: { personId: FULL_VIEW_ROOT_ID, gender: 'U', displayName: '' },
+    data: { personId: FULL_VIEW_ROOT_ID, gender: 'U', displayName: '', deceased: false },
     rels: { children: roots },
   }
   return [...persons, ...stubs, virtualRoot]

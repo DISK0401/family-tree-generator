@@ -19,7 +19,7 @@
   min-height: var(--header-min-height);
   padding: var(--header-padding-y) var(--header-padding-x);
   border-bottom: 1px solid var(--line);
-  background: var(--paper);
+  background: var(--paper-raised);
 }
 
 .app-title {
@@ -33,10 +33,15 @@
   gap: var(--space-3);
 }
 
+/* 保存状態はピル型のステータスバッジとして常時掲示する(「この端末にのみ保存」が製品の約束のため) */
 .app-header-status {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--ink-soft);
   margin: 0;
+  padding: 2px var(--space-3);
+  background: var(--paper-sunken);
+  border: 1px solid var(--line);
+  border-radius: 999px;
 }
 
 .app-blocked-message {
@@ -54,7 +59,14 @@
   grid-area: canvas;
   position: relative;
   overflow: hidden;
-  background: var(--paper);
+  /* 作図ツールの流儀のドット方眼: 「図を描く場」であることを地の質感で示す。
+     ドットは系線より十分薄く、印刷的な紙の世界観を壊さない濃度に留める */
+  background-color: var(--paper);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--line-strong) 45%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 24px 24px;
 }
 
 .app-panel {
@@ -62,6 +74,7 @@
   width: min(360px, 90vw);
   border-left: 1px solid var(--line);
   background: var(--paper-raised);
+  box-shadow: -4px 0 16px rgb(33 29 22 / 0.05);
   overflow-y: auto;
 }
 
