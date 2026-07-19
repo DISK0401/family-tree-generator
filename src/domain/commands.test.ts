@@ -9,6 +9,7 @@ import {
   computeRemovalImpact,
   removePerson,
   setChildPedigree,
+  setFamilyEvent,
 } from './commands'
 import { createTreeDocument } from './helpers'
 import type { TreeDocument } from './types'
@@ -124,6 +125,46 @@ describe('addFamilyEvent: 復縁', () => {
       'marriage',
       'divorce',
       'marriage',
+    ])
+  })
+})
+
+describe('setFamilyEvent', () => {
+  it('該当種別のイベントがなければ新規追加する', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    const d = setFamilyEvent(doc2, familyId, 'marriage', { type: 'marriage', place: '東京' })
+    expect(d.families[familyId].events).toEqual([{ type: 'marriage', place: '東京' }])
+  })
+
+  it('該当種別の最初の1件を置換する', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    let d = addFamilyEvent(doc2, familyId, { type: 'marriage', place: '旧住所' })
+    d = setFamilyEvent(d, familyId, 'marriage', { type: 'marriage', place: '新住所' })
+    expect(d.families[familyId].events).toEqual([{ type: 'marriage', place: '新住所' }])
+  })
+
+  it('undefinedを指定すると該当種別のイベントを削除する(他の種別は影響を受けない)', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    let d = addFamilyEvent(doc2, familyId, { type: 'marriage' })
+    d = addFamilyEvent(d, familyId, { type: 'divorce' })
+    d = setFamilyEvent(d, familyId, 'marriage', undefined)
+    expect(d.families[familyId].events).toEqual([{ type: 'divorce' }])
+  })
+
+  it('復縁(3件以上のイベント)がある場合、最初の1件のみを対象にしそれ以外は保持する', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    let d = addFamilyEvent(doc2, familyId, { type: 'marriage', place: '1回目' })
+    d = addFamilyEvent(d, familyId, { type: 'divorce' })
+    d = addFamilyEvent(d, familyId, { type: 'marriage', place: '2回目' })
+    d = setFamilyEvent(d, familyId, 'marriage', { type: 'marriage', place: '1回目修正' })
+    expect(d.families[familyId].events).toEqual([
+      { type: 'marriage', place: '1回目修正' },
+      { type: 'divorce' },
+      { type: 'marriage', place: '2回目' },
     ])
   })
 })
