@@ -267,8 +267,13 @@ export function FamilyTreeCanvas({
         fields.age && person.age !== undefined
           ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)`
           : ''
-      // 故人は伝統的な系譜記法にならい名の下に「†」を付す(カードのマーカー色と対応)
-      const deceasedMark = person.deceased ? '<span class="tree-card-deceased-mark">†</span>' : ''
+      // 故人は伝統的な系譜記法にならい「†」を付す(カードのマーカー色と対応)。
+      // 名前の縦書き列の中に文字として埋め込むと、ふりがな・生没地等の追加項目で
+      // 列の縦方向スペースが狭まった際に、†が意図しない別列へ折り返されて名前の
+      // 前に浮いて見える不具合が起きるため、名前列とは独立した固定位置バッジとして描く
+      const deceasedMarkHtml = person.deceased
+        ? '<div class="tree-card-deceased-mark" title="故人">†</div>'
+        : ''
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
       // 表示対象かつデータが存在する方だけを対象にし、両方非表示の場合は名前欄を空にする
       // (データはあるのに未入力と誤解させないため、未入力時のフォールバック文言は出さない。design.md D8)
@@ -276,11 +281,11 @@ export function FamilyTreeCanvas({
       const givenText = fields.given ? person.given : undefined
       const nameHtml =
         surnameText && givenText
-          ? `<div class="tree-card-surname">${escapeHtml(surnameText)}</div><div class="tree-card-given">${escapeHtml(givenText)}${deceasedMark}</div>`
+          ? `<div class="tree-card-surname">${escapeHtml(surnameText)}</div><div class="tree-card-given">${escapeHtml(givenText)}</div>`
           : surnameText
-            ? `<div class="tree-card-given">${escapeHtml(surnameText)}${deceasedMark}</div>`
+            ? `<div class="tree-card-given">${escapeHtml(surnameText)}</div>`
             : givenText
-              ? `<div class="tree-card-given">${escapeHtml(givenText)}${deceasedMark}</div>`
+              ? `<div class="tree-card-given">${escapeHtml(givenText)}</div>`
               : ''
       const kanaText = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : ''
       const kanaHtml = kanaText ? `<div class="tree-card-kana">${escapeHtml(kanaText)}</div>` : ''
@@ -304,6 +309,7 @@ export function FamilyTreeCanvas({
         : ''
       return `<div class="tree-card${selectedClass}${deceasedClass}">
         ${genderHtml}
+        ${deceasedMarkHtml}
         ${badgeHtml}
         ${kanaHtml}
         <div class="tree-card-name-row">${nameHtml}</div>

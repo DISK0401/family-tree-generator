@@ -156,10 +156,19 @@
   transform: rotate(45deg);
 }
 
+/*
+ * 故人マーカー。以前は氏名の縦書き列内に文字として埋め込んでいたが、ふりがな・
+ * 生没地等の追加表示項目で列の高さが狭まると意図しない列へ折り返され、名前の
+ * 前に浮いて見える不具合があったため、性別インジケーターと対になる固定位置の
+ * バッジとして独立させた(表示項目が何個有効でも位置が揺れない)
+ */
 .tree-card-deceased-mark {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
   font-size: var(--text-xs);
+  line-height: 1;
   color: var(--ink-faint);
-  margin-block-start: 2px;
 }
 
 /* 生没年は氏名に次いで重要な情報のため、横書きで常に読める大きさ・向きで表示する */
