@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, type KeyboardEvent } from 'react'
 import { setFamilyEvent } from '../domain/commands'
 import { displayName } from '../domain/helpers'
 import type { Family, FamilyEventType, FamilyId, LifeEvent, PersonId, TreeDocument } from '../domain/types'
@@ -29,6 +29,11 @@ interface EventFieldsProps {
  * 婚姻日・離婚日1組分の入力欄。ローカル状態で編集内容を保持し、フォーカスが外れた時点で
  * `setFamilyEvent`を適用する(spec tree-editor「即時反映(確定操作不要)」)。
  * `PersonEditForm`のような確定ボタン+離脱確認は設けない(design.md D1)。
+ * `WarekiDateInput`のヒント表示はキー入力のたびに更新されるローカルなプレビューに過ぎず、
+ * 実際にデータモデルへ反映される(=キャンバスの婚姻線ラベル等に現れる)のはこの`commit`が
+ * 走った時のみ。フォーカスを外さない操作(スクロールのみ等)では反映されないため、
+ * テキスト入力から明示的に確定したいという操作(Enterキー)にも反応できるようにする
+ * (`PersonEditForm`のEnter確定と同じ利用者体験に揃える)。
  * 呼び出し側が`event`の内容をkeyに含めてマウントすることで、保存後・undo/redo後の
  * 最新値への追従をエフェクトではなく再マウントで行う(react-hooks/set-state-in-effect対応)
  */
@@ -52,8 +57,14 @@ function EventFields({ familyId, type, label, event, extraCount }: EventFieldsPr
     )
   }
 
+  function handleKeyDown(e: KeyboardEvent<HTMLFieldSetElement>) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    commit()
+  }
+
   return (
-    <fieldset className="family-event-editor-event" onBlur={commit}>
+    <fieldset className="family-event-editor-event" onBlur={commit} onKeyDown={handleKeyDown}>
       <legend>{label}</legend>
       <WarekiDateInput label={label} hideLabel value={date} onChange={setDate} />
       <label htmlFor={placeId} className="family-event-editor-field">

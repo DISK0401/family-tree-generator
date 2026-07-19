@@ -33,6 +33,26 @@ describe('FamilyEventEditor: 婚姻日・離婚日の設定', () => {
     expect(marriage?.date?.date).toEqual({ year: 1975, month: 4, day: 1 })
   })
 
+  it('婚姻日を入力してEnterキーを押すと、フォーカスを外さなくてもデータモデルへ反映される', () => {
+    render(<FamilyEventEditor personId={personAId} />)
+    const input = screen.getByLabelText('婚姻日')
+    fireEvent.change(input, { target: { value: '20100401' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    const family = useTreeStore.getState().document.families[familyId]
+    const marriage = family.events.find((e) => e.type === 'marriage')
+    expect(marriage?.date?.date).toEqual({ year: 2010, month: 4, day: 1 })
+  })
+
+  it('入力してもフォーカスを外さずEnterも押さない間は反映されない(即時反映はblur/Enterが契機であることの確認)', () => {
+    render(<FamilyEventEditor personId={personAId} />)
+    const input = screen.getByLabelText('婚姻日')
+    fireEvent.change(input, { target: { value: '20100401' } })
+
+    const family = useTreeStore.getState().document.families[familyId]
+    expect(family.events.find((e) => e.type === 'marriage')).toBeUndefined()
+  })
+
   it('離婚日を入力してフォーカスを外すと反映される', () => {
     render(<FamilyEventEditor personId={personAId} />)
     const input = screen.getByLabelText('離婚日')
