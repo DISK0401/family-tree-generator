@@ -42,18 +42,21 @@
 
   /*
    * 書体 — 明朝は人名・見出し、ゴシックはUI操作系。
+   * 先頭は自己ホストのWebフォント(main.tsxで読み込み): Windowsの游明朝/游ゴシックが
+   * 細く貧相に描画される問題を避け、全OSで同一のレンダリングにする。
+   * 以降はWebフォント読み込み前(swap中)・読み込み失敗時のフォールバック。
    * --font-mincho は和文明朝フォントが1つも無い環境(Noto Serif CJK系未導入のLinux等)への
    * フォールバックとして和文ゴシックを挟んでからserifに落ちる。CJK非対応の欧文serifへ
    * フォールバックすると、writing-mode:vertical-rlのグリフが崩れて表示されるため、
    * 「明朝の字形が使えないなら可読なゴシックで表示する」を優先する
    */
   --font-mincho:
-    'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'Noto Serif CJK JP',
-    'Noto Serif JP', 'IPAMincho', 'IPAPMincho', 'IPAGothic', 'Noto Sans CJK JP',
-    'Noto Sans JP', sans-serif;
+    'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho',
+    'Noto Serif CJK JP', 'Noto Serif JP', 'IPAMincho', 'IPAPMincho',
+    'IPAGothic', 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
   --font-gothic:
-    'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic', 'Noto Sans CJK JP',
-    'Noto Sans JP', 'IPAGothic', system-ui, sans-serif;
+    'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'YuGothic',
+    'Noto Sans CJK JP', 'Noto Sans JP', 'IPAGothic', system-ui, sans-serif;
 
   /* タイプスケール(1rem = 16px) */
   --text-xs: 0.75rem;
@@ -73,10 +76,14 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  /* 造形 — 帳簿の直線的な佇まい。丸角は最小限 */
-  --radius: 2px;
+  /* 造形 — 紙のカードが机上に浮かぶ現代的な佇まい。
+     角丸は操作要素(--radius)と面(--radius-lg)の2段、影は接地(raised)と浮遊(floating)の2段 */
+  --radius: 6px;
+  --radius-lg: 12px;
   --shadow-raised:
-    0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+    0 1px 2px rgb(33 29 22 / 0.08), 0 4px 12px rgb(33 29 22 / 0.07);
+  --shadow-floating:
+    0 2px 4px rgb(33 29 22 / 0.08), 0 12px 32px rgb(33 29 22 / 0.16);
 
   color-scheme: light;
 }
@@ -106,7 +113,8 @@
     --warn: #cfa14a;
     --warn-wash: #352c18;
 
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 14px rgb(0 0 0 / 0.35);
+    --shadow-floating: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 36px rgb(0 0 0 / 0.5);
 
     color-scheme: dark;
   }
@@ -132,7 +140,9 @@
   --warn: #8a5a12;
   --warn-wash: #f1e6cd;
   --shadow-raised:
-    0 1px 2px rgb(33 29 22 / 0.14), 0 2px 8px rgb(33 29 22 / 0.08);
+    0 1px 2px rgb(33 29 22 / 0.08), 0 4px 12px rgb(33 29 22 / 0.07);
+  --shadow-floating:
+    0 2px 4px rgb(33 29 22 / 0.08), 0 12px 32px rgb(33 29 22 / 0.16);
   color-scheme: light;
 }
 
@@ -154,6 +164,7 @@
   --danger-wash: #35231e;
   --warn: #cfa14a;
   --warn-wash: #352c18;
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 10px rgb(0 0 0 / 0.35);
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 14px rgb(0 0 0 / 0.35);
+  --shadow-floating: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 36px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }

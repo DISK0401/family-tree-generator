@@ -2,7 +2,11 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef } from 'react'
 import { useTreeStore } from '../store/tree-store'
-import { findRootAncestor, toFamilyChartData, type FamilyChartDatum } from './to-family-chart-data'
+import {
+  findRootAncestor,
+  toFamilyChartData,
+  type FamilyChartDatum,
+} from './to-family-chart-data'
 import './FamilyTreeCanvas.css'
 
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
@@ -11,8 +15,8 @@ type ChartInstance = ReturnType<typeof f3.createChart>
 // カード寸法。setCardHtml()にsetCardInnerHtmlCreatorを渡すとfamily-chart側の
 // カードサイズCSS(.f3 div.card-rect 等)は適用されないため、ここで定義した値を
 // setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる
-const CARD_WIDTH = 96
-const CARD_HEIGHT = 108
+const CARD_WIDTH = 104
+const CARD_HEIGHT = 116
 
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
@@ -55,7 +59,8 @@ function markLinkStyles(container: HTMLElement): void {
     // 編集UIの選択肢(続柄セレクト)には養子以外の非実子種別もあるため、それらを選んでも
     // 実子と見分けがつかなくなる不整合を避ける
     const isNonBiological = nodes.some((n) => {
-      const pedigree = (n?.data as unknown as FamilyChartDatum | undefined)?.data.pedigree
+      const pedigree = (n?.data as unknown as FamilyChartDatum | undefined)
+        ?.data.pedigree
       return pedigree !== undefined && pedigree !== 'biological'
     })
     el.classList.toggle('adopted-link', isNonBiological)
@@ -78,7 +83,10 @@ function escapeHtml(value: string): string {
  * TreeDocumentの変更を購読し、toFamilyChartDataで射影した結果のみで再描画する
  * (family-chart側のデータを保存・編集の正本にしない。design.md D1/D2)。
  */
-export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTreeCanvasProps) {
+export function FamilyTreeCanvas({
+  selectedPersonId,
+  onSelectPerson,
+}: FamilyTreeCanvasProps) {
   const document = useTreeStore((s) => s.document)
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<ChartInstance | null>(null)
@@ -121,22 +129,33 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
       // 描画しない制約があるため、選択人物の最上位祖先へmain_idを追従させる
       // (選択人物自身をmain_idにすると、選択人物からさらに上の祖先の配偶者や
       // 傍系親族が今度は描画から漏れてしまうため。design.md リスク「family-chartの表現力限界」参照)
-      if (nextSelected) chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
+      if (nextSelected)
+        chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
       onSelectPersonRef.current(nextSelected)
     })
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
       const person = (d.data as unknown as FamilyChartDatum).data
       // 選択状態のみを朱で表現する。性別による色分けはしない
       // (朱=選択の一意性を保つため。伝統的な家系図も性別を色で区別しない)
-      const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
-      const years = [person.birthYear, person.deathYear].filter((y) => y !== undefined).join(' – ')
+      const selectedClass =
+        person.personId === selectedIdRef.current ? ' selected' : ''
+      const deceasedClass = person.deceased ? ' deceased' : ''
+      // 片方しか無い年は「1543 –」「– 1579」と描き、単独年が生年か没年か誤読されないようにする
+      const years =
+        person.birthYear !== undefined || person.deathYear !== undefined
+          ? `${person.birthYear ?? ''} – ${person.deathYear ?? ''}`.trim()
+          : ''
+      // 故人は伝統的な系譜記法にならい名の下に「†」を付す(カードのマーカー色と対応)
+      const deceasedMark = person.deceased
+        ? '<span class="tree-card-deceased-mark">†</span>'
+        : ''
       // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
       // どちらか一方しかない場合は単一列にフォールバックする
       const nameHtml =
         person.surname && person.given
-          ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}</div>`
-          : `<div class="tree-card-given">${escapeHtml(person.displayName)}</div>`
-      return `<div class="tree-card${selectedClass}">
+          ? `<div class="tree-card-surname">${escapeHtml(person.surname)}</div><div class="tree-card-given">${escapeHtml(person.given)}${deceasedMark}</div>`
+          : `<div class="tree-card-given">${escapeHtml(person.displayName)}${deceasedMark}</div>`
+      return `<div class="tree-card${selectedClass}${deceasedClass}">
         <div class="tree-card-name-row">${nameHtml}</div>
         ${years ? `<div class="tree-card-years">${escapeHtml(years)}</div>` : ''}
       </div>`
@@ -185,7 +204,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
   return (
     <div
       className="tree-canvas-wrapper"
-      style={{ ['--tree-card-w' as string]: `${CARD_WIDTH}px`, ['--tree-card-h' as string]: `${CARD_HEIGHT}px` }}
+      style={{
+        ['--tree-card-w' as string]: `${CARD_WIDTH}px`,
+        ['--tree-card-h' as string]: `${CARD_HEIGHT}px`,
+      }}
     >
       <div ref={containerRef} className="f3 tree-canvas-root" />
       <div className="tree-legend">
@@ -196,6 +218,10 @@ export function FamilyTreeCanvas({ selectedPersonId, onSelectPerson }: FamilyTre
         <div className="tree-legend-item">
           <span className="tree-legend-swatch adopted" />
           <span>養子・継子・里子・不明</span>
+        </div>
+        <div className="tree-legend-item">
+          <span className="tree-legend-dot" />
+          <span>故人(†)</span>
         </div>
         <p className="tree-legend-hint">カードを選ぶと編集できます</p>
       </div>
