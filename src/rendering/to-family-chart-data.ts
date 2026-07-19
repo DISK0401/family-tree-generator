@@ -382,9 +382,9 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
 /** 全体表示モード専用の仮想ルートのID。実在の人物IDと衝突しない固定文字列を使う */
 export const FULL_VIEW_ROOT_ID: PersonId = '__full-view-root__'
 
-/** 非主たる家族向けのスタブカードのIDを生成する(実在人物IDおよび仮想ルートIDと衝突しない形式) */
-function secondaryStubId(childId: PersonId, familyId: string): PersonId {
-  return `${childId}__secondary__${familyId}`
+/** 全体表示モード用スタブカードのIDを生成する(実在人物IDおよび仮想ルートIDと衝突しない形式) */
+function stubId(childId: PersonId, tag: string): PersonId {
+  return `${childId}__stub__${tag}`
 }
 
 /**
@@ -392,37 +392,78 @@ function secondaryStubId(childId: PersonId, familyId: string): PersonId {
  *
  * 実カードは`buildPersonDatums(doc, {primaryOnly: true})`で構築し、各人物の`rels.children`には
  * 主たる家族の子のみを含める。これにより実子孫の連鎖(子・孫…)は主たる家族の経路でのみ辿られ、
- * 二重連結が起きない。
+ * 二重連結が起きない。この実カード集合に対して、以下2種類の「スタブカード」(`rels`が空の、
+ * その人物の表示用複製)を必要な箇所にのみ挿入することで、重複カードを最小限に抑える。
  *
- * 実親・養親のように複数の親家族を持つ人物(例: 夏目漱石)については、非主たる家族ごとに
- * 「スタブカード」(`rels`が空の、その人物の表示用複製)を追加で生成し、非主たる家族の配偶者
- * (=もう一方の親)の`rels.children`にはこのスタブカードのIDを追加する。スタブカードは`rels`が
- * 空のため、family-chartはスタブからその先(子孫)を辿らない。よって「実子孫の連鎖的重複」を
- * 起こさずに、その人物自身だけをもう一方の家系の下にも登場させられる
+ * 1. **婚姻でつながる部分木の重複回避**: `computeFullViewRoots`は血縁でつながる範囲が独立した
+ *    始祖ごとに別々の根を返すため(例: 夫の実家の根と妻の実家の根)、両方の根を素朴に描画すると
+ *    夫婦とその子孫全員が両方の部分木に重複してしまう。これを避けるため、各根を`visit`で
+ *    深さ優先に辿りながら「既にどこかで描画済み(claimed)」な人物を`claim`で記録し、
+ *    2度目以降に子として現れた場合は実カードではなくスタブに差し替える(そこから先の子孫・
+ *    配偶者は最初に描画された側で既に表示されているため辿らない)。person自身が既に配偶者として
+ *    レイター描画(`setupSpouses`)されている場合も同様にclaimed扱いにする。これにより、
+ *    重複が必要になるのは「2つの血族の橋渡し役」1人だけ(実家側にスタブ1枚)で済む
+ * 2. **非主たる家族(D2)の重複**: 実親・養親のように複数の親家族を持つ人物は、非主たる家族の
+ *    配偶者(=もう一方の親)の`rels.children`にスタブを追加する(1と同じスタブ機構を流用)
+ *
+ * スタブカードは`rels`が空のため、family-chartはスタブからその先(子孫)を辿らない
  * (`personIdOf`はカード内部の`data.personId`を見るため、スタブは元人物と同じ人物として扱われる)。
  *
- * `computeFullViewRoots`が返す全ての根(主たる家族のみで連結成分を求めた場合の各成分の代表者)を
- * 子に持つ仮想ルート(`FULL_VIEW_ROOT_ID`)を1件追加する。これを`main_id`に指定すると、
- * family-chartは仮想ルートの子孫として全ての根を辿るため、通常は単一のmain_idからは同時に
- * 到達できない複数の家系を1つの図にまとめて描画できる。仮想ルート自身のカード・系線は
- * `FamilyTreeCanvas`側で非表示にする。
+ * `computeFullViewRoots`が返す全ての根を子に持つ仮想ルート(`FULL_VIEW_ROOT_ID`)を1件追加する。
+ * これを`main_id`に指定すると、family-chartは仮想ルートの子孫として全ての根を辿るため、通常は
+ * 単一のmain_idからは同時に到達できない複数の家系を1つの図にまとめて描画できる。仮想ルート
+ * 自身のカード・系線は`FamilyTreeCanvas`側で非表示にする。
  */
 export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
   const persons = buildPersonDatums(doc, { primaryOnly: true })
   const byId = new Map(persons.map((d) => [d.id, d]))
+  const roots = computeFullViewRoots(doc)
+  if (roots.length === 0) return persons
 
+  const { spousesOf } = buildPrimaryChildrenAndSpouses(doc)
   const stubs: FamilyChartDatum[] = []
+
+  function makeStub(childId: PersonId, tag: string): PersonId | undefined {
+    const childDatum = byId.get(childId)
+    if (!childDatum) return undefined
+    const id = stubId(childId, tag)
+    stubs.push({ id, data: { ...childDatum.data }, rels: {} })
+    return id
+  }
+
+  // 婚姻でつながる部分木の重複回避(上記1): 各根を深さ優先に辿り、既に描画済みの人物を
+  // スタブへ差し替える。配偶者もclaim済みにすることで、setupSpousesによるレイター描画分も考慮する
+  const claimed = new Set<PersonId>()
+  function claim(id: PersonId): void {
+    if (claimed.has(id)) return
+    claimed.add(id)
+    for (const spouseId of spousesOf.get(id) ?? []) claimed.add(spouseId)
+  }
+  function visit(personId: PersonId): void {
+    claim(personId)
+    const datum = byId.get(personId)
+    if (!datum) return
+    const children = datum.rels.children ?? []
+    const nextChildren: PersonId[] = []
+    for (const childId of children) {
+      if (claimed.has(childId)) {
+        const id = makeStub(childId, personId)
+        if (id) nextChildren.push(id)
+        continue
+      }
+      nextChildren.push(childId)
+      visit(childId)
+    }
+    datum.rels.children = nextChildren.length > 0 ? nextChildren : undefined
+  }
+  for (const rootId of roots) visit(rootId)
+
+  // 非主たる家族(D2)の重複(上記2)
   for (const family of Object.values(doc.families)) {
     for (const child of family.children) {
       if (findPrimaryParentFamily(doc, child.childId)?.id === family.id) continue // 主たる家族は上で反映済み
-      const childDatum = byId.get(child.childId)
-      if (!childDatum) continue
-      const id = secondaryStubId(child.childId, family.id)
-      stubs.push({
-        id,
-        data: { ...childDatum.data, pedigree: child.pedigree },
-        rels: {},
-      })
+      const id = makeStub(child.childId, family.id)
+      if (!id) continue
       for (const spouseId of family.spouseIds) {
         const parentDatum = byId.get(spouseId)
         if (!parentDatum) continue
@@ -431,8 +472,6 @@ export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[]
     }
   }
 
-  const roots = computeFullViewRoots(doc)
-  if (roots.length === 0) return persons
   const virtualRoot: FamilyChartDatum = {
     id: FULL_VIEW_ROOT_ID,
     data: { personId: FULL_VIEW_ROOT_ID, gender: 'U', displayName: '', deceased: false },
