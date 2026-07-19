@@ -172,6 +172,25 @@
   text-align: center;
 }
 
+/* ふりがな・生没地は表示設定でオンにした場合のみ現れる補助情報(design.md D8)。
+   カード寸法が限られるため、氏名・生没年より控えめな大きさで表示する */
+.tree-card-kana {
+  font-family: var(--font-gothic);
+  font-size: 0.5625rem;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.tree-card-places {
+  font-family: var(--font-gothic);
+  font-size: 0.5625rem;
+  color: var(--ink-faint);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tree-canvas-root path.link {
   stroke: var(--line-strong);
   stroke-width: 1.75px;

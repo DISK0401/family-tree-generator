@@ -29,6 +29,37 @@ function byId(data: ReturnType<typeof toFamilyChartData>, id: string) {
   return found
 }
 
+describe('toFamilyChartData: ふりがな・生没地の射影', () => {
+  it('ふりがな・出生地・没地がカードデータに反映される', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, {
+      name: { surname: '山田', given: '太郎', surnameKana: 'やまだ', givenKana: 'たろう' },
+      birth: { type: 'birth', place: '東京都' },
+      death: { type: 'death', place: '大阪府' },
+    })
+    doc = a.doc
+
+    const data = toFamilyChartData(doc)
+    const datum = byId(data, a.personId)
+    expect(datum.data.surnameKana).toBe('やまだ')
+    expect(datum.data.givenKana).toBe('たろう')
+    expect(datum.data.birthPlace).toBe('東京都')
+    expect(datum.data.deathPlace).toBe('大阪府')
+  })
+
+  it('未設定の場合はundefinedのままになる', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: '太郎' } })
+    doc = a.doc
+
+    const datum = byId(toFamilyChartData(doc), a.personId)
+    expect(datum.data.surnameKana).toBeUndefined()
+    expect(datum.data.givenKana).toBeUndefined()
+    expect(datum.data.birthPlace).toBeUndefined()
+    expect(datum.data.deathPlace).toBeUndefined()
+  })
+})
+
 describe('toFamilyChartData: 再婚', () => {
   it('同一人物の複数配偶者がspousesの和集合として射影される', () => {
     let doc = createTreeDocument()
