@@ -19,6 +19,7 @@ export interface DisplaySettingsStoreState extends DisplaySettings {
   setCalendarMode: (mode: CalendarMode) => void
   /** カード表示項目を1件だけオン/オフする(design.md D8) */
   setVisibleCardField: (field: keyof CardFieldVisibility, value: boolean) => void
+  setShowMarriageDateOnLink: (value: boolean) => void
 }
 
 function currentSettings(state: DisplaySettingsStoreState): DisplaySettings {
@@ -27,6 +28,7 @@ function currentSettings(state: DisplaySettingsStoreState): DisplaySettings {
     deathDateGranularity: state.deathDateGranularity,
     calendarMode: state.calendarMode,
     visibleCardFields: state.visibleCardFields,
+    showMarriageDateOnLink: state.showMarriageDateOnLink,
   }
 }
 
@@ -52,5 +54,10 @@ export const useDisplaySettingsStore = create<DisplaySettingsStoreState>((set, g
     const visibleCardFields = { ...get().visibleCardFields, [field]: value }
     set({ visibleCardFields })
     saveDisplaySettings({ ...currentSettings(get()), visibleCardFields })
+  },
+
+  setShowMarriageDateOnLink: (showMarriageDateOnLink) => {
+    set({ showMarriageDateOnLink })
+    saveDisplaySettings({ ...currentSettings(get()), showMarriageDateOnLink })
   },
 }))

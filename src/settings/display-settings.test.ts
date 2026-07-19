@@ -22,12 +22,14 @@ describe('display-settings', () => {
       deathDateGranularity: 'year-month',
       calendarMode: 'wareki',
       visibleCardFields: { ...DEFAULT_VISIBLE_CARD_FIELDS, furigana: true },
+      showMarriageDateOnLink: true,
     })
     expect(loadDisplaySettings()).toEqual({
       birthDateGranularity: 'year',
       deathDateGranularity: 'year-month',
       calendarMode: 'wareki',
       visibleCardFields: { ...DEFAULT_VISIBLE_CARD_FIELDS, furigana: true },
+      showMarriageDateOnLink: true,
     })
   })
 
@@ -54,7 +56,21 @@ describe('display-settings', () => {
       deathDateGranularity: 'full',
       calendarMode: 'gregorian',
       visibleCardFields: DEFAULT_VISIBLE_CARD_FIELDS,
+      showMarriageDateOnLink: false,
     })
+  })
+
+  it('showMarriageDateOnLinkが未保存・不正な場合はデフォルト値(false)にフォールバックする', () => {
+    localStorage.setItem(
+      'family-tree-generator:display-settings',
+      JSON.stringify({ birthDateGranularity: 'full', deathDateGranularity: 'full', showMarriageDateOnLink: 'yes' }),
+    )
+    expect(loadDisplaySettings().showMarriageDateOnLink).toBe(false)
+  })
+
+  it('showMarriageDateOnLinkを保存すると復元できる', () => {
+    saveDisplaySettings({ ...DEFAULT_DISPLAY_SETTINGS, showMarriageDateOnLink: true })
+    expect(loadDisplaySettings().showMarriageDateOnLink).toBe(true)
   })
 
   it('visibleCardFieldsは項目単位でフォールバックする(有効な項目は維持、不正・未保存の項目のみデフォルト値を補う)', () => {

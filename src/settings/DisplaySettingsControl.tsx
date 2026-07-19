@@ -36,10 +36,12 @@ export function DisplaySettingsControl() {
   const deathDateGranularity = useDisplaySettingsStore((s) => s.deathDateGranularity)
   const calendarMode = useDisplaySettingsStore((s) => s.calendarMode)
   const visibleCardFields = useDisplaySettingsStore((s) => s.visibleCardFields)
+  const showMarriageDateOnLink = useDisplaySettingsStore((s) => s.showMarriageDateOnLink)
   const setBirthDateGranularity = useDisplaySettingsStore((s) => s.setBirthDateGranularity)
   const setDeathDateGranularity = useDisplaySettingsStore((s) => s.setDeathDateGranularity)
   const setCalendarMode = useDisplaySettingsStore((s) => s.setCalendarMode)
   const setVisibleCardField = useDisplaySettingsStore((s) => s.setVisibleCardField)
+  const setShowMarriageDateOnLink = useDisplaySettingsStore((s) => s.setShowMarriageDateOnLink)
   const birthId = useId()
   const deathId = useId()
   const calendarModeId = useId()
@@ -108,6 +110,14 @@ export function DisplaySettingsControl() {
             姓・名をどちらも非表示にすると、カード上でその人物を識別する手がかりがなくなります。
           </p>
         )}
+        <label className="display-settings-control-checkbox">
+          <input
+            type="checkbox"
+            checked={showMarriageDateOnLink}
+            onChange={(e) => setShowMarriageDateOnLink(e.target.checked)}
+          />
+          婚姻日(線)
+        </label>
       </fieldset>
     </div>
   )

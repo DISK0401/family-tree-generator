@@ -56,4 +56,13 @@ describe('useDisplaySettingsStore', () => {
     useDisplaySettingsStore.getState().setVisibleCardField('furigana', true)
     expect(loadDisplaySettings().visibleCardFields.furigana).toBe(true)
   })
+
+  it('setShowMarriageDateOnLinkで婚姻線ラベルの表示を切り替えられ、再読み込み後も維持される', () => {
+    expect(useDisplaySettingsStore.getState().showMarriageDateOnLink).toBe(false)
+
+    useDisplaySettingsStore.getState().setShowMarriageDateOnLink(true)
+
+    expect(useDisplaySettingsStore.getState().showMarriageDateOnLink).toBe(true)
+    expect(loadDisplaySettings().showMarriageDateOnLink).toBe(true)
+  })
 })

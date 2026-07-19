@@ -31,6 +31,8 @@ export interface DisplaySettings {
   deathDateGranularity: DateGranularity
   calendarMode: CalendarMode
   visibleCardFields: CardFieldVisibility
+  /** 配偶者を結ぶ婚姻線に婚姻日を表示するか(design.md D9)。人物カードの項目ではないため`visibleCardFields`とは別に持つ */
+  showMarriageDateOnLink: boolean
 }
 
 /** 現状のカード表示と完全に一致させる(design.md D8) */
@@ -51,6 +53,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   deathDateGranularity: 'full',
   calendarMode: 'gregorian',
   visibleCardFields: DEFAULT_VISIBLE_CARD_FIELDS,
+  showMarriageDateOnLink: false,
 }
 
 const STORAGE_KEY = 'family-tree-generator:display-settings'
@@ -84,7 +87,7 @@ export function loadDisplaySettings(): DisplaySettings {
     if (!raw) return DEFAULT_DISPLAY_SETTINGS
     const parsed: unknown = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null) return DEFAULT_DISPLAY_SETTINGS
-    const { birthDateGranularity, deathDateGranularity, calendarMode, visibleCardFields } =
+    const { birthDateGranularity, deathDateGranularity, calendarMode, visibleCardFields, showMarriageDateOnLink } =
       parsed as Record<string, unknown>
     if (!isGranularity(birthDateGranularity) || !isGranularity(deathDateGranularity)) {
       return DEFAULT_DISPLAY_SETTINGS
@@ -94,6 +97,10 @@ export function loadDisplaySettings(): DisplaySettings {
       deathDateGranularity,
       calendarMode: isCalendarMode(calendarMode) ? calendarMode : DEFAULT_DISPLAY_SETTINGS.calendarMode,
       visibleCardFields: parseVisibleCardFields(visibleCardFields),
+      showMarriageDateOnLink:
+        typeof showMarriageDateOnLink === 'boolean'
+          ? showMarriageDateOnLink
+          : DEFAULT_DISPLAY_SETTINGS.showMarriageDateOnLink,
     }
   } catch {
     return DEFAULT_DISPLAY_SETTINGS
