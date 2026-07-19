@@ -10,6 +10,7 @@ import {
   findPrimaryParentFamily,
   findRootAncestor,
   FULL_VIEW_ROOT_ID,
+  marriageDate,
   sortSpousesByMarriageDate,
   toFamilyChartData,
   toFullViewFamilyChartData,
@@ -57,6 +58,64 @@ describe('toFamilyChartData: ふりがな・生没地の射影', () => {
     expect(datum.data.givenKana).toBeUndefined()
     expect(datum.data.birthPlace).toBeUndefined()
     expect(datum.data.deathPlace).toBeUndefined()
+  })
+})
+
+describe('marriageDate(design.md D9: 婚姻線ラベル用)', () => {
+  it('婚姻イベントの日付を返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+    doc = addFamilyEvent(doc, s.familyId, {
+      type: 'marriage',
+      date: { original: '1990-04-01', qualifier: 'exact', date: { year: 1990, month: 4, day: 1 } },
+    })
+
+    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({ year: 1990, month: 4, day: 1 })
+    // 配偶者側から見ても同じ結果になる(対称)
+    expect(marriageDate(doc, s.spouseId, a.personId)).toEqual({ year: 1990, month: 4, day: 1 })
+  })
+
+  it('復縁がある場合は最初の婚姻日を返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+    doc = addFamilyEvent(doc, s.familyId, {
+      type: 'marriage',
+      date: { original: '1980-01-01', qualifier: 'exact', date: { year: 1980, month: 1, day: 1 } },
+    })
+    doc = addFamilyEvent(doc, s.familyId, { type: 'divorce' })
+    doc = addFamilyEvent(doc, s.familyId, {
+      type: 'marriage',
+      date: { original: '1990-04-01', qualifier: 'exact', date: { year: 1990, month: 4, day: 1 } },
+    })
+
+    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({ year: 1980, month: 1, day: 1 })
+  })
+
+  it('該当する家族がない場合はundefinedを返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addPerson(doc, { name: { given: 'B' } })
+    doc = b.doc
+
+    expect(marriageDate(doc, a.personId, b.personId)).toBeUndefined()
+  })
+
+  it('婚姻イベントに日付が記録されていない場合はundefinedを返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const s = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = s.doc
+    doc = addFamilyEvent(doc, s.familyId, { type: 'marriage' })
+
+    expect(marriageDate(doc, a.personId, s.spouseId)).toBeUndefined()
   })
 })
 

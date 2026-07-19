@@ -508,13 +508,21 @@ export function compareChildrenByBirthThenName(a: FamilyChartDatum, b: FamilyCha
   return a.data.displayName.localeCompare(b.data.displayName, 'ja')
 }
 
-/** personIdとspouseIdの間で最初に成立した婚姻イベントの年を返す(復縁がある場合は最初の婚姻年) */
-function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId): number | undefined {
+/**
+ * personIdとspouseIdの間で最初に成立した婚姻イベントの日付を返す(復縁がある場合は最初の婚姻日)。
+ * 該当する家族がない、または婚姻イベントに日付が記録されていない場合はundefined(design.md D9、婚姻線ラベル用)
+ */
+export function marriageDate(doc: TreeDocument, personId: PersonId, spouseId: PersonId): CalendarDate | undefined {
   const family = Object.values(doc.families).find(
     (f) => f.spouseIds.includes(personId) && f.spouseIds.includes(spouseId),
   )
   const marriage = family?.events.find((e) => e.type === 'marriage')
-  return marriage?.date?.date?.year
+  return marriage?.date?.date
+}
+
+/** personIdとspouseIdの間で最初に成立した婚姻イベントの年を返す(復縁がある場合は最初の婚姻年) */
+function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId): number | undefined {
+  return marriageDate(doc, personId, spouseId)?.year
 }
 
 /**
