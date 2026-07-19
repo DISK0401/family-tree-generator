@@ -37,3 +37,16 @@
 - [x] 6.2 開発サーバーで動作確認する。完了条件: 婚姻・離婚日の編集、和暦表示モードの切り替え、カード表示項目のトグル(姓を非表示にして名だけ表示する等)を実際にブラウザで確認する
 - [x] 6.3 `README.md` を更新する。完了条件: 「表示設定」の説明に和暦表示モード・カード表示項目の選択を追記し、「人物情報の編集」周辺の説明に婚姻・離婚イベント編集を追記する
 - [x] 6.4 `docs/gedcom-mapping.md` を確認する。完了条件: 今回の変更が既存のMARR/DIV対応記述の範囲内(新規GEDCOMタグの追加なし)であることを確認し、更新が不要であることを確かめる(`events(marriage)`→`MARR`、`events(divorce)`→`DIV`が既に文書化済みであることを確認。更新不要)
+
+## 7. 婚姻線ラベル表示(design.md D9)
+
+- [ ] 7.1 婚姻日ラベル用のヘルパー関数を追加する。既存の `marriageYear`(`to-family-chart-data.ts`)と同様の探索で、2人の配偶者間のFamilyの最初の婚姻イベント(`events.find(e => e.type === 'marriage')`)の日付を返す。完了条件: 該当Familyがない・婚姻イベントがない場合は `undefined` を返すことをテストで確認する
+- [ ] 7.2 `src/settings/display-settings.ts` に `showMarriageDateOnLink: boolean`(デフォルト `false`)を `visibleCardFields` とは独立したフィールドとして追加する(design.md D9)。既存設定と同様キー単位のフォールバックを持たせる
+- [ ] 7.3 `display-settings-store.ts` に `showMarriageDateOnLink` の状態と `setShowMarriageDateOnLink` を追加する
+- [ ] 7.4 `DisplaySettingsControl.tsx` の「表示する項目」に「婚姻日(線)」のチェックボックスを追加する
+- [ ] 7.5 `FamilyTreeCanvas.tsx` の `chart.setAfterUpdate`(`markLinkStyles` と同じフック)に、婚姻線(`path.link.spouse-link`)の中点へ婚姻日ラベルの `<text>` 要素を描画/更新/除去する処理を追加する(design.md D9のスパイク方式)。`showMarriageDateOnLink` がオフの場合は描画しない。`calendarMode` に追従して和暦/西暦を切り替える
+- [ ] 7.6 `FamilyTreeCanvas.css` にラベルのスタイルを追加する(`pointer-events: none` でクリック操作を妨げないようにする等)
+- [ ] 7.7 テストを追加する。完了条件: 7.1のヘルパー関数の単体テスト、`display-settings.test.ts`/`display-settings-store.test.ts` への `showMarriageDateOnLink` のデフォルト値・永続化・フォールバックのテストを追加する(DOM描画自体は7.9の実機確認でカバーする)
+- [ ] 7.8 `npm run lint` / `npm run typecheck` / `npm run test` をすべて実行し、通過することを確認する
+- [ ] 7.9 開発サーバーで動作確認する。完了条件: 「婚姻日(線)」をオンにして婚姻線に日付が表示されること、和暦モードで元号表示に切り替わること、離婚済みの家族でも婚姻線に婚姻日のみ表示され離婚日が表示されないこと、デフォルトでは非表示のままであることを実際のブラウザで確認する
+- [ ] 7.10 `README.md` の「表示設定」の説明に婚姻線ラベル表示を追記する

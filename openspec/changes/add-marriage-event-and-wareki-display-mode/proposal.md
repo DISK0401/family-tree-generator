@@ -9,6 +9,7 @@
 - 婚姻・離婚イベントの編集は無料版のスコープ内(クライアント完結)で行い、`TreeDocument` に既存のデータモデル(`FamilyEventType`)へ書き込むのみで、GEDCOM/JSONエクスポート形式・スキーマバージョンへの変更は発生しない。
 - 和暦表示モードは表示専用の設定であり、`TreeDocument` やエクスポート内容には一切影響しない(既存の日付粒度設定と同じ原則)。
 - 表示設定に、人物カードへ表示する項目(姓・名・ふりがな・生年月日・没年月日・出生地/没地・年齢・性別アイコン)を個別にオン/オフできる項目選択を追加する。例えば「姓を非表示にして名だけ表示する」といった使い方ができる。デフォルトは現状の見た目と完全に一致する組み合わせとする(姓・名・生年月日・没年月日・年齢・性別アイコンはオン、ふりがな・出生地/没地はオフ)。
+- 表示設定で婚姻日の表示をオンにすると、家系図キャンバス上の配偶者を結ぶ婚姻線に、その家族の婚姻日をラベル表示する。デフォルトはオフ(現状の見た目を維持)。離婚日はラベルに含めない(サイドパネルのFamilyEventEditorで確認する)。
 
 今回のスコープには含めないもの(意図的に見送り):
 - 記念日のプッシュ通知・メール通知機能(サーバ側に個人情報を保持する必要があり、無料版の「外部送信ゼロ」原則と衝突するため別途検討)
@@ -21,12 +22,12 @@
 
 ### Modified Capabilities
 - `tree-editor`: 人物の編集パネルに加え、家族(婚姻単位)の婚姻・離婚イベント(日付+場所)を編集できる新しい編集面を追加する。和暦対応の日付入力要件を家族イベント編集にも適用する。
-- `display-settings`: 生年月日・没年月日・婚姻/離婚日の表示について、西暦/和暦を切り替えられる「和暦表示モード」設定を追加する。あわせて、人物カードへ表示する項目(姓・名・ふりがな・生没日・生没地・年齢・性別アイコン)を個別に選択できる設定を追加する。既存の永続化(localStorage・undo対象外・エクスポート非影響)の原則をそのまま適用する。
+- `display-settings`: 生年月日・没年月日・婚姻/離婚日の表示について、西暦/和暦を切り替えられる「和暦表示モード」設定を追加する。あわせて、人物カードへ表示する項目(姓・名・ふりがな・生没日・生没地・年齢・性別アイコン)を個別に選択できる設定を追加する。さらに、配偶者を結ぶ婚姻線に婚姻日をラベル表示するかどうかを選べる設定を追加する。既存の永続化(localStorage・undo対象外・エクスポート非影響)の原則をそのまま適用する。
 
 ## Impact
 
 - **無料版/有償版**: 無料版のみに影響。クライアント完結の変更であり、サーバ・Supabase・課金導線には影響しない。新規のネットワーク送信は発生せず、「無料版はサーバへ一切送信しない」制約(`local-autosave` spec)は維持される。
 - **プライバシー・法務**: 影響なし。既存データモデルの範囲内(婚姻・離婚日+場所)であり、要配慮個人情報の扱いや戸籍データフローに変更はない。和暦表示は表示のみの変更でデータの正確性・エクスポート内容に影響しない。
 - **競合比較**: 「らくらく家系図」「家系図のススメ」等の買い切りソフトは和暦非対応(西暦換算必須)であり、和暦表示モードは差別化要素になる(`docs/research/2026-07-market-ux-legal.md` 共通不満点⑤に対応)。結婚記念日の記録自体は競合の標準機能であり、今回のUI追加で機能ギャップを解消する(データモデルは既に対応済みだった)。
-- **影響コード**: `src/components/PedigreeEditor.tsx` またはその周辺に家族イベント編集UIを追加(新規コンポーネント想定)、`src/components/WarekiDateInput.tsx` の再利用、`src/settings/display-settings.ts` / `display-settings-store.ts` / `DisplaySettingsControl.tsx` へ `calendarMode` と `visibleCardFields` を追加、`src/domain/wareki.ts` の `gregorianToWareki`/`formatWareki` を表示フォーマット関数から呼び出す。`src/rendering/to-family-chart-data.ts` の `FamilyChartCardData` へふりがな(`surnameKana`/`givenKana`)・出生地/没地(`birthPlace`/`deathPlace`)を追加(現状これらはカード描画データに一切含まれていない)。`FamilyTreeCanvas.tsx` のカードHTML生成を表示設定の項目選択に応じて分岐させる。
+- **影響コード**: `src/components/PedigreeEditor.tsx` またはその周辺に家族イベント編集UIを追加(新規コンポーネント想定)、`src/components/WarekiDateInput.tsx` の再利用、`src/settings/display-settings.ts` / `display-settings-store.ts` / `DisplaySettingsControl.tsx` へ `calendarMode` と `visibleCardFields` を追加、`src/domain/wareki.ts` の `gregorianToWareki`/`formatWareki` を表示フォーマット関数から呼び出す。`src/rendering/to-family-chart-data.ts` の `FamilyChartCardData` へふりがな(`surnameKana`/`givenKana`)・出生地/没地(`birthPlace`/`deathPlace`)を追加(現状これらはカード描画データに一切含まれていない)。`FamilyTreeCanvas.tsx` のカードHTML生成を表示設定の項目選択に応じて分岐させる。加えて `display-settings.ts` に `showMarriageDateOnLink` を追加し、`FamilyTreeCanvas.tsx` の `chart.setAfterUpdate`(既存の `markLinkStyles` と同じフック)で、婚姻線(`path.link.spouse-link`)の中点に婚姻日ラベルの `<text>` 要素を描画する処理を追加する。
 - **ロールバック方針**: 両機能とも既存データ構造への破壊的変更を伴わない追加のみ(`SCHEMA_VERSION` 据え置き、`DisplaySettings` はデフォルト値へのフォールバックを持つ防御的パース)。問題発生時はデプロイのrevertのみで復旧でき、データマイグレーションは不要。
