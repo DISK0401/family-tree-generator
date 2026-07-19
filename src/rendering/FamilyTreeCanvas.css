@@ -218,16 +218,17 @@
 }
 
 /*
- * 婚姻線ラベル(design.md D9)。婚姻線の中点に描くSVG text。線の上に重なっても読めるよう、
- * paper色のストロークで縁取り(ハロー)を作ってから文字を描く(paint-order)。
- * クリック等の操作対象ではないため pointer-events を無効化する
+ * 婚姻線ラベル(design.md D9)。family-chart組み込みのlinkSpouseText機能が生成する
+ * text要素(`.link-text text`)の見た目を上書きする。ライブラリ側がJSで
+ * fill/font-sizeをinline styleとして設定するため、CSSクラスで上書きするには
+ * !importantが必要。paper色のストロークで縁取り(ハロー)を作ってから文字を描き、
+ * 線に重なっても読めるようにする。クリック等の操作対象ではないため
+ * pointer-eventsを無効化する
  */
-.tree-marriage-label {
+.tree-canvas-root .link-text text {
+  fill: var(--ink-faint) !important;
+  font-size: 9px !important;
   font-family: var(--font-gothic);
-  font-size: 9px;
-  fill: var(--ink-faint);
-  text-anchor: middle;
-  dominant-baseline: middle;
   paint-order: stroke;
   stroke: var(--paper);
   stroke-width: 3px;

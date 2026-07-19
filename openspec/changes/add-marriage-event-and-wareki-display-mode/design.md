@@ -61,8 +61,12 @@ function setFamilyEvent(
 姓・名の表示は、現状の「両方揃っていれば2行、どちらか一方のみなら1行」というレイアウト分岐(`nameHtml`)を、「表示対象かつデータが存在する」方だけを対象に再構成する。姓・名を両方非表示にした場合(データはあってもユーザーが意図的に隠した場合)、名前欄は空になる(既存の「未入力時のフォールバック文言」は出さない。データはあるのに未入力と誤解させないため)。
 - **代替案**: 姓・名の表示可否を「フルネーム表示/イニシャルのみ」のようなプリセットにする案も検討したが、要望が「個別に選べる」ことなので見送った。
 
-### D9. 婚姻線ラベルは`chart.setAfterUpdate`内で婚姻線pathの中点にSVG `<text>`を挿入する(スパイク検証済み)
-婚姻線(`markLinkStyles`が`.spouse-link`クラスを付与する`path.link`)の中点座標を標準SVG API(`getTotalLength()`/`getPointAtLength()`)で取得し、同じ親要素(`g.links_view`)内に`<text>`要素を挿入する。family-chart本体の改修は不要。追加の座標変換は不要(既存の`d`属性がそのまま共有座標系のため)。実機スパイクで、2枚のカードを結ぶ線の中央に正しく描画されることを確認済み。
+### D9. 婚姻線ラベルはfamily-chart組み込みの`setLinkSpouseText`を使う
+当初はスパイクで検証した「`chart.setAfterUpdate`内で婚姻線pathの中点を`getTotalLength()`/`getPointAtLength()`で計算し、`<text>`要素を手動挿入する」方式を採用したが、実装後の複雑な家系図(3世代・隠れバッジあり)での動作確認で、ラベルが実際の線から大きくズレて表示される不具合が発覚した。原因は、`setAfterUpdate`がD3のtransition(`setTransitionTime`、既定700ms)開始直後に同期的に呼ばれるため、`getPointAtLength()`がtransition完了後の最終位置ではなく古い(または遷移前の)path形状を読んでしまうこと。小さな家系図(初期状態に近い1組の配偶者のみ)ではズレが目立たなかったため、当初のスパイクでは発見できなかった。
+
+family-chartには婚姻線へテキストを描画する組み込み機能`chart.setLinkSpouseText((sp1, sp2) => string)`が存在し(`node_modules/family-chart/dist/family-chart.esm.js`の`linkSpouseText`関数、`Chart.setOnUpdate`内で`view()`と同じタイミング・同じtransition設定で呼ばれる)、ツリーレイアウト計算そのものが使う座標(`sp1.y`等)を直接使って位置決めするため、DOM描画後にSVG座標を逆算する必要がなく、transitionのタイミング問題が原理的に発生しない。これに置き換えた(family-chart本体の改修は依然として不要)。
+
+コールバック関数は`showMarriageDateOnLinkRef`/`calendarModeRef`/`documentRef`を参照し、オフの場合や婚姻日未設定の場合は空文字列を返す(空文字列は「テキストなし」として扱われ、視覚的に何も表示されない)。ライブラリ側は`.link-text text`要素に`fill: #fff`等をJSのinline styleとして設定するため、CSSでの上書きには`!important`が必要(`FamilyTreeCanvas.css`参照)。
 
 ラベル内容はそのFamilyの最初の婚姻イベント(`events.find(e=>e.type==='marriage')`)の日付。粒度設定は新設せず常にフル精度(判明している範囲)で表示し、`calendarMode`には追従する。離婚日はラベルに含めない(離婚日はサイドパネルのFamilyEventEditorで確認する)。
 

@@ -2,9 +2,9 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
-import type { Pedigree, TreeDocument } from '../domain/types'
+import type { Pedigree } from '../domain/types'
 import { useDisplaySettingsStore } from '../settings/display-settings-store'
-import { formatDateForDisplay, type CalendarMode } from '../settings/display-settings'
+import { formatDateForDisplay } from '../settings/display-settings'
 import {
   buildPedigreeByEdge,
   compareChildrenByBirthThenName,
@@ -30,9 +30,6 @@ type SortSpousesFn = Parameters<ChartInstance['setSortSpousesFunction']>[0]
 // setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる
 const CARD_WIDTH = 104
 const CARD_HEIGHT = 116
-
-// 婚姻線ラベル(design.md D9)を線の真上ではなく少し上に浮かせるためのオフセット(px)
-const MARRIAGE_LABEL_Y_OFFSET = 8
 
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
@@ -109,54 +106,6 @@ function markLinkStyles(container: HTMLElement, pedigreeByEdge: Map<string, Pedi
     el.classList.toggle('adopted-link', isNonBiological)
     el.classList.toggle('spouse-link', datum.spouse === true)
     el.classList.toggle('virtual-root-link', isVirtualRootLink)
-  })
-}
-
-/**
- * 婚姻線(`.spouse-link`、`markLinkStyles`が付与)の中点にSVG `<text>`で婚姻日ラベルを描く
- * (design.md D9)。family-chart本体の改修は不要で、標準SVG API(`getTotalLength`/
- * `getPointAtLength`)で線の中点座標を取得し、pathと同じ親要素(`g.links_view`相当)に
- * text要素を挿入するだけで、追加の座標変換なしに正しい位置へ描画できる(実機スパイクで確認済み)。
- *
- * family-chartのD3データ結合でpath要素が再生成される場合があるため、差分更新はせず、
- * 呼び出しのたびに前回挿入したラベル(`data-marriage-label`属性で識別)を全て除去してから
- * 作り直す(婚姻線の本数は家系図の規模に対して少なく、毎回の再構築で性能上の問題はない)。
- */
-function renderMarriageLinkLabels(
-  container: HTMLElement,
-  doc: TreeDocument,
-  options: { show: boolean; calendarMode: CalendarMode },
-): void {
-  const svgNS = 'http://www.w3.org/2000/svg'
-  container.querySelectorAll('[data-marriage-label]').forEach((el) => el.remove())
-  if (!options.show) return
-
-  const links = container.querySelectorAll<SVGPathElement>('path.link.spouse-link')
-  links.forEach((path) => {
-    const datum = (path as unknown as { __data__?: LinkDatum }).__data__
-    if (!datum) return
-    const sourceIds = (Array.isArray(datum.source) ? datum.source : [datum.source]).map(personIdOf)
-    const targetIds = (Array.isArray(datum.target) ? datum.target : [datum.target]).map(personIdOf)
-    const personAId = sourceIds.find((id): id is string => !!id && id !== FULL_VIEW_ROOT_ID)
-    const personBId = targetIds.find((id): id is string => !!id && id !== FULL_VIEW_ROOT_ID)
-    if (!personAId || !personBId) return
-
-    const date = marriageDate(doc, personAId, personBId)
-    if (!date) return
-    // 粒度設定は新設せず常にフル精度で表示し、和暦表示モードには追従する(design.md D9)
-    const label = formatDateForDisplay(date, 'full', options.calendarMode)
-    if (!label) return
-
-    const length = path.getTotalLength()
-    const midpoint = path.getPointAtLength(length / 2)
-    const text = document.createElementNS(svgNS, 'text')
-    text.setAttribute('data-marriage-label', '1')
-    text.setAttribute('class', 'tree-marriage-label')
-    text.setAttribute('x', String(midpoint.x))
-    // 線の真上に重なると読みにくいため、線より少し上に浮かせて表示する
-    text.setAttribute('y', String(midpoint.y - MARRIAGE_LABEL_Y_OFFSET))
-    text.textContent = label
-    path.parentElement?.appendChild(text)
   })
 }
 
@@ -248,6 +197,21 @@ export function FamilyTreeCanvas({
       .setSingleParentEmptyCard(false)
       .setSortChildrenFunction(sortChildren)
       .setSortSpousesFunction(sortSpouses)
+      // 婚姻線への婚姻日ラベル(design.md D9)。family-chart組み込みのAPIを使う
+      // (手動でSVG path中点を計算する方式は、D3のtransition中に古い座標を読んでしまい
+      // 大きなツリーで表示位置が大きくずれる不具合があったため、レイアウト計算そのものが
+      // 使う座標(sp1.y等)をそのまま使うこの方式に置き換えた)。
+      // showMarriageDateOnLinkがオフの場合は空文字を返し、ラベル自体を表示しない
+      .setLinkSpouseText((sp1: TreeDatum, sp2: TreeDatum) => {
+        if (!showMarriageDateOnLinkRef.current) return ''
+        const personAId = personIdOf(sp1)
+        const personBId = personIdOf(sp2)
+        if (!personAId || !personBId) return ''
+        const date = marriageDate(documentRef.current, personAId, personBId)
+        if (!date) return ''
+        // 粒度設定は新設せず常にフル精度で表示し、和暦表示モードには追従する(design.md D9)
+        return formatDateForDisplay(date, 'full', calendarModeRef.current) ?? ''
+      })
     chartRef.current = chart
 
     // 折りたたみ時の非表示人数バッジ(design.md D6)。カード描画のたびに毎回計算し直すと
@@ -374,15 +338,8 @@ export function FamilyTreeCanvas({
       </div>`
     })
 
-    // 系線の意味づけ: 養子は破線、婚姻線は二重線。updateTreeのたびに再適用が必要。
-    // 婚姻線ラベル(design.md D9)は`.spouse-link`クラスの付与に依存するため、markLinkStylesの後に実行する
-    chart.setAfterUpdate(() => {
-      markLinkStyles(container, buildPedigreeByEdge(documentRef.current))
-      renderMarriageLinkLabels(container, documentRef.current, {
-        show: showMarriageDateOnLinkRef.current,
-        calendarMode: calendarModeRef.current,
-      })
-    })
+    // 系線の意味づけ: 養子は破線、婚姻線は二重線。updateTreeのたびに再適用が必要
+    chart.setAfterUpdate(() => markLinkStyles(container, buildPedigreeByEdge(documentRef.current)))
 
     chart.updateTree({ initial: true, tree_position: 'fit' })
 
