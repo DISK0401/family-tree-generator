@@ -79,9 +79,10 @@
 .empty-state-guide-form button {
   font: inherit;
   font-size: var(--text-md);
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-6);
   border: 1px solid var(--ai);
-  border-radius: var(--radius);
+  /* ランディングの主要CTAと同じピル型(「はじめる」動線の一貫性) */
+  border-radius: 999px;
   /* 有効時はソリッドで明確に押せることを示す。淡色は無効状態のみに使う。
      文字色は --paper(地色)を使う: ライトでは明、ダークでは暗と役割が反転するため
      どちらのテーマでもアクセント背景に対して十分なコントラストが取れる */

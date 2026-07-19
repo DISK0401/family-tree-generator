@@ -24,6 +24,8 @@ export interface FamilyChartCardData {
   given?: string
   birthYear?: number
   deathYear?: number
+  /** 没の記録(年不明でも)があれば故人として描く。カードのマーカー・†表示(6.3)に使う */
+  deceased: boolean
   /** この人物の主たる親子線(rels.parents)に対応する続柄種別。線のスタイル分岐(6.4)に使う */
   pedigree?: Pedigree
 }
@@ -53,7 +55,10 @@ function toGender(gender: Person['gender']): 'M' | 'F' | 'U' {
  * (family-chart内部の`is_ancestry`フラグによる制約。setupSpouses等参照)。
  * 選択人物ではなくその最上位祖先をmain_idにすることで、この漏れを最小化する。
  */
-export function findRootAncestor(doc: TreeDocument, personId: PersonId): PersonId {
+export function findRootAncestor(
+  doc: TreeDocument,
+  personId: PersonId,
+): PersonId {
   let current = personId
   const visited = new Set<PersonId>([current])
   for (;;) {
@@ -73,7 +78,10 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
   const parentsByChild = new Map<PersonId, PersonId[]>()
   const pedigreeByChild = new Map<PersonId, Pedigree>()
 
-  function ensureSet(map: Map<PersonId, Set<PersonId>>, id: PersonId): Set<PersonId> {
+  function ensureSet(
+    map: Map<PersonId, Set<PersonId>>,
+    id: PersonId,
+  ): Set<PersonId> {
     let set = map.get(id)
     if (!set) {
       set = new Set()
@@ -116,6 +124,7 @@ export function toFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
         given: person.name.given,
         birthYear: person.birth?.date?.date?.year,
         deathYear: person.death?.date?.date?.year,
+        deceased: person.death !== undefined,
         pedigree: pedigreeByChild.get(person.id),
       },
       rels: {

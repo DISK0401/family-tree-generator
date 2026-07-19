@@ -17,36 +17,69 @@
  * 人物カード: 「帳簿・系譜の紙の世界」を現代化するデザイン言語の核となる一手。
  * 氏名は縦書き(vertical-rl)・明朝系で表示し、家系図・系譜の伝統的な佇まいを
  * 画面の第一印象で成立させる(design.md D6)。
+ * 造形は「机上に浮かぶ紙のカード」: 角丸+多層の柔らかい影+ホバーで浮き上がる。
  */
 .tree-card {
   box-sizing: border-box;
+  position: relative;
   /* setCardInnerHtmlCreator使用時はfamily-chart側のカードサイズCSSが適用されないため、
      コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
-  width: var(--tree-card-w, 96px);
-  height: var(--tree-card-h, 108px);
-  padding: var(--space-1);
+  width: var(--tree-card-w, 104px);
+  height: var(--tree-card-h, 116px);
+  padding: var(--space-2) var(--space-1) var(--space-1);
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
   color: var(--ink);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: var(--space-1);
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    translate 0.15s ease;
 }
 
 .tree-card:hover {
   border-color: var(--line-strong);
+  translate: 0 -2px;
+  box-shadow:
+    0 2px 4px rgb(33 29 22 / 0.08),
+    0 8px 20px rgb(33 29 22 / 0.12);
+}
+
+/* 故人マーカー: 左上の小さな輪(†と対応)。没の記録がある人物にのみ付け、
+   記録の無い人物を「存命」と断定する表示はしない。
+   ズームアウトして文字が潰れても、故人の分布が一目で読めるようにする */
+.tree-card.deceased::before {
+  content: '';
+  box-sizing: border-box;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+}
+
+/* 故人カードは面を一段沈める(古びた頁の趣) */
+.tree-card.deceased {
+  background: color-mix(in srgb, var(--paper-raised) 55%, var(--paper-sunken));
 }
 
 /* 選択状態のみを朱で表す(性別による色分けはしない。design.md D6 / Fableレビュー反映) */
 .tree-card.selected {
   border-color: var(--shu);
   border-width: 2px;
-  padding: calc(var(--space-1) - 1px);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--shu) 25%, transparent);
+  padding: calc(var(--space-2) - 1px) calc(var(--space-1) - 1px)
+    calc(var(--space-1) - 1px);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--shu) 22%, transparent),
+    var(--shadow-raised);
 }
 
 .tree-card-name-row {
@@ -63,9 +96,16 @@
 .tree-card-given {
   writing-mode: vertical-rl;
   font-family: var(--font-mincho);
+  font-weight: 500;
   font-size: var(--text-md);
   letter-spacing: 0.15em;
   color: var(--ink);
+}
+
+.tree-card-deceased-mark {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  margin-block-start: 2px;
 }
 
 /* 生没年は氏名に次いで重要な情報のため、横書きで常に読める大きさ・向きで表示する */
@@ -80,7 +120,8 @@
 
 .tree-canvas-root path.link {
   stroke: var(--line-strong);
-  stroke-width: 1.5px;
+  stroke-width: 1.75px;
+  stroke-linecap: round;
 }
 
 /* 養子の系線は実子と視覚的に区別する(破線)。装飾ではなく系譜上の意味を持たせる */
@@ -94,6 +135,7 @@
   filter: drop-shadow(0 3px 0 var(--line-strong));
 }
 
+/* 凡例・ズームは地図アプリの流儀で「図の上に浮かぶ操作面」として描く(半透明+ぼかし+浮遊影) */
 .tree-legend {
   /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
      タップ/クリックを奪われるため、明示的なz-indexが必須 */
@@ -105,9 +147,12 @@
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
-  background: var(--paper-raised);
+  background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
   font-size: var(--text-xs);
   color: var(--ink-soft);
 }
@@ -129,6 +174,17 @@
   border-top-style: dashed;
 }
 
+/* カードの故人マーカーと同じ描画 */
+.tree-legend-dot {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 calc((24px - 7px) / 2);
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+}
+
 .tree-legend-hint {
   margin: var(--space-1) 0 0;
   padding-top: var(--space-1);
@@ -146,14 +202,17 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-raised);
   overflow: hidden;
 }
 
 .tree-zoom-controls button {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   font-size: var(--text-md);
   line-height: 1;
   border: none;
@@ -161,6 +220,9 @@
   background: transparent;
   color: var(--ink-soft);
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .tree-zoom-controls button:last-child {

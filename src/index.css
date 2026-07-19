@@ -29,6 +29,12 @@ p {
 
 button {
   font-family: var(--font-gothic);
+  /* 操作要素は全体で同じ手触りに: 色・面・影の変化を一律の短いトランジションで返す */
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 a {
