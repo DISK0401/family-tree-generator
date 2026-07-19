@@ -122,48 +122,51 @@ function buildAdjacency(doc: TreeDocument): Map<PersonId, Set<PersonId>> {
 }
 
 /**
- * 全体表示モード(design.md D5)の根の計算専用に、配偶者同士および親子(主たる家族のみ)を
- * 双方向にたどれる隣接リストを構築する。主たる家族に限定することで、実親・養親のように
- * 複数の親家族を持つ人物を経由して、本来は別系統であるべき2つの家系が1つの連結成分に
- * まとまってしまう(=根が本来2つ必要な場面で1つに減ってしまう)のを防ぐ。
- * 双方向にするのは、連結成分の検出(=誰と誰が同じ家系に属するか)自体は向きに依存しないため
- * (向きは後段の「どのノードを根にするか」の判定にのみ使う。`computeFullViewRoots`参照)。
+ * 全体表示モード(design.md D5)の根の計算専用に、各人物の「主たる子」(family-chartの
+ * 子孫方向の走査が実際にたどる相手)と「配偶者」の一覧を構築する。
  */
-function buildPrimaryUndirectedAdjacency(doc: TreeDocument): Map<PersonId, Set<PersonId>> {
-  const adjacency = new Map<PersonId, Set<PersonId>>()
-  function link(a: PersonId, b: PersonId): void {
-    if (!adjacency.has(a)) adjacency.set(a, new Set())
-    if (!adjacency.has(b)) adjacency.set(b, new Set())
-    adjacency.get(a)?.add(b)
-    adjacency.get(b)?.add(a)
-  }
+function buildPrimaryChildrenAndSpouses(
+  doc: TreeDocument,
+): { primaryChildrenOf: Map<PersonId, PersonId[]>; spousesOf: Map<PersonId, PersonId[]> } {
+  const primaryChildrenOf = new Map<PersonId, PersonId[]>()
+  const spousesOf = new Map<PersonId, PersonId[]>()
   for (const family of Object.values(doc.families)) {
-    for (let i = 0; i < family.spouseIds.length; i++) {
-      for (let j = i + 1; j < family.spouseIds.length; j++) link(family.spouseIds[i], family.spouseIds[j])
+    for (const spouseId of family.spouseIds) {
+      const others = family.spouseIds.filter((id) => id !== spouseId)
+      if (others.length === 0) continue
+      spousesOf.set(spouseId, [...(spousesOf.get(spouseId) ?? []), ...others])
     }
     for (const child of family.children) {
       if (findPrimaryParentFamily(doc, child.childId)?.id !== family.id) continue // 主たる家族のみ
-      for (const spouseId of family.spouseIds) link(spouseId, child.childId)
+      for (const spouseId of family.spouseIds) {
+        primaryChildrenOf.set(spouseId, [...(primaryChildrenOf.get(spouseId) ?? []), child.childId])
+      }
     }
   }
-  return adjacency
+  return { primaryChildrenOf, spousesOf }
 }
 
 /**
  * 全体表示モード(design.md D5)用に、`TreeDocument` 内の全人物を漏れなく描画するために
  * 必要な「根」の集合を返す。
  *
- * family-chartは1人につき`rels.parents`を1組しか持てず、ある人物の子孫方向の走査は
- * その人物自身の`rels.children`しか辿らないため、実親・養親のように複数の親家族を
- * 持つ人物がいる場合、単一の根からは片方の家族しか到達できない(design.md D6の
- * スパイクで確認した構造的制約)。そこで主たる家族のみで連結成分(`buildPrimaryUndirectedAdjacency`)
- * を求め、成分ごとに1つの根を選ぶ。
+ * family-chartは指定した`main_id`(=ここでは根1つ)から、(a) 血縁の祖先を`rels.parents`で
+ * 再帰的にたどる祖先側と、(b) 血縁の子孫を`rels.children`で再帰的にたどる子孫側の木を作り、
+ * その木に含まれる各人物の配偶者だけを1階層だけ横に添える(配偶者自身の祖先・傍系はさらに
+ * たどらない。`setupSpouses`参照)。そのため、婚姻だけでつながった2つの血族(例: 夫の実家と
+ * 妻の実家)は、単一の根からは「配偶者として存在は見えるが、その配偶者自身の実家は一切見えない」
+ * 状態になる。この制約により、血縁でつながる範囲が互いに独立した「家系の始祖」(主たる親を
+ * 持たない人物)ごとに、それぞれ別の根が必要になる(design.md D6のスパイクで確認した構造的制約)。
  *
- * 根の選定は、その成分の中で(`Object.keys(doc.persons)`の順で最初に見つかった)主たる親を
- * 持たない人物、すなわちその家系の最上位祖先を優先する。これは`hierarchyGetterChildren`が
- * 各ノード自身の`rels.children`しか下方向にしか辿らないため、成分の途中の人物を根に選んでしまうと
- * その人物の祖先や、祖先を介してつながる傍系親族が描画から漏れてしまうからである。
- * (該当者がいない場合は成分内の先頭人物にフォールバックするが、家系図データでは通常発生しない)
+ * アルゴリズム:
+ * 1周目: 主たる子を1人以上持つ「始祖」(主たる親を持たない人物)を根候補とする。共同で子を
+ *   もうけた配偶者同士(例: 両親2人)は主たる子の集合が完全に一致するため、家系図として
+ *   同一の部分木を重複して描画してしまう。これを避けるため、子の集合が既出の組み合わせと
+ *   完全一致する場合は2人目以降を根にしない(1人目のみ採用)。
+ * 2周目: 子を持たない始祖(配偶者のみ、または係累の記録が無い孤立した人物)を扱う。1周目で
+ *   選んだ根の実際の描画範囲(血縁の子孫+その配偶者)に既に含まれている場合は、その根の下に
+ *   配偶者として自然に表示されるため、重複を避けて根にしない。含まれていない場合(孤立した
+ *   人物、または配偶者もいない天涯孤独な人物)は、他のどの根からも描画されないため根にする。
  *
  * 戻り値の根の集合を仮想の「全体表示ルート」の子として与えることで、通常は1つの
  * `main_id`からは同時に到達できない複数の家系を1つの図にまとめて描画できる
@@ -171,31 +174,47 @@ function buildPrimaryUndirectedAdjacency(doc: TreeDocument): Map<PersonId, Set<P
  * 実子孫の連鎖的な重複なしに各根の下へその人物を再登場させる)。
  */
 export function computeFullViewRoots(doc: TreeDocument): PersonId[] {
-  const adjacency = buildPrimaryUndirectedAdjacency(doc)
   const personIds = Object.keys(doc.persons)
   const hasPrimaryParent = new Set(personIds.filter((id) => findPrimaryParentFamily(doc, id) !== undefined))
+  const { primaryChildrenOf, spousesOf } = buildPrimaryChildrenAndSpouses(doc)
 
-  const visited = new Set<PersonId>()
-  const roots: PersonId[] = []
-  for (const startId of personIds) {
-    if (visited.has(startId)) continue
-    const component = new Set<PersonId>([startId])
-    visited.add(startId)
-    const queue = [startId]
+  /** 根候補から実際に血縁でたどれる子孫と、その配偶者(1階層のみ)の集合。family-chartの実描画範囲に対応する */
+  function reachableFrom(rootId: PersonId): Set<PersonId> {
+    const reach = new Set<PersonId>()
+    const queue = [rootId]
     while (queue.length > 0) {
       const current = queue.shift()
-      if (current === undefined) break
-      for (const next of adjacency.get(current) ?? []) {
-        if (!visited.has(next)) {
-          visited.add(next)
-          component.add(next)
-          queue.push(next)
-        }
-      }
+      if (current === undefined || reach.has(current)) continue
+      reach.add(current)
+      for (const child of primaryChildrenOf.get(current) ?? []) queue.push(child)
     }
-    const topAncestor = personIds.find((id) => component.has(id) && !hasPrimaryParent.has(id))
-    roots.push(topAncestor ?? startId)
+    for (const id of [...reach]) {
+      for (const spouseId of spousesOf.get(id) ?? []) reach.add(spouseId)
+    }
+    return reach
   }
+
+  const roots: PersonId[] = []
+  const covered = new Set<PersonId>()
+  const seenChildrenKeys = new Set<string>()
+
+  for (const id of personIds) {
+    if (hasPrimaryParent.has(id)) continue
+    const children = primaryChildrenOf.get(id)
+    if (!children || children.length === 0) continue
+    const key = [...new Set(children)].sort().join(',')
+    if (seenChildrenKeys.has(key)) continue
+    seenChildrenKeys.add(key)
+    roots.push(id)
+    for (const reachedId of reachableFrom(id)) covered.add(reachedId)
+  }
+
+  for (const id of personIds) {
+    if (hasPrimaryParent.has(id) || covered.has(id)) continue
+    roots.push(id)
+    for (const reachedId of reachableFrom(id)) covered.add(reachedId)
+  }
+
   return roots
 }
 

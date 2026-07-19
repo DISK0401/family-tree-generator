@@ -447,6 +447,61 @@ describe('computeFullViewRoots', () => {
 
     expect(computeFullViewRoots(doc)).toEqual([a.personId])
   })
+
+  it('婚姻のみでつながる2つの血族は、それぞれの始祖が別々の根として返される(係累不明の配偶者が誤って唯一の根になるバグの回帰)', () => {
+    // 紀行・和枝の子である佳彦が、イツ子・定夫の子である美和と結婚し、2つの血族が
+    // 婚姻でのみつながる。愛梨奈(佳彦・美和の子)は係累の記録が無い奥西亮太と結婚する。
+    // 奥西亮太は主たる親を持たず(=根の候補)、子も無いため、素朴な「連結成分ごとに1根」の
+    // アルゴリズムだと彼だけが唯一の根に選ばれ、彼自身の視点からは配偶者以外誰も辿れず、
+    // 家系全体がほぼ表示されなくなってしまう(実際に報告されたバグ)
+    let doc = createTreeDocument()
+    const noriyuki = addPerson(doc, { name: { given: '紀行' } })
+    doc = noriyuki.doc
+    const kazue = addSpouse(doc, noriyuki.personId, { name: { given: '和枝' } })
+    doc = kazue.doc
+    const yoshihiko = addChild(doc, noriyuki.personId, { name: { given: '佳彦' } }, { otherParentId: kazue.spouseId })
+    doc = yoshihiko.doc
+
+    const itsuko = addPerson(doc, { name: { given: 'イツ子' } })
+    doc = itsuko.doc
+    const sadao = addSpouse(doc, itsuko.personId, { name: { given: '定夫' } })
+    doc = sadao.doc
+    const miwa = addChild(doc, itsuko.personId, { name: { given: '美和' } }, { otherParentId: sadao.spouseId })
+    doc = miwa.doc
+
+    // 既存の佳彦・美和を婚姻でつなぐ(addSpouseは新規人物しか作れないため、直接familyを追加する)
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        'f-yoshihiko-miwa': {
+          id: 'f-yoshihiko-miwa',
+          spouseIds: [yoshihiko.childId, miwa.childId],
+          kind: 'married',
+          events: [],
+          children: [],
+        },
+      },
+    }
+    const airina = addChild(doc, yoshihiko.childId, { name: { given: '愛梨奈' } }, { otherParentId: miwa.childId })
+    doc = airina.doc
+    const okunishi = addSpouse(doc, airina.childId, { name: { given: '奥西亮太' } })
+    doc = okunishi.doc
+
+    const roots = computeFullViewRoots(doc)
+    const data = toFullViewFamilyChartData(doc)
+    const allPersonIds = Object.keys(doc.persons)
+    // 血族の始祖である紀行・イツ子側の系統がどちらも根として選ばれ、
+    // 全人物がtoFullViewFamilyChartDataの出力に含まれる(=描画データとして漏れが無い)
+    expect(roots).toContain(noriyuki.personId)
+    expect(roots).toContain(itsuko.personId)
+    for (const id of allPersonIds) {
+      expect(data.some((d) => d.data.personId === id)).toBe(true)
+    }
+    // 奥西亮太(子も主たる親も持たない他家から嫁いだ配偶者)は、愛梨奈の配偶者として既に辿れるため
+    // 冗長な根にはならない
+    expect(roots).not.toContain(okunishi.spouseId)
+  })
 })
 
 describe('toFullViewFamilyChartData', () => {
