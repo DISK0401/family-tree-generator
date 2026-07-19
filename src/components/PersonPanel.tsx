@@ -4,6 +4,7 @@ import { displayName } from '../domain/helpers'
 import type { Person, PersonId, TreeDocument } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
 import { DeletePersonControl } from './DeletePersonControl'
+import { FamilyEventEditor } from './FamilyEventEditor'
 import { PedigreeEditor } from './PedigreeEditor'
 import { PersonEditForm } from './PersonEditForm'
 import { PersonNameFields } from './PersonNameFields'
@@ -144,6 +145,8 @@ export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editF
       />
 
       <PedigreeEditor personId={personId} />
+
+      <FamilyEventEditor personId={personId} />
 
       <DeletePersonControl personId={personId} onDeleted={onDeleted} />
     </div>
