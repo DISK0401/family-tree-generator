@@ -151,6 +151,13 @@ export function FamilyTreeCanvas({
   // 表示設定(design.md D9): 婚姻線への婚姻日ラベル表示
   const showMarriageDateOnLink = useDisplaySettingsStore((s) => s.showMarriageDateOnLink)
   const showMarriageDateOnLinkRef = useRef(showMarriageDateOnLink)
+  // クリックしたカードのmain_id追従(findRootAncestor)によって視点の祖先(main_id)が
+  // 切り替わったかどうか。配偶者や傍系親族などグルーピングされたカードは、選択中の
+  // 人物と別の祖先を持つことが多く、その場合は木全体の絶対座標が大きく変わる。
+  // 'inherit'のままだと直前のパン位置に新しい座標系の木がそのまま描かれてしまい、
+  // 選択したカードが画面の下や右へ大きくずれて見える不具合が起きるため、
+  // main_idが実際に変わった回だけ'fit'で視界に収め直す
+  const mainIdChangedRef = useRef(false)
 
   useEffect(() => {
     selectedIdRef.current = selectedPersonId
@@ -258,7 +265,11 @@ export function FamilyTreeCanvas({
       // 傍系親族が今度は描画から漏れてしまうため。design.md リスク「family-chartの表現力限界」参照)。
       // 全体表示モード中は視点(表示範囲)を固定するため、main_idを動かさない(design.md D5)
       if (nextSelected && !showAllRef.current) {
+        const previousMainId = chart.store.getMainId()
         chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
+        mainIdChangedRef.current = chart.store.getMainId() !== previousMainId
+      } else {
+        mainIdChangedRef.current = false
       }
       onSelectPersonRef.current(nextSelected)
     })
@@ -364,7 +375,15 @@ export function FamilyTreeCanvas({
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    chart.updateTree({ tree_position: 'inherit', transition_time: 0 })
+    // main_idが変わった場合のみ視界を合わせ直す(mainIdChangedRefの定義箇所参照)。
+    // 変わらない場合は従来通り'inherit'でパン位置を保つ(クリックのたびに
+    // ズーム・位置が動くと「図の上で家族を育てる」操作感を損なうため)
+    if (mainIdChangedRef.current) {
+      mainIdChangedRef.current = false
+      chart.updateTree({ tree_position: 'fit' })
+    } else {
+      chart.updateTree({ tree_position: 'inherit', transition_time: 0 })
+    }
   }, [selectedPersonId])
 
   useEffect(() => {
