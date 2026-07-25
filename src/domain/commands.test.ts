@@ -6,12 +6,13 @@ import {
   addParent,
   addPerson,
   addSpouse,
+  addSpouseLink,
   computeRemovalImpact,
   removePerson,
   setChildPedigree,
   setFamilyEvent,
 } from './commands'
-import { createTreeDocument } from './helpers'
+import { createFamily, createTreeDocument } from './helpers'
 import type { TreeDocument } from './types'
 
 function withPerson(name: string) {
@@ -199,5 +200,178 @@ describe('removePerson: 削除時の関係整合', () => {
     expect(doc3).not.toEqual(before)
     // undoはストア側の責務(4章)。ここではコマンドが元のdocを変更しない(純関数)ことのみ確認
     expect(doc2).toEqual(before)
+  })
+})
+
+describe('removePerson: 意味を持たない家族を残さない', () => {
+  /** 手動で家族を差し込む(インポート等でしか生じない形を再現するため) */
+  function putFamilyRaw(doc: TreeDocument, family: ReturnType<typeof createFamily>): TreeDocument {
+    return { ...doc, families: { ...doc.families, [family.id]: family } }
+  }
+
+  it('子のいない夫婦の片方を削除すると家族ごと削除される', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, spouseId: bId, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+
+    const doc3 = removePerson(doc2, bId)
+    // 配偶者Aだけが残った空の家族は保持しない
+    expect(doc3.families[familyId]).toBeUndefined()
+    expect(doc3.persons[aId]).toBeDefined()
+  })
+
+  it('子のいる夫婦の片方を削除するとひとり親家族として残る', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, spouseId: bId, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    const { doc: doc3, childId } = addChild(doc2, aId, { name: { given: 'C' } }, {
+      otherParentId: bId,
+    })
+
+    const doc4 = removePerson(doc3, bId)
+    expect(doc4.families[familyId].spouseIds).toEqual([aId])
+    expect(doc4.families[familyId].children.map((c) => c.childId)).toEqual([childId])
+  })
+
+  it('配偶者が誰もいなくなった家族は子がいても削除され、子は人物として残る', () => {
+    const { doc, personId: cId } = withPerson('C')
+    const { doc: doc2, parentId: pId, familyId } = addParent(doc, cId, { name: { given: 'P' } })
+
+    const doc3 = removePerson(doc2, pId)
+    expect(doc3.families[familyId]).toBeUndefined()
+    expect(doc3.persons[cId]).toBeDefined()
+  })
+
+  it('子のいない夫婦の家族は、無関係な人物の削除では残る', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    const { doc: doc3, personId: zId } = addPerson(doc2, { name: { given: 'Z' } })
+
+    const doc4 = removePerson(doc3, zId)
+    expect(doc4.families[familyId].spouseIds).toHaveLength(2)
+  })
+
+  it('無関係な配偶者1人・子0人の家族を巻き添えで削除しない', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, personId: zId } = addPerson(doc, { name: { given: 'Z' } })
+    // 読み込み時の自動修復は行わないため、こうした家族は削除されるまで残り続ける
+    const vacant = createFamily({ spouseIds: [aId] })
+    const doc3 = putFamilyRaw(doc2, vacant)
+
+    const doc4 = removePerson(doc3, zId)
+    expect(doc4.families[vacant.id]).toBeDefined()
+  })
+})
+
+describe('computeRemovalImpact: 予告と実行の一致', () => {
+  it('予告した削除件数と実際に削除された家族数が一致する', () => {
+    // A-B(子なし)、A-C(子D)、Dの配偶者Eの3家族を持つドキュメント
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2 } = addSpouse(doc, aId, { name: { given: 'B' } })
+    const { doc: doc3, spouseId: cId } = addSpouse(doc2, aId, { name: { given: 'C' } })
+    const { doc: doc4, childId: dId } = addChild(doc3, aId, { name: { given: 'D' } }, {
+      otherParentId: cId,
+    })
+    const { doc: doc5 } = addSpouse(doc4, dId, { name: { given: 'E' } })
+
+    for (const personId of [aId, cId, dId]) {
+      const impact = computeRemovalImpact(doc5, personId)
+      const before = Object.keys(doc5.families).length
+      const after = Object.keys(removePerson(doc5, personId).families).length
+      expect(before - after).toBe(impact.removedFamilyCount)
+    }
+  })
+
+  it('削除で失われる婚姻・離婚イベントの件数を返す', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, spouseId: bId, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    const doc3 = setFamilyEvent(doc2, familyId, 'marriage', { type: 'marriage' })
+
+    // 家族ごと削除されるため婚姻の記録も失われる
+    expect(computeRemovalImpact(doc3, bId).removedFamilyEventCount).toBe(1)
+  })
+
+  it('家族が削除されない場合はイベント件数を0で返す', () => {
+    const { doc, personId: aId } = withPerson('A')
+    const { doc: doc2, spouseId: bId, familyId } = addSpouse(doc, aId, { name: { given: 'B' } })
+    const doc3 = setFamilyEvent(doc2, familyId, 'marriage', { type: 'marriage' })
+    const { doc: doc4 } = addChild(doc3, aId, { name: { given: 'C' } }, { otherParentId: bId })
+
+    const impact = computeRemovalImpact(doc4, bId)
+    expect(impact.removedFamilyCount).toBe(0)
+    expect(impact.removedFamilyEventCount).toBe(0)
+  })
+})
+
+describe('addSpouseLink: 既存人物を既存家族の配偶者にする', () => {
+  /** 子Cに親Pを登録し、Pに配偶者Qを別家族として作った「分裂」状態を作る */
+  function splitFamilies() {
+    const { doc, personId: cId } = withPerson('C')
+    const { doc: doc2, parentId: pId, familyId: parentFamilyId } = addParent(doc, cId, {
+      name: { given: 'P' },
+    })
+    const { doc: doc3, spouseId: qId, familyId: spouseFamilyId } = addSpouse(doc2, pId, {
+      name: { given: 'Q' },
+    })
+    return { doc: doc3, cId, pId, qId, parentFamilyId, spouseFamilyId }
+  }
+
+  it('配偶者1人の家族へ既存人物を追加すると2人になり、子が両者の子になる', () => {
+    const { doc, cId, pId, qId, parentFamilyId } = splitFamilies()
+
+    const next = addSpouseLink(doc, parentFamilyId, qId)
+    expect(next.families[parentFamilyId].spouseIds).toEqual([pId, qId])
+    expect(next.families[parentFamilyId].children.map((c) => c.childId)).toEqual([cId])
+  })
+
+  it('既に配偶者である人物を再度追加してもドキュメントは変化しない', () => {
+    const { doc, qId, spouseFamilyId } = splitFamilies()
+
+    expect(addSpouseLink(doc, spouseFamilyId, qId)).toEqual(doc)
+  })
+
+  it('配偶者が既に2人の家族へは追加できない', () => {
+    const { doc, spouseFamilyId } = splitFamilies()
+    const { doc: doc2, personId: rId } = addPerson(doc, { name: { given: 'R' } })
+
+    expect(() => addSpouseLink(doc2, spouseFamilyId, rId)).toThrow()
+  })
+
+  it('その家族の子は配偶者にできない', () => {
+    const { doc, cId, parentFamilyId } = splitFamilies()
+
+    expect(() => addSpouseLink(doc, parentFamilyId, cId)).toThrow()
+  })
+
+  it('存在しない家族・人物を指定すると例外になる', () => {
+    const { doc, qId, parentFamilyId } = splitFamilies()
+
+    expect(() => addSpouseLink(doc, 'missing-family', qId)).toThrow()
+    expect(() => addSpouseLink(doc, parentFamilyId, 'missing-person')).toThrow()
+  })
+
+  it('元のドキュメントを変更しない(純関数)', () => {
+    const { doc, qId, parentFamilyId } = splitFamilies()
+    const before: TreeDocument = structuredClone(doc)
+
+    addSpouseLink(doc, parentFamilyId, qId)
+    expect(doc).toEqual(before)
+  })
+})
+
+describe('addSpouse: 既存家族への自動合流は行わない', () => {
+  it('ひとり親家族を持つ人物へ配偶者を追加しても新しい家族が作られる', () => {
+    const { doc, personId: cId } = withPerson('C')
+    const { doc: doc2, parentId: pId, familyId: parentFamilyId } = addParent(doc, cId, {
+      name: { given: 'P' },
+    })
+    const { doc: doc3, spouseId: qId, familyId: spouseFamilyId } = addSpouse(doc2, pId, {
+      name: { given: 'Q' },
+    })
+
+    expect(spouseFamilyId).not.toBe(parentFamilyId)
+    // 継親・後妻を子の親として勝手に記録しない
+    expect(doc3.families[parentFamilyId].spouseIds).toEqual([pId])
+    expect(doc3.families[spouseFamilyId].spouseIds).toEqual([pId, qId])
+    expect(doc3.families[spouseFamilyId].children).toEqual([])
+    expect(qId).toBeDefined()
   })
 })

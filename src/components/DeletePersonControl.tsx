@@ -54,6 +54,10 @@ export function DeletePersonControl({ personId, onDeleted }: DeletePersonControl
                 .filter(Boolean)
                 .join('・') || '他の人物との関係はありません。'}
               {(impact.spouseFamilyCount > 0 || impact.childLinkCount > 0) && 'も変更されます。'}
+              {/* 家族ごと消えると婚姻日・離婚日も一緒に失われるため、承認前に明示する
+                  (spec tree-editor「人物・関係の削除」) */}
+              {impact.removedFamilyEventCount > 0 &&
+                `婚姻・離婚の記録${impact.removedFamilyEventCount}件も失われます。`}
               削除後すぐであれば「元に戻す」で復元できます。
             </p>
             <div className="confirm-dialog-actions">

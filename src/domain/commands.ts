@@ -111,6 +111,29 @@ export function addChildLink(
   )
 }
 
+/**
+ * 既存人物を既存の家族へ2人目の配偶者として加える。親子関係と婚姻関係が別々の家族に
+ * 分かれて記録された状態を、利用者の明示的な操作で1つの家族へ統合するための経路
+ * (spec family-data-model「既存の家族への配偶者の追加」)。
+ * `addSpouse`は常に新しい家族を作る(再婚対応)ため、既存家族への合流はこちらを使う。
+ * 継親・後妻を子の親として誤って記録しないよう、推測による自動合流は行わない(design.md D5)
+ */
+export function addSpouseLink(
+  doc: TreeDocument,
+  familyId: FamilyId,
+  personId: PersonId,
+): TreeDocument {
+  const family = doc.families[familyId]
+  if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
+  if (!doc.persons[personId]) throw new Error(`人物が見つかりません: ${personId}`)
+  if (family.spouseIds.includes(personId)) return doc
+  if (family.spouseIds.length >= 2) throw new Error(`配偶者は2人までです: ${familyId}`)
+  if (family.children.some((c) => c.childId === personId)) {
+    throw new Error(`家族の子を配偶者にはできません: ${personId}`)
+  }
+  return touch(putFamily(doc, { ...family, spouseIds: [...family.spouseIds, personId] }))
+}
+
 /** 親のいない人物へ親を新規作成する。2人目の親は既存のひとり親家族へ加わる */
 export function addParent(
   doc: TreeDocument,
@@ -199,6 +222,48 @@ export function updateFamily(
   return touch(putFamily(doc, { ...family, ...patch }))
 }
 
+/**
+ * 家族として意味を成さないか。配偶者が誰もいない家族は子の有無に関わらず、
+ * 配偶者が1人だけの家族は子もいない場合に、婚姻単位としても親子関係の器としても
+ * 成立しない(spec family-data-model「家族(婚姻単位)の表現」)。
+ * 配偶者2人・子0人(子のいない夫婦)と、配偶者1人・子あり(ひとり親)はいずれも正当な状態
+ */
+function isVacantFamily(family: Pick<Family, 'spouseIds' | 'children'>): boolean {
+  if (family.spouseIds.length === 0) return true
+  return family.spouseIds.length === 1 && family.children.length === 0
+}
+
+/**
+ * 人物削除後のfamiliesと、その過程で削除される家族を返す。
+ * `removePerson`(実行)と`computeRemovalImpact`(予告)の双方がこの戻り値を使うことで、
+ * 「削除されると予告した家族が残る」種の食い違いが表現できないようにする(design.md D1)。
+ */
+function planFamilyRemoval(
+  doc: TreeDocument,
+  personId: PersonId,
+): { families: TreeDocument['families']; removedFamilies: Family[] } {
+  const families: TreeDocument['families'] = {}
+  const removedFamilies: Family[] = []
+  for (const family of Object.values(doc.families)) {
+    const spouseIds = family.spouseIds.filter((id) => id !== personId)
+    const children = family.children.filter((c) => c.childId !== personId)
+    const next = { ...family, spouseIds, children }
+    const changed =
+      spouseIds.length !== family.spouseIds.length || children.length !== family.children.length
+    // 無関係な家族を人物削除の巻き添えで消さないため、空判定はこの削除で内容が変化した
+    // 家族にのみ適用する。変化していない家族は従来どおり完全に空の場合だけ落とす
+    const drop = changed
+      ? isVacantFamily(next)
+      : next.spouseIds.length === 0 && next.children.length === 0
+    if (drop) {
+      removedFamilies.push(family)
+      continue
+    }
+    families[family.id] = next
+  }
+  return { families, removedFamilies }
+}
+
 export interface RemovalImpact {
   /** 配偶者として属している家族の数 */
   spouseFamilyCount: number
@@ -206,6 +271,8 @@ export interface RemovalImpact {
   childLinkCount: number
   /** この人物の削除に伴い削除される家族の数 */
   removedFamilyCount: number
+  /** 削除される家族が持つ婚姻・離婚イベントの合計件数(削除で失われる記録の件数) */
+  removedFamilyEventCount: number
 }
 
 /** 削除確認ダイアログ用: 人物削除の影響範囲を返す */
@@ -213,22 +280,20 @@ export function computeRemovalImpact(doc: TreeDocument, personId: PersonId): Rem
   const families = Object.values(doc.families)
   const spouseFamilies = families.filter((f) => f.spouseIds.includes(personId))
   const childLinks = families.filter((f) => f.children.some((c) => c.childId === personId))
-  const removedFamilies = spouseFamilies.filter(
-    (f) => f.spouseIds.length === 1 || (f.spouseIds.length === 2 && f.children.length === 0),
-  )
+  const { removedFamilies } = planFamilyRemoval(doc, personId)
   return {
     spouseFamilyCount: spouseFamilies.length,
     childLinkCount: childLinks.length,
-    removedFamilyCount: removedFamilies.filter(
-      (f) => !(f.spouseIds.length === 2 && f.children.length > 0),
-    ).length,
+    removedFamilyCount: removedFamilies.length,
+    removedFamilyEventCount: removedFamilies.reduce((sum, f) => sum + f.events.length, 0),
   }
 }
 
 /**
  * 人物を削除し、関係の整合を保つ。
- * - 配偶者として属す家族から除く。配偶者が誰もいなくなった家族は子の有無に関わらず削除
- *   (残る子は親リンクを失うだけで人物としては残る)
+ * - 配偶者として属す家族から除く。その結果、家族として意味を成さなくなった家族
+ *   (配偶者0人、または配偶者1人で子もいない)は削除する。配偶者0人の家族は子の有無に
+ *   関わらず削除され、残る子は親リンクを失うだけで人物としては残る
  * - 子として帰属するリンクを除く
  */
 export function removePerson(doc: TreeDocument, personId: PersonId): TreeDocument {
@@ -236,15 +301,7 @@ export function removePerson(doc: TreeDocument, personId: PersonId): TreeDocumen
   const persons = { ...doc.persons }
   delete persons[personId]
 
-  const families: TreeDocument['families'] = {}
-  for (const family of Object.values(doc.families)) {
-    const spouseIds = family.spouseIds.filter((id) => id !== personId)
-    const children = family.children.filter((c) => c.childId !== personId)
-    const wasSpouse = spouseIds.length !== family.spouseIds.length
-    if (wasSpouse && spouseIds.length === 0) continue
-    if (spouseIds.length === 0 && children.length === 0) continue
-    families[family.id] = { ...family, spouseIds, children }
-  }
+  const { families } = planFamilyRemoval(doc, personId)
   return touch({ ...doc, persons, families })
 }
 
