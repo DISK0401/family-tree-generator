@@ -1,9 +1,18 @@
 import { useId, useState, type KeyboardEvent } from 'react'
-import { setFamilyEvent } from '../domain/commands'
+import { addSpouseLink, removeFamily, setFamilyEvent } from '../domain/commands'
 import { displayName } from '../domain/helpers'
-import type { Family, FamilyEventType, FamilyId, LifeEvent, PersonId, TreeDocument } from '../domain/types'
+import type {
+  Family,
+  FamilyEventType,
+  FamilyId,
+  LifeEvent,
+  Person,
+  PersonId,
+  TreeDocument,
+} from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
 import { WarekiDateInput } from './WarekiDateInput'
+import './confirm-dialog.css'
 import './FamilyEventEditor.css'
 
 interface FamilyEventEditorProps {
@@ -14,6 +23,116 @@ function spouseNames(doc: TreeDocument, family: Family, excludeId: PersonId): st
   const others = family.spouseIds.filter((id) => id !== excludeId)
   const names = others.map((id) => (doc.persons[id] ? displayName(doc.persons[id]) : '(不明)'))
   return names.length > 0 ? names.join('・') : '(配偶者未登録)'
+}
+
+/**
+ * その家族の2人目の配偶者になれる人物。自分自身・既に配偶者の人物に加え、
+ * その家族の子を除く(自分自身の親にはなれないため。spec tree-editor)
+ */
+function spouseCandidates(doc: TreeDocument, family: Family, personId: PersonId): Person[] {
+  const excluded = new Set<PersonId>([
+    personId,
+    ...family.spouseIds,
+    ...family.children.map((c) => c.childId),
+  ])
+  return Object.values(doc.persons).filter((p) => !excluded.has(p.id))
+}
+
+/**
+ * 配偶者が登録されていない家族へ、既存の人物を配偶者として紐づける。
+ * 親子関係と婚姻関係が別々の家族に分かれて記録された状態を、利用者が明示的に統合するための導線
+ * (design.md D5/D6)。`PedigreeEditor`と同じ行内`<select>`で、選択と同時に即時反映する
+ */
+function SpouseLinkField({ family, personId }: { family: Family; personId: PersonId }) {
+  const document = useTreeStore((s) => s.document)
+  const apply = useTreeStore((s) => s.apply)
+  const selectId = useId()
+
+  const candidates = spouseCandidates(document, family, personId)
+  if (candidates.length === 0) return null
+
+  return (
+    <label htmlFor={selectId} className="family-event-editor-link">
+      配偶者に既存の人物を設定
+      <select
+        id={selectId}
+        value=""
+        onChange={(e) => {
+          const spouseId = e.target.value
+          if (spouseId) apply((doc) => addSpouseLink(doc, family.id, spouseId))
+        }}
+      >
+        <option value="">選択してください</option>
+        {candidates.map((p) => (
+          <option key={p.id} value={p.id}>
+            {displayName(p)}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+/**
+ * 家族(婚姻単位)そのものの削除。人物削除と同様、失われる内容を提示して確認を求める
+ * (spec tree-editor「婚姻単位の削除」)。人物は削除しない
+ */
+function FamilyDeleteControl({ family }: { family: Family }) {
+  const apply = useTreeStore((s) => s.apply)
+  const [open, setOpen] = useState(false)
+  const titleId = useId()
+
+  const eventCount = family.events.length
+  const childCount = family.children.length
+
+  return (
+    <>
+      <button
+        type="button"
+        className="family-event-editor-delete"
+        onClick={() => setOpen(true)}
+      >
+        この婚姻を削除
+      </button>
+      {open && (
+        <div className="confirm-dialog-overlay">
+          <div
+            className="confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+          >
+            <h2 id={titleId}>この婚姻を削除しますか？</h2>
+            <p>
+              {[
+                eventCount > 0 && `婚姻・離婚の記録${eventCount}件`,
+                childCount > 0 && `子${childCount}人の親としての帰属`,
+              ]
+                .filter(Boolean)
+                .join('・') || '記録されている婚姻・離婚の日付や子はありません。'}
+              {(eventCount > 0 || childCount > 0) && 'が失われます。'}
+              人物そのものは削除されません。削除後すぐであれば「元に戻す」で復元できます。
+            </p>
+            <div className="confirm-dialog-actions">
+              <button type="button" onClick={() => setOpen(false)}>
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="confirm-dialog-danger-button"
+                onClick={() => {
+                  apply((doc) => removeFamily(doc, family.id))
+                  setOpen(false)
+                }}
+              >
+                削除する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 interface EventFieldsProps {
@@ -96,9 +215,11 @@ export function FamilyEventEditor({ personId }: FamilyEventEditorProps) {
       {families.map((family) => {
         const marriageEvents = family.events.filter((e) => e.type === 'marriage')
         const divorceEvents = family.events.filter((e) => e.type === 'divorce')
+        const hasOtherSpouse = family.spouseIds.some((id) => id !== personId)
         return (
           <div key={family.id} className="family-event-editor-family">
             <p className="family-event-editor-spouse">{spouseNames(document, family, personId)}</p>
+            {!hasOtherSpouse && <SpouseLinkField family={family} personId={personId} />}
             <EventFields
               key={`marriage:${JSON.stringify(marriageEvents[0] ?? null)}`}
               familyId={family.id}
@@ -115,6 +236,7 @@ export function FamilyEventEditor({ personId }: FamilyEventEditorProps) {
               event={divorceEvents[0]}
               extraCount={Math.max(0, divorceEvents.length - 1)}
             />
+            <FamilyDeleteControl family={family} />
           </div>
         )
       })}

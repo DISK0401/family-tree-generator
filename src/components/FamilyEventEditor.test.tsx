@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addFamilyEvent, addPerson, addSpouse } from '../domain/commands'
+import { addChild, addFamilyEvent, addParent, addPerson, addSpouse } from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
 import { useTreeStore } from '../store/tree-store'
 import { FamilyEventEditor } from './FamilyEventEditor'
@@ -137,5 +137,134 @@ describe('FamilyEventEditor: 復縁(3件以上のイベント)', () => {
     const marriageEvents = family.events.filter((e) => e.type === 'marriage')
     expect(marriageEvents).toHaveLength(2)
     expect(marriageEvents[1].date?.date).toEqual({ year: 2000, month: 1, day: 1 })
+  })
+})
+
+describe('FamilyEventEditor: 婚姻単位の削除', () => {
+  it('配偶者として属する家族の数だけ削除ボタンが描画される', () => {
+    // Aに2つ目の家族(再婚)を追加する
+    const doc = addSpouse(useTreeStore.getState().document, personAId, { name: { given: 'C' } }).doc
+    useTreeStore.getState().replace(doc)
+
+    render(<FamilyEventEditor personId={personAId} />)
+    expect(screen.getAllByRole('button', { name: 'この婚姻を削除' })).toHaveLength(2)
+  })
+
+  it('確認ダイアログに失われる婚姻の記録と子の帰属の件数が示される', () => {
+    let doc = addFamilyEvent(useTreeStore.getState().document, familyId, { type: 'marriage' })
+    const spouseId = doc.families[familyId].spouseIds.find((id) => id !== personAId)!
+    doc = addChild(doc, personAId, { name: { given: 'C1' } }, { otherParentId: spouseId }).doc
+    doc = addChild(doc, personAId, { name: { given: 'C2' } }, { otherParentId: spouseId }).doc
+    useTreeStore.getState().replace(doc)
+
+    render(<FamilyEventEditor personId={personAId} />)
+    fireEvent.click(screen.getByRole('button', { name: 'この婚姻を削除' }))
+
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog).toHaveTextContent('婚姻・離婚の記録1件')
+    expect(dialog).toHaveTextContent('子2人の親としての帰属')
+    expect(dialog).toHaveTextContent('人物そのものは削除されません')
+  })
+
+  it('承認すると家族が削除され、人物は削除されない', () => {
+    render(<FamilyEventEditor personId={personAId} />)
+    fireEvent.click(screen.getByRole('button', { name: 'この婚姻を削除' }))
+    fireEvent.click(screen.getByRole('button', { name: '削除する' }))
+
+    const state = useTreeStore.getState()
+    expect(state.document.families[familyId]).toBeUndefined()
+    expect(state.document.persons[personAId]).toBeDefined()
+  })
+
+  it('キャンセルするとドキュメントは変化しない', () => {
+    const before = useTreeStore.getState().document
+    render(<FamilyEventEditor personId={personAId} />)
+    fireEvent.click(screen.getByRole('button', { name: 'この婚姻を削除' }))
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    expect(useTreeStore.getState().document).toBe(before)
+  })
+
+  it('削除直後のundoで家族・イベント・子の帰属が復元される', () => {
+    let doc = addFamilyEvent(useTreeStore.getState().document, familyId, { type: 'marriage' })
+    const spouseId = doc.families[familyId].spouseIds.find((id) => id !== personAId)!
+    doc = addChild(doc, personAId, { name: { given: 'C1' } }, { otherParentId: spouseId }).doc
+    useTreeStore.getState().replace(doc)
+    const before = useTreeStore.getState().document.families[familyId]
+
+    render(<FamilyEventEditor personId={personAId} />)
+    fireEvent.click(screen.getByRole('button', { name: 'この婚姻を削除' }))
+    fireEvent.click(screen.getByRole('button', { name: '削除する' }))
+    useTreeStore.getState().undo()
+
+    expect(useTreeStore.getState().document.families[familyId]).toEqual(before)
+  })
+})
+
+describe('FamilyEventEditor: 配偶者が未登録の家族への紐づけ', () => {
+  /** 子Cに親Pを登録した「配偶者未登録」の家族と、無関係な人物Xを用意する */
+  function setupSpouselessFamily() {
+    let doc = createTreeDocument()
+    const c = addPerson(doc, { name: { given: 'C' } })
+    doc = c.doc
+    const parent = addParent(doc, c.personId, { name: { given: 'P' } })
+    doc = parent.doc
+    const x = addPerson(doc, { name: { given: 'X' } })
+    doc = x.doc
+    useTreeStore.getState().replace(doc)
+    return { childId: c.personId, parentId: parent.parentId, familyId: parent.familyId, xId: x.personId }
+  }
+
+  it('配偶者が登録済みの家族には選択欄が出ない', () => {
+    render(<FamilyEventEditor personId={personAId} />)
+    expect(screen.queryByLabelText('配偶者に既存の人物を設定')).not.toBeInTheDocument()
+  })
+
+  it('配偶者が未登録の家族には選択欄が出る', () => {
+    const { parentId } = setupSpouselessFamily()
+    render(<FamilyEventEditor personId={parentId} />)
+    expect(screen.getByLabelText('配偶者に既存の人物を設定')).toBeInTheDocument()
+  })
+
+  it('候補から自分自身とその家族の子が除外される', () => {
+    const { parentId } = setupSpouselessFamily()
+    render(<FamilyEventEditor personId={parentId} />)
+
+    const options = screen
+      .getAllByRole('option')
+      .map((o) => o.textContent)
+      .filter((t) => t !== '選択してください')
+    expect(options).toEqual(['X'])
+  })
+
+  it('候補を選ぶと確定操作なしで配偶者として反映される', () => {
+    const { parentId, familyId: spouselessFamilyId, xId, childId } = setupSpouselessFamily()
+    render(<FamilyEventEditor personId={parentId} />)
+
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), {
+      target: { value: xId },
+    })
+
+    const family = useTreeStore.getState().document.families[spouselessFamilyId]
+    expect(family.spouseIds).toEqual([parentId, xId])
+    // 子の帰属は維持される
+    expect(family.children.map((c) => c.childId)).toEqual([childId])
+    // 見出しが選んだ人物の氏名に変わり、選択欄は消える
+    expect(screen.getByText('X')).toBeInTheDocument()
+    expect(screen.queryByLabelText('配偶者に既存の人物を設定')).not.toBeInTheDocument()
+  })
+
+  it('紐づけ直後のundoで配偶者未登録の状態へ戻る', () => {
+    const { parentId, familyId: spouselessFamilyId, xId } = setupSpouselessFamily()
+    render(<FamilyEventEditor personId={parentId} />)
+
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), {
+      target: { value: xId },
+    })
+    useTreeStore.getState().undo()
+
+    expect(useTreeStore.getState().document.families[spouselessFamilyId].spouseIds).toEqual([
+      parentId,
+    ])
   })
 })

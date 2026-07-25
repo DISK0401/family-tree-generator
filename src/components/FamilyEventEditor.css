@@ -68,3 +68,41 @@
   font-size: var(--text-xs);
   color: var(--ink-faint);
 }
+
+/* 配偶者が登録されていない家族へ既存人物を紐づける選択欄。
+   PedigreeEditorの続柄セレクトと同じ「ラベル+行内select」の見た目に揃える */
+.family-event-editor-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.family-event-editor-link select {
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+/* 破壊的操作なので日付入力欄とは明確に区別する。ただし人物削除より従属的な操作のため、
+   枠線を持たない控えめな見た目にとどめる */
+.family-event-editor-delete {
+  align-self: flex-start;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--danger);
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.family-event-editor-delete:hover {
+  background: var(--danger-wash);
+}

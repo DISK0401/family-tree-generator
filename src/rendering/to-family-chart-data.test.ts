@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse } from '../domain/commands'
+import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse, addSpouseLink } from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
 import type { FamilyChartDatum } from './to-family-chart-data'
 import {
@@ -760,5 +760,25 @@ describe('computeHiddenCounts', () => {
     const visibleIds = new Set([naokatsu.personId, soseki.childId])
     const hidden = computeHiddenCounts(doc, visibleIds)
     expect(hidden.get(soseki.childId)).toEqual({ count: 1, revealId: shiobara.personId })
+  })
+})
+
+describe('配偶者の紐づけ後の親子線', () => {
+  it('ひとり親家族へ配偶者を紐づけると、子の親が2人として描画される', () => {
+    let doc = createTreeDocument()
+    const child = addPerson(doc, { name: { given: 'C' } })
+    doc = child.doc
+    const parent = addParent(doc, child.personId, { name: { given: 'P' } })
+    doc = parent.doc
+    const other = addPerson(doc, { name: { given: 'Q' } })
+    doc = other.doc
+
+    const before = byId(toFamilyChartData(doc), child.personId)
+    expect(before.rels.parents).toEqual([parent.parentId])
+
+    doc = addSpouseLink(doc, parent.familyId, other.personId)
+
+    const after = byId(toFamilyChartData(doc), child.personId)
+    expect(after.rels.parents?.slice().sort()).toEqual([parent.parentId, other.personId].sort())
   })
 })
