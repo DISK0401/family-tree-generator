@@ -51,11 +51,12 @@
 function planFamilyRemoval(
   doc: TreeDocument,
   personId: PersonId,
-): { families: TreeDocument['families']; removedFamilyIds: FamilyId[] }
+): { families: TreeDocument['families']; removedFamilies: Family[] }
 ```
 
 - `removePerson` は `families` をそのまま採用する
-- `computeRemovalImpact` の `removedFamilyCount` は `removedFamilyIds.length` を返す
+- `computeRemovalImpact` の `removedFamilyCount` は `removedFamilies.length` を返す
+- 削除される `Family` そのものを返すことで、D8 のイベント件数の集計も同じ戻り値から行える
 
 これにより「予告と実行がずれる」状態がそもそも表現できなくなる。
 
@@ -158,5 +159,7 @@ export function addSpouseLink(
 
 ## Open Questions
 
-- `README.md` の「提供中の機能」記述を更新する必要があるか。婚姻単位の削除と配偶者の紐づけは利用者から見える機能追加のため、実装時に記述の粒度を確認して判断する(tasks に含める)。
-- 配偶者が登録されていない家族の枠の見出しを「(配偶者未登録)」のまま据え置くか、紐づけ導線が付くことを踏まえた文言に変えるか。specs では見出し文言そのものを要件化せず、実装時に UI の収まりを見て決める。
+いずれも実装時に解消済み。
+
+- ~~`README.md` の「提供中の機能」記述を更新する必要があるか~~ → **更新した**。「婚姻・離婚イベントの編集」に婚姻単位の削除を追記し、「配偶者の後からの紐づけ」を新しい項目として追加、「人物の削除」に失われる婚姻記録の提示と空き殻を残さない挙動を追記した。いずれも利用者から見える挙動の変化であり、README の粒度(1機能=1項目)に収まる。
+- ~~配偶者が登録されていない家族の枠の見出しを「(配偶者未登録)」のまま据え置くか~~ → **据え置いた**。紐づけ用の `<select>` に「配偶者に既存の人物を設定」というラベルが付くため、見出しは状態の表示に徹してよいと判断した。実機で確認した並び(見出し →配偶者選択 →婚姻日 →離婚日 →削除)は、状態を読んでから操作を選ぶ流れとして無理がない。
