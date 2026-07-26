@@ -58,3 +58,22 @@ describe('JSONラウンドトリップの完全性', () => {
     expect(result.document).toEqual(document)
   })
 })
+
+describe('関係を持たない人物のJSONラウンドトリップ', () => {
+  it('どのFamilyにも属さない人物が失われずに復元される', () => {
+    let document = createTreeDocument()
+    const a = addPerson(document, { name: { given: 'A' } })
+    document = a.doc
+    const standalone = addPerson(document, { name: { surname: '富岡', given: '榮' } })
+    document = standalone.doc
+
+    const text = exportFamilyTreeJsonText(document)
+    const result = importFamilyTreeJson(text)
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(Object.keys(result.document.persons)).toHaveLength(2)
+    expect(result.document.persons[standalone.personId].name.given).toBe('榮')
+    expect(Object.keys(result.document.families)).toHaveLength(0)
+  })
+})

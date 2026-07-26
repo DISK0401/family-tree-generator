@@ -80,3 +80,42 @@ describe('GEDCOM export→importのラウンドトリップ', () => {
     expect(commonLawFamily).toBeDefined()
   })
 })
+
+describe('関係を持たない人物のラウンドトリップ', () => {
+  it('どのFamilyにも属さない人物がFAMS/FAMCなしのINDIとして出力され、復元される', () => {
+    let document = createTreeDocument()
+    const a = addPerson(document, { name: { surname: '山田', given: '太郎' } })
+    document = a.doc
+    const spouse = addSpouse(document, a.personId, { name: { surname: '山田', given: '花子' } })
+    document = spouse.doc
+    // 系統を決めずに先に登録した人物(旧字体を含む)
+    const standalone = addPerson(document, { name: { surname: '富岡', given: '榮' } })
+    document = standalone.doc
+
+    const { text } = exportGedcom(document, '7.0')
+
+    // 当該INDIレコードには家族参照が出力されない
+    const records = text.split(/\r?\n(?=0 @)/)
+    const standaloneRecord = records.find((r) => r.includes('榮'))
+    expect(standaloneRecord).toBeDefined()
+    expect(standaloneRecord).not.toContain('FAMS')
+    expect(standaloneRecord).not.toContain('FAMC')
+
+    const reimported = importGedcom(bytesOf(text))
+    expect(reimported.success).toBe(true)
+    if (!reimported.success) return
+
+    expect(Object.keys(reimported.document.persons)).toHaveLength(3)
+    const restored = Object.values(reimported.document.persons).find(
+      (p) => p.name.given === '榮',
+    )
+    expect(restored).toBeDefined()
+    // どのFamilyにも属さないまま復元される
+    const belongs = Object.values(reimported.document.families).some(
+      (f) =>
+        f.spouseIds.includes(restored?.id ?? '') ||
+        f.children.some((c) => c.childId === restored?.id),
+    )
+    expect(belongs).toBe(false)
+  })
+})
