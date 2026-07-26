@@ -259,7 +259,7 @@ export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editF
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="person-panel-relation-new">
               <PersonNameFields
                 surname={surname}
                 given={given}

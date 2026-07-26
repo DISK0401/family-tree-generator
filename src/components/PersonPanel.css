@@ -107,7 +107,8 @@
   color: var(--ai-strong);
 }
 
-.person-panel-relation-existing {
+.person-panel-relation-existing,
+.person-panel-relation-new {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
