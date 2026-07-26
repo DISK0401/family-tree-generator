@@ -11,6 +11,7 @@ import type {
   TreeDocument,
 } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { UnlinkRelationControl } from './UnlinkRelationControl'
 import { WarekiDateInput } from './WarekiDateInput'
 import './confirm-dialog.css'
 import './FamilyEventEditor.css'
@@ -236,7 +237,19 @@ export function FamilyEventEditor({ personId }: FamilyEventEditorProps) {
               event={divorceEvents[0]}
               extraCount={Math.max(0, divorceEvents.length - 1)}
             />
-            <FamilyDeleteControl family={family} />
+            <div className="family-event-editor-controls">
+              {/* 家族そのものは残したまま、自分だけ配偶者から外す。子の帰属や婚姻の記録が
+                  正しく、配偶者の紐づけだけを誤った場合に使う(spec tree-editor
+                  「関係リンクの解除」)。家族ごと消す「この婚姻を削除」とは別の操作 */}
+              <UnlinkRelationControl
+                familyId={family.id}
+                kind="spouse"
+                personId={personId}
+                label="この家族から自分を外す"
+                title="この家族の配偶者から外れますか？"
+              />
+              <FamilyDeleteControl family={family} />
+            </div>
           </div>
         )
       })}

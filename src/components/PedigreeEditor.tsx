@@ -2,6 +2,7 @@ import { setChildPedigree } from '../domain/commands'
 import { displayName } from '../domain/helpers'
 import type { Pedigree, PersonId, TreeDocument } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { UnlinkRelationControl } from './UnlinkRelationControl'
 import './PedigreeEditor.css'
 
 const PEDIGREE_LABEL: Record<Pedigree, string> = {
@@ -43,22 +44,36 @@ export function PedigreeEditor({ personId }: PedigreeEditorProps) {
         if (!link) return null
         const selectId = `pedigree-${family.id}`
         return (
-          <label key={family.id} htmlFor={selectId} className="pedigree-editor-row">
-            <span className="pedigree-editor-parents">{parentNames(document, family.spouseIds)}</span>
-            <select
-              id={selectId}
-              value={link.pedigree}
-              onChange={(e) =>
-                apply((doc) => setChildPedigree(doc, family.id, personId, e.target.value as Pedigree))
-              }
-            >
-              {(Object.keys(PEDIGREE_LABEL) as Pedigree[]).map((p) => (
-                <option key={p} value={p}>
-                  {PEDIGREE_LABEL[p]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div key={family.id} className="pedigree-editor-family">
+            <label htmlFor={selectId} className="pedigree-editor-row">
+              <span className="pedigree-editor-parents">
+                {parentNames(document, family.spouseIds)}
+              </span>
+              <select
+                id={selectId}
+                value={link.pedigree}
+                onChange={(e) =>
+                  apply((doc) => setChildPedigree(doc, family.id, personId, e.target.value as Pedigree))
+                }
+              >
+                {(Object.keys(PEDIGREE_LABEL) as Pedigree[]).map((p) => (
+                  <option key={p} value={p}>
+                    {PEDIGREE_LABEL[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* 誤って子として登録した人物を、人物データを失わずに繋ぎ変えるための導線
+                (spec tree-editor「関係リンクの解除」)。親子の辺は1種類のため、
+                解除は子の側からのみ提供する(design.md D3) */}
+            <UnlinkRelationControl
+              familyId={family.id}
+              kind="child"
+              personId={personId}
+              label="この親子関係を解除"
+              title="この親子関係を解除しますか？"
+            />
+          </div>
         )
       })}
     </div>

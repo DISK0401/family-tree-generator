@@ -1,0 +1,22 @@
+/*
+ * 関係リンクの解除(spec tree-editor)。
+ * 人物・婚姻単位の削除ほど破壊的ではない(人物は残る)ため、危険操作の朱系ではなく
+ * 控えめな文字ボタンとし、削除導線(.family-event-editor-delete)とは色で区別する。
+ */
+.unlink-relation-trigger {
+  align-self: flex-start;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.unlink-relation-trigger:hover {
+  border-color: var(--ink-soft);
+  background: var(--paper-sunken);
+}

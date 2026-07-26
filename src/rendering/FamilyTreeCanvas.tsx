@@ -2,6 +2,7 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
+import { AddPersonControl } from '../components/AddPersonControl'
 import { UnconnectedTray } from '../components/UnconnectedTray'
 import type { Pedigree } from '../domain/types'
 import { useDisplaySettingsStore } from '../settings/display-settings-store'
@@ -452,6 +453,9 @@ export function FamilyTreeCanvas({
       <div className="tree-canvas-stage">
       <div ref={containerRef} className="f3 tree-canvas-root" />
       <div className="tree-corner-panel">
+        {/* 選択中の人物がなくても押せる必要があるため、人物編集パネルではなく
+            キャンバス側に置く(spec tree-editor「関係を指定しない人物の追加」) */}
+        <AddPersonControl onAdded={(personId) => onSelectPerson(personId)} />
         <button
           type="button"
           className="tree-show-all-toggle"

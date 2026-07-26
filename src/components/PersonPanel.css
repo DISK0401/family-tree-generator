@@ -76,6 +76,59 @@
   background: var(--paper-sunken);
 }
 
+/* 新規作成 / 既存の人物から選ぶ の切り替え(spec tree-editor「既存の人物を関係先に選ぶ」) */
+.person-panel-relation-modes {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.person-panel-relation-modes button {
+  flex: 1;
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.person-panel-relation-modes button[aria-pressed='true'] {
+  border-color: var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+.person-panel-relation-existing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.person-panel-relation-existing label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.person-panel-relation-existing select {
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.person-panel-relation-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
 .person-panel-relation-actions {
   display: flex;
   justify-content: flex-end;
