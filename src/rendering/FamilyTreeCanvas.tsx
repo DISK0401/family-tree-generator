@@ -380,6 +380,15 @@ export function FamilyTreeCanvas({
     // 全体表示用データのまま更新する(showAllRef.currentで現在のモードを判定)
     const data = showAllRef.current ? toFullViewFamilyChartData(document) : toFamilyChartData(document)
     chart.updateData(data as unknown as never)
+    // 親を追加・変更すると、選択中の人物からたどれる最上位祖先(=視点)が変わりうる。
+    // main_idはカードのクリック時にしか追従しないため、ここで追従させないと
+    // 「既存の人物を親として紐づけたのに、その親が図に現れない」状態のまま残ってしまう。
+    // 全体表示モード中は視点を仮想ルートに固定するため動かさない(design.md D5)
+    const selectedId = selectedIdRef.current
+    if (!showAllRef.current && selectedId && document.persons[selectedId]) {
+      const nextMainId = findRootAncestor(document, selectedId)
+      if (nextMainId !== chart.store.getMainId()) chart.updateMainId(nextMainId)
+    }
     // 人物追加のたびに全体を視界に収める(競合の「レイアウトが崩れる/迷子になる」不満への対応)
     chart.updateTree({ tree_position: 'fit' })
   }, [document])

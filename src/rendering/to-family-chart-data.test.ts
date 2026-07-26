@@ -910,3 +910,105 @@ describe('computeOffChartPersonIds: 視点1人からの導出', () => {
     expect(computeOffChartPersonIds(doc, 'missing-person')).toEqual([a.personId])
   })
 })
+
+describe('婿養子: 同じ家族の子どうしが夫婦の場合の重複回避', () => {
+  /**
+   * 徳雄・ぎん夫婦の実子 榮 と、その夫で徳雄・ぎんの養子でもある 兎一。
+   * 兎一 は齋藤家(喜八郎・きよ)の実子でもある
+   */
+  function mukoyoshi() {
+    let doc = createTreeDocument()
+    const tokuo = addPerson(doc, { name: { given: '徳雄' } })
+    doc = tokuo.doc
+    const gin = addSpouse(doc, tokuo.personId, { name: { given: 'ぎん' } })
+    doc = gin.doc
+    const sakae = addChild(doc, tokuo.personId, { name: { given: '榮' } }, {
+      otherParentId: gin.spouseId,
+    })
+    doc = sakae.doc
+
+    const kihachiro = addPerson(doc, { name: { given: '喜八郎' } })
+    doc = kihachiro.doc
+    const kiyo = addSpouse(doc, kihachiro.personId, { name: { given: 'きよ' } })
+    doc = kiyo.doc
+    const taichi = addChild(doc, kihachiro.personId, { name: { given: '兎一' } }, {
+      otherParentId: kiyo.spouseId,
+    })
+    doc = taichi.doc
+    doc = linkSpouse(doc, taichi.childId, sakae.childId).doc
+    // 兎一 を徳雄・ぎんの養子として加える
+    doc = addChildLink(doc, gin.familyId, taichi.childId, 'adopted')
+    // 榮・兎一 夫婦の子
+    const child = addChild(doc, sakae.childId, { name: { given: '紀佳' } }, {
+      otherParentId: taichi.childId,
+    })
+    doc = child.doc
+
+    return {
+      doc,
+      tokuoId: tokuo.personId,
+      ginId: gin.spouseId,
+      sakaeId: sakae.childId,
+      taichiId: taichi.childId,
+      childId: child.childId,
+      tokuoFamilyId: gin.familyId,
+    }
+  }
+
+  it('夫婦である子は片方だけが子の辺として残り、もう片方は配偶者として描かれる', () => {
+    const { doc, tokuoId, sakaeId, taichiId } = mukoyoshi()
+    const data = toFamilyChartData(doc)
+
+    // 血縁の子(榮)を残し、養子として婚入した側(兎一)は子の辺から外す
+    expect(data.find((d) => d.id === tokuoId)?.rels.children).toEqual([sakaeId])
+    // 兎一は榮の配偶者として図に現れるため、描画から漏れることはない
+    expect(data.find((d) => d.id === sakaeId)?.rels.spouses).toEqual([taichiId])
+  })
+
+  it('夫婦とその子孫が2度描かれない', () => {
+    const { doc, tokuoId, sakaeId, taichiId, childId } = mukoyoshi()
+    const data = toFamilyChartData(doc)
+
+    // 徳雄の子として榮・兎一の両方を与えると、family-chartは子ごとにその配偶者を
+    // 添えるため同じ夫婦とその子孫が2度描かれる。子の辺は1本だけであること
+    const asChildOfTokuo = data
+      .find((d) => d.id === tokuoId)
+      ?.rels.children?.filter((id) => id === sakaeId || id === taichiId)
+    expect(asChildOfTokuo).toHaveLength(1)
+    // 孫は榮・兎一夫婦の子として1度だけ現れる
+    expect(data.find((d) => d.id === sakaeId)?.rels.children).toEqual([childId])
+    expect(data.find((d) => d.id === taichiId)?.rels.children).toEqual([childId])
+  })
+
+  it('養子側を選ぶと養親(徳雄)側の家系が視点になる', () => {
+    const { doc, tokuoId, taichiId } = mukoyoshi()
+    // 実親(齋藤)ではなく養親(徳雄)側の祖先へたどり着く
+    expect(findRootAncestor(doc, taichiId)).toBe(tokuoId)
+  })
+
+  it('全体表示モードでも全員が描画され、重複した根が生まれない', () => {
+    const { doc, tokuoId } = mukoyoshi()
+    const roots = computeFullViewRoots(doc)
+
+    // 徳雄側と齋藤側の2つの家系の根が立ち、余分な根は増えない
+    expect(roots).toContain(tokuoId)
+    const data = toFullViewFamilyChartData(doc)
+    const drawn = new Set(data.map((d) => d.data.personId))
+    for (const id of Object.keys(doc.persons)) expect(drawn.has(id)).toBe(true)
+  })
+
+  it('夫婦でない子は両方とも子の辺として残る', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = b.doc
+    const c1 = addChild(doc, a.personId, { name: { given: 'C1' } }, { otherParentId: b.spouseId })
+    doc = c1.doc
+    const c2 = addChild(doc, a.personId, { name: { given: 'C2' } }, { otherParentId: b.spouseId })
+    doc = c2.doc
+
+    const children = toFamilyChartData(doc).find((d) => d.id === a.personId)?.rels.children
+    expect(children?.sort()).toEqual([c1.childId, c2.childId].sort())
+  })
+})

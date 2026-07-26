@@ -127,6 +127,47 @@ function buildAdjacency(doc: TreeDocument): Map<PersonId, Set<PersonId>> {
   return adjacency
 }
 
+/** 家族の枠を越えて「この2人は配偶者どうしか」を引けるようにした対応表 */
+function buildSpousePairs(doc: TreeDocument): Set<string> {
+  const pairs = new Set<string>()
+  for (const family of Object.values(doc.families)) {
+    for (const a of family.spouseIds) {
+      for (const b of family.spouseIds) {
+        if (a !== b) pairs.add(`${a}|${b}`)
+      }
+    }
+  }
+  return pairs
+}
+
+/**
+ * 同じ家族の子どうしが夫婦である場合(婿養子・嫁養子)に、子の辺から外す側を返す。
+ *
+ * family-chartは子を1人描くたびにその配偶者を横へ添えるため、夫婦である2人を両方とも
+ * 同じ家族の子として与えると、その夫婦と子孫がまるごと2度描かれてしまう
+ * (例: 娘の婿が婿養子としてその家に入った家系図)。片方だけを子の辺として残し、
+ * もう片方は残した側の配偶者として描かれるようにすることで、重複なく同じ位置へ収める。
+ *
+ * 残すのは血縁(biological)の子。婿養子・嫁養子では、その家の血筋の子を系線でつなぎ、
+ * 婚入した側をその配偶者として添えるのが家系図の通例のため。双方の続柄が同種の場合は
+ * 家族内の登録順で先の子を残す(描画結果を決定的にするため)。
+ */
+function spouseSiblingsToSkip(family: Family, spousePairs: ReadonlySet<string>): Set<PersonId> {
+  const skip = new Set<PersonId>()
+  const links = family.children
+  for (let i = 0; i < links.length; i++) {
+    for (let j = i + 1; j < links.length; j++) {
+      const a = links[i]
+      const b = links[j]
+      if (skip.has(a.childId) || skip.has(b.childId)) continue
+      if (!spousePairs.has(`${a.childId}|${b.childId}`)) continue
+      const dropB = a.pedigree === 'biological' || b.pedigree !== 'biological'
+      skip.add(dropB ? b.childId : a.childId)
+    }
+  }
+  return skip
+}
+
 /**
  * 全体表示モード(design.md D5)の根の計算専用に、各人物の「主たる子」(family-chartの
  * 子孫方向の走査が実際にたどる相手)と「配偶者」の一覧を構築する。
@@ -136,13 +177,17 @@ function buildPrimaryChildrenAndSpouses(
 ): { primaryChildrenOf: Map<PersonId, PersonId[]>; spousesOf: Map<PersonId, PersonId[]> } {
   const primaryChildrenOf = new Map<PersonId, PersonId[]>()
   const spousesOf = new Map<PersonId, PersonId[]>()
+  const spousePairs = buildSpousePairs(doc)
   for (const family of Object.values(doc.families)) {
     for (const spouseId of family.spouseIds) {
       const others = family.spouseIds.filter((id) => id !== spouseId)
       if (others.length === 0) continue
       spousesOf.set(spouseId, [...(spousesOf.get(spouseId) ?? []), ...others])
     }
+    // 実際に描かれる子の辺と同じ判定を使う(根の到達範囲と描画結果を食い違わせないため)
+    const skip = spouseSiblingsToSkip(family, spousePairs)
     for (const child of family.children) {
+      if (skip.has(child.childId)) continue
       if (findPrimaryParentFamily(doc, child.childId)?.id !== family.id) continue // 主たる家族のみ
       for (const spouseId of family.spouseIds) {
         primaryChildrenOf.set(spouseId, [...(primaryChildrenOf.get(spouseId) ?? []), child.childId])
@@ -361,6 +406,7 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
   const childrenSets = new Map<PersonId, Set<PersonId>>()
   const parentsByChild = new Map<PersonId, PersonId[]>()
   const pedigreeByChild = new Map<PersonId, Pedigree>()
+  const spousePairs = buildSpousePairs(doc)
 
   for (const family of Object.values(doc.families)) {
     for (const spouseId of family.spouseIds) {
@@ -370,17 +416,27 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
       }
     }
 
+    // 婿養子等で同じ家族の子どうしが夫婦の場合、片方を子の辺から外す(重複描画の回避)。
+    // 外すのは親→子の辺(childrenSets)だけで、その人物がどの家族の子であるかを表す
+    // parentsByChild/pedigreeByChildからは外さない。ここまで落とすと、養子として入った家
+    // ではなく実家側が「描かれる親」に繰り上がり、養家側が既定の視点でなくなってしまう
+    const skip = spouseSiblingsToSkip(family, spousePairs)
+
     for (const child of family.children) {
       const isPrimary = findPrimaryParentFamily(doc, child.childId)?.id === family.id
       if (options.primaryOnly) {
         if (!isPrimary) continue
-        for (const spouseId of family.spouseIds) ensureSet(childrenSets, spouseId).add(child.childId)
+        if (!skip.has(child.childId)) {
+          for (const spouseId of family.spouseIds) ensureSet(childrenSets, spouseId).add(child.childId)
+        }
         parentsByChild.set(child.childId, family.spouseIds)
         pedigreeByChild.set(child.childId, child.pedigree)
         continue
       }
-      for (const spouseId of family.spouseIds) {
-        ensureSet(childrenSets, spouseId).add(child.childId)
+      if (!skip.has(child.childId)) {
+        for (const spouseId of family.spouseIds) {
+          ensureSet(childrenSets, spouseId).add(child.childId)
+        }
       }
       // 実子(biological)より非実子(養子・継子・里子・不明)を優先して主たる親子線として
       // 採用する(design.md D2)。実子は特筆すべき情報がないデフォルトの関係である一方、
