@@ -2,6 +2,19 @@
   position: relative;
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * 図の領域。凡例・ズームコントロール・非表示人数バッジはこの領域に対して絶対配置する。
+ * 「図に現れていない人物」の一覧はこの下に独立した帯として積むため、
+ * 左下の全体表示トグル・右下のズームと重なることがない(design.md D6)
+ */
+.tree-canvas-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
 
 .tree-canvas-root {

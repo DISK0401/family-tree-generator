@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>family-chart 既存フックの評価スパイク</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #f5f1e8;
+        font-family: system-ui, sans-serif;
+      }
+      .panel {
+        border-bottom: 2px solid #a89f8a;
+      }
+      .panel h2 {
+        margin: 0;
+        padding: 8px 12px;
+        font-size: 14px;
+        background: #e8e1d0;
+      }
+      .panel .note {
+        margin: 0;
+        padding: 4px 12px 8px;
+        font-size: 12px;
+        color: #625b4e;
+      }
+      .chart {
+        width: 100%;
+        height: 340px;
+      }
+      .spike-card {
+        box-sizing: border-box;
+        width: 90px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #a89f8a;
+        border-radius: 6px;
+        background: #fbf7ec;
+        font-size: 13px;
+        color: #2b2a27;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <h2>1. 婿養子 / 素のデータ(間引きなし・duplicate_branch_toggle=false)</h2>
+      <p class="note">
+        徳雄・ぎんの子に「実子 榮」と「養子 兎一」が並び、その2人が夫婦。重複描画が出るはず(現状の不具合の再現)
+      </p>
+      <div id="c1" class="f3 chart"></div>
+    </div>
+    <div class="panel">
+      <h2>2. 婿養子 / setDuplicateBranchToggle(true)</h2>
+      <p class="note">Q1: 本体の重複ブランチ折りたたみ機構で、我々の手作りの間引きを置き換えられるか</p>
+      <div id="c2" class="f3 chart"></div>
+    </div>
+    <div class="panel">
+      <h2>3. 2つの血族が婚姻でつながる / 素のデータ</h2>
+      <p class="note">
+        夫(A)の実家と妻(B)の実家。main=A。妻の実家が描かれないはず(全体表示がブロックに分かれる原因)
+      </p>
+      <div id="c3" class="f3 chart"></div>
+    </div>
+    <div class="panel">
+      <h2>4. 同上 / setModifyTreeHierarchy で妻の実家の接ぎ木を試みる</h2>
+      <p class="note">Q2: フックで1枚につなげられるか</p>
+      <div id="c4" class="f3 chart"></div>
+    </div>
+    <script type="module" src="./hooks.ts"></script>
+  </body>
+</html>

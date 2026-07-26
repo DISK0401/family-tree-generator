@@ -2,6 +2,8 @@ import f3, { type TreeDatum } from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import { useEffect, useRef, useState } from 'react'
 import { useTreeStore } from '../store/tree-store'
+import { AddPersonControl } from '../components/AddPersonControl'
+import { UnconnectedTray } from '../components/UnconnectedTray'
 import type { Pedigree } from '../domain/types'
 import { useDisplaySettingsStore } from '../settings/display-settings-store'
 import { formatDateForDisplay } from '../settings/display-settings'
@@ -9,6 +11,7 @@ import {
   buildPedigreeByEdge,
   compareChildrenByBirthThenName,
   computeHiddenCounts,
+  computeOffChartPersonIds,
   findRootAncestor,
   FULL_VIEW_ROOT_ID,
   marriageDate,
@@ -158,6 +161,14 @@ export function FamilyTreeCanvas({
   // 選択したカードが画面の下や右へ大きくずれて見える不具合が起きるため、
   // main_idが実際に変わった回だけ'fit'で視界に収め直す
   const mainIdChangedRef = useRef(false)
+  // 「図に現れていない人物」の一覧(design.md D5)を求めるための視点。
+  // family-chartが折りたたみ表示で描画する人物は必ずmain_idと同じ連結成分に属するため、
+  // 視点1人から`computeOffChartPersonIds`で一覧を導出できる(=レンダー中に純粋な導出として
+  // 計算でき、family-chart内部の描画結果をエフェクトで読み出してsetStateする必要がない)。
+  // 更新はカードのクリックハンドラ(=main_idが動く唯一の利用者操作)でのみ行う。
+  // トレイのチップ選択でこの視点を動かすと、選んだ人物側が「図」になって本体側が
+  // 一覧へ移ってしまうため、チップ選択では動かさない
+  const [viewpointId, setViewpointId] = useState<string | null>(null)
 
   useEffect(() => {
     selectedIdRef.current = selectedPersonId
@@ -268,6 +279,7 @@ export function FamilyTreeCanvas({
         const previousMainId = chart.store.getMainId()
         chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
         mainIdChangedRef.current = chart.store.getMainId() !== previousMainId
+        setViewpointId(nextSelected)
       } else {
         mainIdChangedRef.current = false
       }
@@ -368,6 +380,15 @@ export function FamilyTreeCanvas({
     // 全体表示用データのまま更新する(showAllRef.currentで現在のモードを判定)
     const data = showAllRef.current ? toFullViewFamilyChartData(document) : toFamilyChartData(document)
     chart.updateData(data as unknown as never)
+    // 親を追加・変更すると、選択中の人物からたどれる最上位祖先(=視点)が変わりうる。
+    // main_idはカードのクリック時にしか追従しないため、ここで追従させないと
+    // 「既存の人物を親として紐づけたのに、その親が図に現れない」状態のまま残ってしまう。
+    // 全体表示モード中は視点を仮想ルートに固定するため動かさない(design.md D5)
+    const selectedId = selectedIdRef.current
+    if (!showAllRef.current && selectedId && document.persons[selectedId]) {
+      const nextMainId = findRootAncestor(document, selectedId)
+      if (nextMainId !== chart.store.getMainId()) chart.updateMainId(nextMainId)
+    }
     // 人物追加のたびに全体を視界に収める(競合の「レイアウトが崩れる/迷子になる」不満への対応)
     chart.updateTree({ tree_position: 'fit' })
   }, [document])
@@ -419,8 +440,17 @@ export function FamilyTreeCanvas({
     chart.updateTree({ tree_position: 'fit' })
   }
 
+  // 全体表示モードは全人物を描画するため一覧は常に空になる(spec tree-rendering)。
+  // 折りたたみ表示では、視点(未クリックならデータ先頭=family-chartの既定main_id)と
+  // 同じ連結成分に属さない人物が一覧の対象になる
+  const offChartIds = showAll
+    ? []
+    : computeOffChartPersonIds(document, viewpointId ?? Object.keys(document.persons)[0] ?? '')
+
   // "f3" はfamily-chart本体のCSS(family-chart.css)が前提とするスコープクラス。
-  // 凡例・ズームコントロールはfamily-chartが管理するDOM(containerRef配下)の外、兄弟要素として置く
+  // 凡例・ズームコントロールはfamily-chartが管理するDOM(containerRef配下)の外、兄弟要素として置く。
+  // それらは図の領域(.tree-canvas-stage)に対して絶対配置し、図に現れていない人物の一覧は
+  // 重なりを避けるため図の下に独立した帯として積む(design.md D6)
   return (
     <div
       className="tree-canvas-wrapper"
@@ -429,8 +459,12 @@ export function FamilyTreeCanvas({
         ['--tree-card-h' as string]: `${CARD_HEIGHT}px`,
       }}
     >
+      <div className="tree-canvas-stage">
       <div ref={containerRef} className="f3 tree-canvas-root" />
       <div className="tree-corner-panel">
+        {/* 選択中の人物がなくても押せる必要があるため、人物編集パネルではなく
+            キャンバス側に置く(spec tree-editor「関係を指定しない人物の追加」) */}
+        <AddPersonControl onAdded={(personId) => onSelectPerson(personId)} />
         <button
           type="button"
           className="tree-show-all-toggle"
@@ -478,6 +512,12 @@ export function FamilyTreeCanvas({
           ⊡
         </button>
       </div>
+      </div>
+      <UnconnectedTray
+        personIds={offChartIds}
+        selectedPersonId={selectedPersonId}
+        onSelectPerson={(id) => onSelectPerson(id)}
+      />
     </div>
   )
 }

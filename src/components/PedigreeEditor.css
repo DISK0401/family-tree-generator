@@ -35,3 +35,9 @@
   background: var(--paper-raised);
   color: var(--ink);
 }
+
+.pedigree-editor-family {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

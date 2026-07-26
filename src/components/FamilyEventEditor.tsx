@@ -11,6 +11,8 @@ import type {
   TreeDocument,
 } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { PersonPicker } from './PersonPicker'
+import { UnlinkRelationControl } from './UnlinkRelationControl'
 import { WarekiDateInput } from './WarekiDateInput'
 import './confirm-dialog.css'
 import './FamilyEventEditor.css'
@@ -46,29 +48,19 @@ function spouseCandidates(doc: TreeDocument, family: Family, personId: PersonId)
 function SpouseLinkField({ family, personId }: { family: Family; personId: PersonId }) {
   const document = useTreeStore((s) => s.document)
   const apply = useTreeStore((s) => s.apply)
-  const selectId = useId()
+  const pickerId = useId()
 
   const candidates = spouseCandidates(document, family, personId)
   if (candidates.length === 0) return null
 
   return (
-    <label htmlFor={selectId} className="family-event-editor-link">
+    <label htmlFor={pickerId} className="family-event-editor-link">
       配偶者に既存の人物を設定
-      <select
-        id={selectId}
-        value=""
-        onChange={(e) => {
-          const spouseId = e.target.value
-          if (spouseId) apply((doc) => addSpouseLink(doc, family.id, spouseId))
-        }}
-      >
-        <option value="">選択してください</option>
-        {candidates.map((p) => (
-          <option key={p.id} value={p.id}>
-            {displayName(p)}
-          </option>
-        ))}
-      </select>
+      <PersonPicker
+        id={pickerId}
+        candidates={candidates}
+        onSelect={(spouseId) => apply((doc) => addSpouseLink(doc, family.id, spouseId))}
+      />
     </label>
   )
 }
@@ -236,7 +228,19 @@ export function FamilyEventEditor({ personId }: FamilyEventEditorProps) {
               event={divorceEvents[0]}
               extraCount={Math.max(0, divorceEvents.length - 1)}
             />
-            <FamilyDeleteControl family={family} />
+            <div className="family-event-editor-controls">
+              {/* 家族そのものは残したまま、自分だけ配偶者から外す。子の帰属や婚姻の記録が
+                  正しく、配偶者の紐づけだけを誤った場合に使う(spec tree-editor
+                  「関係リンクの解除」)。家族ごと消す「この婚姻を削除」とは別の操作 */}
+              <UnlinkRelationControl
+                familyId={family.id}
+                kind="spouse"
+                personId={personId}
+                label="この家族から自分を外す"
+                title="この家族の配偶者から外れますか？"
+              />
+              <FamilyDeleteControl family={family} />
+            </div>
           </div>
         )
       })}

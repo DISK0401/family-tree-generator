@@ -76,6 +76,67 @@
   background: var(--paper-sunken);
 }
 
+/*
+ * 新規作成 / 既存の人物から選ぶ の切り替え(spec tree-editor「既存の人物を関係先に選ぶ」)。
+ * パネル幅(360px)で「既存の人物から選ぶ」(9文字)が入りきらないため、
+ * flex: 1 で均等分割すると単語の途中で折り返してしまう。折り返さず、
+ * 収まらない場合はボタンごと次の行へ回す(flex-wrap)ことで対応する
+ */
+.person-panel-relation-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.person-panel-relation-modes button {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.person-panel-relation-modes button[aria-pressed='true'] {
+  border-color: var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+.person-panel-relation-existing,
+.person-panel-relation-new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.person-panel-relation-existing label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.person-panel-relation-existing select {
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.person-panel-relation-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
 .person-panel-relation-actions {
   display: flex;
   justify-content: flex-end;

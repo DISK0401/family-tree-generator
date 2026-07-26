@@ -134,6 +134,203 @@ export function addSpouseLink(
   return touch(putFamily(doc, { ...family, spouseIds: [...family.spouseIds, personId] }))
 }
 
+/**
+ * 指定人物の祖先の集合を返す。
+ *
+ * `findPrimaryParentFamily`(描画用の主たる親)と異なり、その人物が子として属する
+ * **全ての**家族をたどる。実親・養親の双方が記録されている人物では、主たる親家族だけを
+ * 見ると養親側の系統を見落とし、養親経由の循環を検出できないため
+ * (spec family-data-model「世代方向の循環の禁止」)。
+ * 各人物は`ancestors`へ高々1回しか積まれないため、既存データが循環を含む場合でも停止する。
+ */
+export function collectAncestors(doc: TreeDocument, personId: PersonId): Set<PersonId> {
+  const ancestors = new Set<PersonId>()
+  const queue: PersonId[] = [personId]
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (current === undefined) break
+    for (const family of Object.values(doc.families)) {
+      if (!family.children.some((c) => c.childId === current)) continue
+      for (const parentId of family.spouseIds) {
+        if (ancestors.has(parentId)) continue
+        ancestors.add(parentId)
+        queue.push(parentId)
+      }
+    }
+  }
+  return ancestors
+}
+
+/**
+ * 親子リンク(parentId → childId)を作ると世代方向の循環が生じるか(design.md D7)。
+ * childIdがparentIdの祖先である場合、このリンクはchildIdを自分自身の祖先にしてしまう。
+ * いとこ婚のように無向グラフとしては閉路になるが世代方向に矛盾しない関係はtrueにならない。
+ */
+export function wouldCreateAncestryCycle(
+  doc: TreeDocument,
+  parentId: PersonId,
+  childId: PersonId,
+): boolean {
+  if (parentId === childId) return true
+  return collectAncestors(doc, parentId).has(childId)
+}
+
+function requirePerson(doc: TreeDocument, personId: PersonId): void {
+  if (!doc.persons[personId]) throw new Error(`人物が見つかりません: ${personId}`)
+}
+
+/**
+ * 既存人物を子として繋ぐときの既定の続柄。
+ *
+ * 既に親家族を持つ人物へさらに親家族を足す場合、その2つ目を「実子」とすると
+ * 実の親が2組いることになり矛盾する。実際には養子・継子・里子のいずれかだが、
+ * どれかは推測できないため「不明」で記録し、続柄の編集で利用者に確定してもらう。
+ * 「不明」は実子以外として扱われるため、図では破線の系線になり、
+ * `findPrimaryParentFamily`が主たる親家族として採用する側にもなる
+ * (=生まれた家ではなく、後から入った家の側が既定の視点になる。design.md D2)。
+ * 親家族をまだ持たない人物は、そのまま実子として記録する
+ */
+function defaultLinkPedigree(doc: TreeDocument, childId: PersonId): Pedigree {
+  const hasParentFamily = Object.values(doc.families).some((f) =>
+    f.children.some((c) => c.childId === childId),
+  )
+  return hasParentFamily ? 'unknown' : 'biological'
+}
+
+/**
+ * 既存の2人の人物を配偶者とする**新しい**家族を作る(spec family-data-model
+ * 「既存人物同士の関係リンク」)。人物は新規作成しない点だけが`addSpouse`と異なる。
+ * 既存の家族へ合流させる経路は`addSpouseLink`であり、こちらとは用途が異なるため統合しない
+ * (design.md D2)。同一カップルの復縁は1つの家族のイベントとして表現するため、
+ * 既に配偶者である相手は拒否する。
+ */
+export function linkSpouse(
+  doc: TreeDocument,
+  personId: PersonId,
+  spouseId: PersonId,
+  kind: FamilyKind = 'unknown',
+): { doc: TreeDocument; familyId: FamilyId } {
+  requirePerson(doc, personId)
+  requirePerson(doc, spouseId)
+  if (personId === spouseId) throw new Error(`自分自身を配偶者にはできません: ${personId}`)
+  if (
+    Object.values(doc.families).some(
+      (f) => f.spouseIds.includes(personId) && f.spouseIds.includes(spouseId),
+    )
+  ) {
+    throw new Error(`既に配偶者です: ${personId} / ${spouseId}`)
+  }
+  const family = createFamily({ spouseIds: [personId, spouseId], kind })
+  return { doc: touch(putFamily(doc, family)), familyId: family.id }
+}
+
+/**
+ * 既存人物を子として帰属させる(spec family-data-model「既存人物同士の関係リンク」)。
+ * 対象の家族の決め方は`addChild`と同一(相方指定があればその家族、なければ配偶者1件の家族、
+ * 該当なしなら新設)で、人物を新規作成しない点だけが異なる。
+ * 既に他の家族へ子として属している人物も帰属させられる(養子縁組を後から記録する経路)。
+ */
+export function linkChild(
+  doc: TreeDocument,
+  parentId: PersonId,
+  childId: PersonId,
+  options?: { otherParentId?: PersonId; pedigree?: Pedigree },
+): { doc: TreeDocument; familyId: FamilyId } {
+  requirePerson(doc, parentId)
+  requirePerson(doc, childId)
+  const otherParentId = options?.otherParentId
+  if (otherParentId !== undefined) requirePerson(doc, otherParentId)
+  if (wouldCreateAncestryCycle(doc, parentId, childId)) {
+    throw new Error(`世代方向の循環になるため子にできません: ${childId}`)
+  }
+  if (otherParentId !== undefined && wouldCreateAncestryCycle(doc, otherParentId, childId)) {
+    throw new Error(`世代方向の循環になるため子にできません: ${childId}`)
+  }
+
+  const pedigree = options?.pedigree ?? defaultLinkPedigree(doc, childId)
+  const family = Object.values(doc.families).find((f) =>
+    otherParentId
+      ? f.spouseIds.includes(parentId) && f.spouseIds.includes(otherParentId)
+      : f.spouseIds.length === 1 && f.spouseIds[0] === parentId,
+  )
+
+  if (!family) {
+    const created = createFamily({
+      spouseIds: otherParentId ? [parentId, otherParentId] : [parentId],
+      children: [{ childId, pedigree }],
+    })
+    return { doc: touch(putFamily(doc, created)), familyId: created.id }
+  }
+  if (family.spouseIds.includes(childId)) {
+    throw new Error(`家族の配偶者を子にはできません: ${childId}`)
+  }
+  if (family.children.some((c) => c.childId === childId)) {
+    return { doc, familyId: family.id }
+  }
+  return {
+    doc: touch(
+      putFamily(doc, { ...family, children: [...family.children, { childId, pedigree }] }),
+    ),
+    familyId: family.id,
+  }
+}
+
+/**
+ * 既存人物を親として帰属させる(spec family-data-model「既存人物同士の関係リンク」)。
+ * 人物を新規作成しない点と、親側が既に持つ家族へ加われる点が`addParent`と異なる。
+ *
+ * 帰属先の決め方は次の順で、いずれも「既にある家族を壊さない」ことを優先する。
+ * 1. 子が配偶者1件のみの親家族に属していれば、その家族の2人目の配偶者として加わる
+ *    (`addParent`と同じ。ひとり親として記録済みの家族へもう一方の親を補う経路)
+ * 2. 親が配偶者として属する家族がちょうど1件なら、その家族の子として加える。
+ *    親に既に配偶者がいるのに配偶者不在の家族を新設すると、同じ夫婦の家族が二重になり
+ *    「配偶者未登録」の枠が生まれてしまうため(婿養子のように、既存の夫婦へ後から
+ *    養子を加える経路がこれにあたる)
+ * 3. どちらにも当てはまらなければ、その親だけの家族を新設する
+ *
+ * 2 は親の配偶者を子のもう一方の親として扱うことになるため、親が複数の家族を持つ場合
+ * (再婚等でどの家族の子か決められない場合)は行わず、3 の新設にとどめる。
+ * 続柄は`defaultLinkPedigree`に従い、既に親家族を持つ人物なら「不明」で記録する
+ */
+export function linkParent(
+  doc: TreeDocument,
+  childId: PersonId,
+  parentId: PersonId,
+): { doc: TreeDocument; familyId: FamilyId } {
+  requirePerson(doc, childId)
+  requirePerson(doc, parentId)
+  if (wouldCreateAncestryCycle(doc, parentId, childId)) {
+    throw new Error(`世代方向の循環になるため親にできません: ${parentId}`)
+  }
+
+  const existing = Object.values(doc.families).find(
+    (f) => f.children.some((c) => c.childId === childId) && f.spouseIds.length === 1,
+  )
+  if (existing) {
+    if (existing.spouseIds.includes(parentId)) return { doc, familyId: existing.id }
+    return {
+      doc: touch(putFamily(doc, { ...existing, spouseIds: [...existing.spouseIds, parentId] })),
+      familyId: existing.id,
+    }
+  }
+
+  const pedigree = defaultLinkPedigree(doc, childId)
+  const parentFamilies = Object.values(doc.families).filter((f) => f.spouseIds.includes(parentId))
+  if (parentFamilies.length === 1) {
+    const family = parentFamilies[0]
+    if (family.children.some((c) => c.childId === childId)) return { doc, familyId: family.id }
+    return {
+      doc: touch(
+        putFamily(doc, { ...family, children: [...family.children, { childId, pedigree }] }),
+      ),
+      familyId: family.id,
+    }
+  }
+
+  const family = createFamily({ spouseIds: [parentId], children: [{ childId, pedigree }] })
+  return { doc: touch(putFamily(doc, family)), familyId: family.id }
+}
+
 /** 親のいない人物へ親を新規作成する。2人目の親は既存のひとり親家族へ加わる */
 export function addParent(
   doc: TreeDocument,
@@ -231,6 +428,102 @@ export function updateFamily(
 function isVacantFamily(family: Pick<Family, 'spouseIds' | 'children'>): boolean {
   if (family.spouseIds.length === 0) return true
   return family.spouseIds.length === 1 && family.children.length === 0
+}
+
+/**
+ * 変更後の家族をドキュメントへ反映する。変更の結果、家族として意味を成さなくなった場合は
+ * その家族を削除する。人物削除と同じ`isVacantFamily`を通すことで、関係リンクの解除でも
+ * 不変条件が同一の判定で満たされるようにする(design.md D4)。
+ */
+function applyFamilyChange(doc: TreeDocument, next: Family): TreeDocument {
+  if (!isVacantFamily(next)) return putFamily(doc, next)
+  const families = { ...doc.families }
+  delete families[next.id]
+  return { ...doc, families }
+}
+
+/**
+ * 人物を削除せずに子リンクだけを外す(spec family-data-model「関係リンクの解除」)。
+ * 外した結果、配偶者1件・子0件となった家族は`applyFamilyChange`により削除される。
+ * 配偶者のいない人物へ誤って子を追加した場合、その家族は誤りを入れるためだけに
+ * 生まれた器のため、消えるのが正しい。
+ */
+export function unlinkChild(
+  doc: TreeDocument,
+  familyId: FamilyId,
+  childId: PersonId,
+): TreeDocument {
+  const family = doc.families[familyId]
+  if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
+  if (!family.children.some((c) => c.childId === childId)) return doc
+  const next = { ...family, children: family.children.filter((c) => c.childId !== childId) }
+  return touch(applyFamilyChange(doc, next))
+}
+
+/**
+ * 人物を削除せずに、その人物を家族の配偶者から外す(spec family-data-model「関係リンクの解除」)。
+ * `removePerson`の家族処理を1つの家族に限定した版にあたるため、後始末の判定を共有する。
+ * 子が帰属している家族ではひとり親の家族として存続し、子の帰属と婚姻・離婚イベントは維持される。
+ */
+export function unlinkSpouse(
+  doc: TreeDocument,
+  familyId: FamilyId,
+  personId: PersonId,
+): TreeDocument {
+  const family = doc.families[familyId]
+  if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
+  if (!family.spouseIds.includes(personId)) return doc
+  const next = { ...family, spouseIds: family.spouseIds.filter((id) => id !== personId) }
+  return touch(applyFamilyChange(doc, next))
+}
+
+/** どの家族にも配偶者としても子としても現れないか(spec family-data-model「どのFamilyにも属さない人物の保持」) */
+export function isUnconnectedPerson(doc: TreeDocument, personId: PersonId): boolean {
+  return !Object.values(doc.families).some(
+    (f) => f.spouseIds.includes(personId) || f.children.some((c) => c.childId === personId),
+  )
+}
+
+/** 解除の対象。子リンクを外すか、配偶者参照を外すか */
+export type UnlinkTarget = { kind: 'child' | 'spouse'; personId: PersonId }
+
+export interface UnlinkImpact {
+  /** 解除に伴い家族(Family)そのものが削除されるか */
+  familyRemoved: boolean
+  /** 家族ごと削除される場合に失われる婚姻・離婚イベントの件数 */
+  removedFamilyEventCount: number
+  /** 家族ごと削除される場合に親リンクを失う、対象以外の子の件数 */
+  orphanedChildCount: number
+  /** 解除後、対象の人物がどの家族にも属さなくなるか(図から外れ、一覧へ移る) */
+  becomesUnconnected: boolean
+}
+
+/**
+ * 解除確認ダイアログ用: 関係リンク解除の影響範囲を返す(spec tree-editor「関係リンクの解除」)。
+ * 予告と実行の食い違いを構造的に排除するため、判定を模倣せず`unlinkChild`/`unlinkSpouse`
+ * そのものを実行した結果を観測する(design.md D4。`computeRemovalImpact`が
+ * `planFamilyRemoval`を共有するのと同じ考え方を、さらに徹底したもの)。
+ */
+export function computeUnlinkImpact(
+  doc: TreeDocument,
+  familyId: FamilyId,
+  target: UnlinkTarget,
+): UnlinkImpact {
+  const family = doc.families[familyId]
+  if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
+  const next =
+    target.kind === 'child'
+      ? unlinkChild(doc, familyId, target.personId)
+      : unlinkSpouse(doc, familyId, target.personId)
+  const familyRemoved = next.families[familyId] === undefined
+  return {
+    familyRemoved,
+    removedFamilyEventCount: familyRemoved ? family.events.length : 0,
+    orphanedChildCount: familyRemoved
+      ? family.children.filter((c) => c.childId !== target.personId).length
+      : 0,
+    becomesUnconnected: isUnconnectedPerson(next, target.personId),
+  }
 }
 
 /**
