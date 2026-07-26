@@ -17,6 +17,7 @@ import { FamilyEventEditor } from './FamilyEventEditor'
 import { PedigreeEditor } from './PedigreeEditor'
 import { PersonEditForm } from './PersonEditForm'
 import { PersonNameFields } from './PersonNameFields'
+import { PersonPicker } from './PersonPicker'
 import { nameFromFields } from './person-name'
 import './PersonPanel.css'
 
@@ -232,22 +233,16 @@ export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editF
 
           {useExisting ? (
             <div className="person-panel-relation-existing">
-              <label htmlFor={existingSelectId}>
-                {EXISTING_LABEL[openAction]}
-                <select
-                  id={existingSelectId}
-                  value=""
-                  onChange={(e) => handleSelectExisting(e.target.value)}
-                >
-                  <option value="">選択してください</option>
-                  {candidates.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {displayName(p)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {candidates.length === 0 && (
+              {candidates.length > 0 ? (
+                <label htmlFor={existingSelectId}>
+                  {EXISTING_LABEL[openAction]}
+                  <PersonPicker
+                    id={existingSelectId}
+                    candidates={candidates}
+                    onSelect={handleSelectExisting}
+                  />
+                </label>
+              ) : (
                 <p className="person-panel-relation-note">
                   この関係に選べる既存の人物はいません。
                 </p>

@@ -202,7 +202,7 @@ describe('FamilyEventEditor: 婚姻単位の削除', () => {
 })
 
 describe('FamilyEventEditor: 配偶者が未登録の家族への紐づけ', () => {
-  /** 子Cに親Pを登録した「配偶者未登録」の家族と、無関係な人物Xを用意する */
+  /** 子Cに親Pを登録した「配偶者未登録」の家族と、無関係な人物X・Yを用意する */
   function setupSpouselessFamily() {
     let doc = createTreeDocument()
     const c = addPerson(doc, { name: { given: 'C' } })
@@ -211,8 +211,16 @@ describe('FamilyEventEditor: 配偶者が未登録の家族への紐づけ', () 
     doc = parent.doc
     const x = addPerson(doc, { name: { given: 'X' } })
     doc = x.doc
+    const y = addPerson(doc, { name: { given: 'Y' } })
+    doc = y.doc
     useTreeStore.getState().replace(doc)
-    return { childId: c.personId, parentId: parent.parentId, familyId: parent.familyId, xId: x.personId }
+    return {
+      childId: c.personId,
+      parentId: parent.parentId,
+      familyId: parent.familyId,
+      xId: x.personId,
+      yId: y.personId,
+    }
   }
 
   it('配偶者が登録済みの家族には選択欄が出ない', () => {
@@ -230,20 +238,27 @@ describe('FamilyEventEditor: 配偶者が未登録の家族への紐づけ', () 
     const { parentId } = setupSpouselessFamily()
     render(<FamilyEventEditor personId={parentId} />)
 
-    const options = screen
-      .getAllByRole('option')
-      .map((o) => o.textContent)
-      .filter((t) => t !== '選択してください')
-    expect(options).toEqual(['X'])
+    // キーワード絞り込み欄(PersonPicker)はフォーカスするまで候補一覧を開かない
+    fireEvent.focus(screen.getByLabelText('配偶者に既存の人物を設定'))
+    const options = screen.getAllByRole('option').map((o) => o.textContent)
+    expect(options.sort()).toEqual(['X', 'Y'].sort())
+  })
+
+  it('氏名で絞り込める', () => {
+    const { parentId } = setupSpouselessFamily()
+    render(<FamilyEventEditor personId={parentId} />)
+
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), { target: { value: 'X' } })
+
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['X'])
   })
 
   it('候補を選ぶと確定操作なしで配偶者として反映される', () => {
     const { parentId, familyId: spouselessFamilyId, xId, childId } = setupSpouselessFamily()
     render(<FamilyEventEditor personId={parentId} />)
 
-    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), {
-      target: { value: xId },
-    })
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), { target: { value: 'X' } })
+    fireEvent.click(screen.getByRole('option', { name: 'X' }))
 
     const family = useTreeStore.getState().document.families[spouselessFamilyId]
     expect(family.spouseIds).toEqual([parentId, xId])
@@ -258,9 +273,13 @@ describe('FamilyEventEditor: 配偶者が未登録の家族への紐づけ', () 
     const { parentId, familyId: spouselessFamilyId, xId } = setupSpouselessFamily()
     render(<FamilyEventEditor personId={parentId} />)
 
-    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), {
-      target: { value: xId },
-    })
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), { target: { value: 'X' } })
+    fireEvent.click(screen.getByRole('option', { name: 'X' }))
+    expect(useTreeStore.getState().document.families[spouselessFamilyId].spouseIds).toEqual([
+      parentId,
+      xId,
+    ])
+
     useTreeStore.getState().undo()
 
     expect(useTreeStore.getState().document.families[spouselessFamilyId].spouseIds).toEqual([

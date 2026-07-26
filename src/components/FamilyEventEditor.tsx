@@ -11,6 +11,7 @@ import type {
   TreeDocument,
 } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { PersonPicker } from './PersonPicker'
 import { UnlinkRelationControl } from './UnlinkRelationControl'
 import { WarekiDateInput } from './WarekiDateInput'
 import './confirm-dialog.css'
@@ -47,29 +48,19 @@ function spouseCandidates(doc: TreeDocument, family: Family, personId: PersonId)
 function SpouseLinkField({ family, personId }: { family: Family; personId: PersonId }) {
   const document = useTreeStore((s) => s.document)
   const apply = useTreeStore((s) => s.apply)
-  const selectId = useId()
+  const pickerId = useId()
 
   const candidates = spouseCandidates(document, family, personId)
   if (candidates.length === 0) return null
 
   return (
-    <label htmlFor={selectId} className="family-event-editor-link">
+    <label htmlFor={pickerId} className="family-event-editor-link">
       配偶者に既存の人物を設定
-      <select
-        id={selectId}
-        value=""
-        onChange={(e) => {
-          const spouseId = e.target.value
-          if (spouseId) apply((doc) => addSpouseLink(doc, family.id, spouseId))
-        }}
-      >
-        <option value="">選択してください</option>
-        {candidates.map((p) => (
-          <option key={p.id} value={p.id}>
-            {displayName(p)}
-          </option>
-        ))}
-      </select>
+      <PersonPicker
+        id={pickerId}
+        candidates={candidates}
+        onSelect={(spouseId) => apply((doc) => addSpouseLink(doc, family.id, spouseId))}
+      />
     </label>
   )
 }
