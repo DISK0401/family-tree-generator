@@ -720,3 +720,139 @@ describe('役割の取り違えの修正: 子として登録した人物を配�
     expect(fixed.persons[c.childId]).toEqual(original)
   })
 })
+
+describe('linkParent: 親が既に持つ家族への合流(婿養子)', () => {
+  /**
+   * 富岡徳雄・ぎん夫婦に実子 榮 がいて、榮 の夫 兎一 が齋藤家の実子。
+   * この 兎一 を徳雄・ぎんの養子として記録する場面(婿養子)
+   */
+  function mukoyoshi() {
+    let doc = createTreeDocument()
+    const tokuo = addPerson(doc, { name: { surname: '富岡', given: '徳雄' } })
+    doc = tokuo.doc
+    const gin = addSpouse(doc, tokuo.personId, { name: { given: 'ぎん' } })
+    doc = gin.doc
+    const sakae = addChild(doc, tokuo.personId, { name: { surname: '富岡', given: '榮' } }, {
+      otherParentId: gin.spouseId,
+    })
+    doc = sakae.doc
+
+    const kihachiro = addPerson(doc, { name: { surname: '齋藤', given: '喜八郎' } })
+    doc = kihachiro.doc
+    const kiyo = addSpouse(doc, kihachiro.personId, { name: { given: 'きよ' } })
+    doc = kiyo.doc
+    const taichi = addChild(doc, kihachiro.personId, { name: { surname: '齋藤', given: '兎一' } }, {
+      otherParentId: kiyo.spouseId,
+    })
+    doc = taichi.doc
+    doc = linkSpouse(doc, taichi.childId, sakae.childId).doc
+
+    return {
+      doc,
+      tokuoId: tokuo.personId,
+      ginId: gin.spouseId,
+      tokuoFamilyId: gin.familyId,
+      sakaeId: sakae.childId,
+      taichiId: taichi.childId,
+      saitoFamilyId: taichi.familyId,
+    }
+  }
+
+  it('親が配偶者として属する家族が1件なら、その家族の子として加える', () => {
+    const { doc, tokuoId, ginId, tokuoFamilyId, taichiId, sakaeId } = mukoyoshi()
+
+    const { doc: next, familyId } = linkParent(doc, taichiId, tokuoId)
+
+    // 配偶者未登録の家族を新設せず、既存の徳雄・ぎんの家族へ加わる
+    expect(familyId).toBe(tokuoFamilyId)
+    expect(next.families[tokuoFamilyId].spouseIds).toEqual([tokuoId, ginId])
+    expect(next.families[tokuoFamilyId].children.map((c) => c.childId).sort()).toEqual(
+      [sakaeId, taichiId].sort(),
+    )
+    // 徳雄が配偶者として属する家族は1件のまま(「(配偶者未登録)」の枠が生まれない)
+    expect(Object.values(next.families).filter((f) => f.spouseIds.includes(tokuoId))).toHaveLength(1)
+  })
+
+  it('実親の家族はそのまま残り、両方の親家族に属する', () => {
+    const { doc, tokuoId, taichiId, saitoFamilyId } = mukoyoshi()
+
+    const { doc: next } = linkParent(doc, taichiId, tokuoId)
+
+    expect(next.families[saitoFamilyId].children.map((c) => c.childId)).toContain(taichiId)
+    const asChild = Object.values(next.families).filter((f) =>
+      f.children.some((c) => c.childId === taichiId),
+    )
+    expect(asChild).toHaveLength(2)
+  })
+
+  it('親が複数の家族を持つ場合は推測せず、その親だけの家族を新設する', () => {
+    const { doc, tokuoId, taichiId, tokuoFamilyId } = mukoyoshi()
+    // 徳雄に2つ目の婚姻(再婚)を作ると、どちらの家族の子か決められない
+    const second = addSpouse(doc, tokuoId, { name: { given: '後妻' } })
+
+    const { doc: next, familyId } = linkParent(second.doc, taichiId, tokuoId)
+
+    expect(familyId).not.toBe(tokuoFamilyId)
+    expect(familyId).not.toBe(second.familyId)
+    expect(next.families[familyId].spouseIds).toEqual([tokuoId])
+    // 既存の2つの家族は変化しない
+    expect(next.families[tokuoFamilyId].children.map((c) => c.childId)).not.toContain(taichiId)
+    expect(next.families[second.familyId].children).toEqual([])
+  })
+
+  it('子側にひとり親の家族がある場合は従来どおりそちらへ2人目の配偶者として加わる', () => {
+    const { doc, personId: cId } = withPerson('C')
+    const p = addParent(doc, cId, { name: { given: 'P' } })
+    const q = addPerson(p.doc, { name: { given: 'Q' } })
+
+    const { doc: next, familyId } = linkParent(q.doc, cId, q.personId)
+
+    expect(familyId).toBe(p.familyId)
+    expect(next.families[p.familyId].spouseIds).toEqual([p.parentId, q.personId])
+  })
+
+  it('既にその家族の子である場合はドキュメントが変化しない', () => {
+    const { doc, tokuoId, sakaeId } = mukoyoshi()
+    expect(linkParent(doc, sakaeId, tokuoId).doc).toBe(doc)
+  })
+
+  it('既に親家族を持つ人物への2つ目の親家族は続柄「不明」で記録される', () => {
+    const { doc, tokuoId, taichiId, tokuoFamilyId } = mukoyoshi()
+
+    const { doc: next } = linkParent(doc, taichiId, tokuoId)
+
+    // 実の親が2組いることになる「実子」は付けず、利用者が続柄を確定できるようにする
+    const link = next.families[tokuoFamilyId].children.find((c) => c.childId === taichiId)
+    expect(link?.pedigree).toBe('unknown')
+  })
+
+  it('親家族を持たない人物は従来どおり実子として記録される', () => {
+    const { doc, personId: cId } = withPerson('C')
+    const p = addPerson(doc, { name: { given: 'P' } })
+
+    const { doc: next, familyId } = linkParent(p.doc, cId, p.personId)
+
+    expect(next.families[familyId].children).toEqual([{ childId: cId, pedigree: 'biological' }])
+  })
+
+  it('linkChildでも、既に親家族を持つ人物は続柄「不明」で記録される', () => {
+    const { doc, tokuoId, ginId, taichiId, tokuoFamilyId } = mukoyoshi()
+
+    const { doc: next } = linkChild(doc, tokuoId, taichiId, { otherParentId: ginId })
+
+    const link = next.families[tokuoFamilyId].children.find((c) => c.childId === taichiId)
+    expect(link?.pedigree).toBe('unknown')
+  })
+
+  it('linkChildで続柄を明示した場合はその値が優先される', () => {
+    const { doc, tokuoId, ginId, taichiId, tokuoFamilyId } = mukoyoshi()
+
+    const { doc: next } = linkChild(doc, tokuoId, taichiId, {
+      otherParentId: ginId,
+      pedigree: 'adopted',
+    })
+
+    const link = next.families[tokuoFamilyId].children.find((c) => c.childId === taichiId)
+    expect(link?.pedigree).toBe('adopted')
+  })
+})

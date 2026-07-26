@@ -180,6 +180,24 @@ function requirePerson(doc: TreeDocument, personId: PersonId): void {
 }
 
 /**
+ * 既存人物を子として繋ぐときの既定の続柄。
+ *
+ * 既に親家族を持つ人物へさらに親家族を足す場合、その2つ目を「実子」とすると
+ * 実の親が2組いることになり矛盾する。実際には養子・継子・里子のいずれかだが、
+ * どれかは推測できないため「不明」で記録し、続柄の編集で利用者に確定してもらう。
+ * 「不明」は実子以外として扱われるため、図では破線の系線になり、
+ * `findPrimaryParentFamily`が主たる親家族として採用する側にもなる
+ * (=生まれた家ではなく、後から入った家の側が既定の視点になる。design.md D2)。
+ * 親家族をまだ持たない人物は、そのまま実子として記録する
+ */
+function defaultLinkPedigree(doc: TreeDocument, childId: PersonId): Pedigree {
+  const hasParentFamily = Object.values(doc.families).some((f) =>
+    f.children.some((c) => c.childId === childId),
+  )
+  return hasParentFamily ? 'unknown' : 'biological'
+}
+
+/**
  * 既存の2人の人物を配偶者とする**新しい**家族を作る(spec family-data-model
  * 「既存人物同士の関係リンク」)。人物は新規作成しない点だけが`addSpouse`と異なる。
  * 既存の家族へ合流させる経路は`addSpouseLink`であり、こちらとは用途が異なるため統合しない
@@ -229,7 +247,7 @@ export function linkChild(
     throw new Error(`世代方向の循環になるため子にできません: ${childId}`)
   }
 
-  const pedigree = options?.pedigree ?? 'biological'
+  const pedigree = options?.pedigree ?? defaultLinkPedigree(doc, childId)
   const family = Object.values(doc.families).find((f) =>
     otherParentId
       ? f.spouseIds.includes(parentId) && f.spouseIds.includes(otherParentId)
@@ -259,8 +277,20 @@ export function linkChild(
 
 /**
  * 既存人物を親として帰属させる(spec family-data-model「既存人物同士の関係リンク」)。
- * 家族の決め方は`addParent`と同一(配偶者1件の親家族があればその2人目として合流、
- * なければ新設)で、人物を新規作成しない点だけが異なる。
+ * 人物を新規作成しない点と、親側が既に持つ家族へ加われる点が`addParent`と異なる。
+ *
+ * 帰属先の決め方は次の順で、いずれも「既にある家族を壊さない」ことを優先する。
+ * 1. 子が配偶者1件のみの親家族に属していれば、その家族の2人目の配偶者として加わる
+ *    (`addParent`と同じ。ひとり親として記録済みの家族へもう一方の親を補う経路)
+ * 2. 親が配偶者として属する家族がちょうど1件なら、その家族の子として加える。
+ *    親に既に配偶者がいるのに配偶者不在の家族を新設すると、同じ夫婦の家族が二重になり
+ *    「配偶者未登録」の枠が生まれてしまうため(婿養子のように、既存の夫婦へ後から
+ *    養子を加える経路がこれにあたる)
+ * 3. どちらにも当てはまらなければ、その親だけの家族を新設する
+ *
+ * 2 は親の配偶者を子のもう一方の親として扱うことになるため、親が複数の家族を持つ場合
+ * (再婚等でどの家族の子か決められない場合)は行わず、3 の新設にとどめる。
+ * 続柄は`defaultLinkPedigree`に従い、既に親家族を持つ人物なら「不明」で記録する
  */
 export function linkParent(
   doc: TreeDocument,
@@ -284,10 +314,20 @@ export function linkParent(
     }
   }
 
-  const family = createFamily({
-    spouseIds: [parentId],
-    children: [{ childId, pedigree: 'biological' }],
-  })
+  const pedigree = defaultLinkPedigree(doc, childId)
+  const parentFamilies = Object.values(doc.families).filter((f) => f.spouseIds.includes(parentId))
+  if (parentFamilies.length === 1) {
+    const family = parentFamilies[0]
+    if (family.children.some((c) => c.childId === childId)) return { doc, familyId: family.id }
+    return {
+      doc: touch(
+        putFamily(doc, { ...family, children: [...family.children, { childId, pedigree }] }),
+      ),
+      familyId: family.id,
+    }
+  }
+
+  const family = createFamily({ spouseIds: [parentId], children: [{ childId, pedigree }] })
   return { doc: touch(putFamily(doc, family)), familyId: family.id }
 }
 
