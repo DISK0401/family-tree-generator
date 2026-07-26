@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse, addSpouseLink } from '../domain/commands'
+import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse, addSpouseLink, linkSpouse } from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
 import type { FamilyChartDatum } from './to-family-chart-data'
 import {
@@ -7,6 +7,8 @@ import {
   compareChildrenByBirthThenName,
   computeFullViewRoots,
   computeHiddenCounts,
+  computeHiddenPartition,
+  computeOffChartPersonIds,
   findPrimaryParentFamily,
   findRootAncestor,
   FULL_VIEW_ROOT_ID,
@@ -780,5 +782,131 @@ describe('配偶者の紐づけ後の親子線', () => {
 
     const after = byId(toFamilyChartData(doc), child.personId)
     expect(after.rels.parents?.slice().sort()).toEqual([parent.parentId, other.personId].sort())
+  })
+})
+
+describe('computeHiddenPartition: バッジと一覧の分担', () => {
+  /**
+   * 本体の家系(A-B夫婦とその子D、およびBの別の婚姻家族の子E)、
+   * どのFamilyにも属さない人物X、本体と関係のない夫婦Y-Zを含むドキュメント
+   */
+  function mixedDoc() {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = b.doc
+    const d = addChild(doc, a.personId, { name: { given: 'D' } }, { otherParentId: b.spouseId })
+    doc = d.doc
+    // Bの別の婚姻家族の子E(Aの視点からは折りたたみで隠れうる傍系)
+    const b2 = addSpouse(doc, b.spouseId, { name: { given: 'B2' } })
+    doc = b2.doc
+    const e = addChild(doc, b.spouseId, { name: { given: 'E' } }, { otherParentId: b2.spouseId })
+    doc = e.doc
+
+    const x = addPerson(doc, { name: { given: 'X' } })
+    doc = x.doc
+    const y = addPerson(doc, { name: { given: 'Y' } })
+    doc = y.doc
+    const z = addPerson(doc, { name: { given: 'Z' } })
+    doc = z.doc
+    doc = linkSpouse(doc, y.personId, z.personId).doc
+
+    return {
+      doc,
+      aId: a.personId,
+      bId: b.spouseId,
+      dId: d.childId,
+      eId: e.childId,
+      b2Id: b2.spouseId,
+      xId: x.personId,
+      yId: y.personId,
+      zId: z.personId,
+    }
+  }
+
+  it('到達できる非表示はバッジ、到達できない非表示は一覧へ振り分けられる', () => {
+    const { doc, aId, bId, dId, eId, b2Id, xId, yId, zId } = mixedDoc()
+    // 折りたたみ表示でA・B・Dだけが描画されている状態
+    const visibleIds = new Set([aId, bId, dId])
+
+    const { counts, offChartIds } = computeHiddenPartition(doc, visibleIds)
+
+    // Bの別の婚姻家族(B2・E)はBから辿れるためバッジ側
+    expect(counts.get(bId)?.count).toBe(2)
+    expect(offChartIds).not.toContain(eId)
+    expect(offChartIds).not.toContain(b2Id)
+    // どこからも辿れないX・Y・Zは一覧側
+    expect(offChartIds.sort()).toEqual([xId, yId, zId].sort())
+  })
+
+  it('同じ人物がバッジ側と一覧側に同時に現れない', () => {
+    const { doc, aId, bId, dId } = mixedDoc()
+    const visibleIds = new Set([aId, bId, dId])
+    const { counts, offChartIds } = computeHiddenPartition(doc, visibleIds)
+
+    // バッジに計上された人物を、境界からの幅優先で復元して重複を検査する
+    const badgeCounted = [...counts.values()].reduce((sum, info) => sum + info.count, 0)
+    const hiddenTotal = Object.keys(doc.persons).length - visibleIds.size
+    // 非表示人物はバッジ側と一覧側で漏れなく・重複なく分割される
+    expect(badgeCounted + offChartIds.length).toBe(hiddenTotal)
+    for (const id of offChartIds) expect(visibleIds.has(id)).toBe(false)
+  })
+
+  it('全体表示モードのように全員が描画されている場合は一覧が空になる', () => {
+    const { doc } = mixedDoc()
+    const visibleIds = new Set(
+      toFullViewFamilyChartData(doc)
+        .map((d) => d.data.personId)
+        .filter((id) => id !== FULL_VIEW_ROOT_ID),
+    )
+    const { counts, offChartIds } = computeHiddenPartition(doc, visibleIds)
+
+    expect(offChartIds).toEqual([])
+    expect(counts.size).toBe(0)
+  })
+})
+
+describe('computeOffChartPersonIds: 視点1人からの導出', () => {
+  it('描画済みの全員を渡した場合と同じ結果になる', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    const b = addSpouse(doc, a.personId, { name: { given: 'B' } })
+    doc = b.doc
+    const d = addChild(doc, a.personId, { name: { given: 'D' } }, { otherParentId: b.spouseId })
+    doc = d.doc
+    const x = addPerson(doc, { name: { given: 'X' } })
+    doc = x.doc
+
+    const fromViewpoint = computeOffChartPersonIds(doc, a.personId)
+    const fromVisibleSet = computeHiddenPartition(
+      doc,
+      new Set([a.personId, b.spouseId, d.childId]),
+    ).offChartIds
+
+    expect(fromViewpoint).toEqual(fromVisibleSet)
+    expect(fromViewpoint).toEqual([x.personId])
+  })
+
+  it('関係を持たない人物を追加すると一覧に現れ、リンクすると消える', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    expect(computeOffChartPersonIds(doc, a.personId)).toEqual([])
+
+    const x = addPerson(doc, { name: { given: 'X' } })
+    doc = x.doc
+    expect(computeOffChartPersonIds(doc, a.personId)).toEqual([x.personId])
+
+    doc = linkSpouse(doc, a.personId, x.personId).doc
+    expect(computeOffChartPersonIds(doc, a.personId)).toEqual([])
+  })
+
+  it('視点の人物が存在しない場合は全員を一覧として返す', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: 'A' } })
+    doc = a.doc
+    expect(computeOffChartPersonIds(doc, 'missing-person')).toEqual([a.personId])
   })
 })

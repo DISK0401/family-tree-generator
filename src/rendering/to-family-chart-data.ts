@@ -233,7 +233,18 @@ export interface HiddenNeighborInfo {
 }
 
 /**
- * 折りたたみ表示時の非表示人数バッジ(design.md D6)。
+ * 非表示人物の分類結果(design.md D5)。描画されていない人物は、可視の誰かから辿れるか
+ * どうかで必ずどちらか一方に振り分けられる(spec tree-rendering「非表示人数バッジ」)。
+ */
+export interface HiddenPartition {
+  /** 可視の誰かから辿れる非表示人物。境界カードのバッジに計上する */
+  counts: Map<PersonId, HiddenNeighborInfo>
+  /** どの可視人物からも辿れない非表示人物。「図に現れていない人物」の一覧に出す */
+  offChartIds: PersonId[]
+}
+
+/**
+ * 折りたたみ表示時の非表示人数バッジ(design.md D6)と、図に現れていない人物の一覧(D5)。
  * `visibleIds`(現在family-chartが実際に描画している人物ID集合)に含まれない隣接人物を
  * 「境界」として検出し、境界ごとに非表示クラスタのサイズを幅優先探索で数える。
  * 同一の非表示クラスタが複数の境界から到達可能な場合は、`Object.keys(doc.persons)` の
@@ -242,10 +253,10 @@ export interface HiddenNeighborInfo {
  * 「養子縁組を持つ人物からもう一方の親族側へ戻れない」への対応)。
  * 戻り値は、非表示人物を1人以上持つ可視人物のIDから{count, revealId}へのMap。
  */
-export function computeHiddenCounts(
+export function computeHiddenPartition(
   doc: TreeDocument,
   visibleIds: ReadonlySet<PersonId>,
-): Map<PersonId, HiddenNeighborInfo> {
+): HiddenPartition {
   const adjacency = buildAdjacency(doc)
   const countedHidden = new Set<PersonId>()
   const result = new Map<PersonId, HiddenNeighborInfo>()
@@ -274,7 +285,38 @@ export function computeHiddenCounts(
     }
     if (hiddenTotal > 0 && revealId !== undefined) result.set(personId, { count: hiddenTotal, revealId })
   }
-  return result
+  // 上の走査で可視人物の隣から到達できなかった非表示人物が「図に現れていない人物」。
+  // バッジ側(countedHidden)と一覧側は同じ走査結果から分割されるため、
+  // 同じ人物が双方に現れることも、どちらにも現れないこともない(spec tree-rendering)
+  const offChartIds = Object.keys(doc.persons).filter(
+    (id) => !visibleIds.has(id) && !countedHidden.has(id),
+  )
+  return { counts: result, offChartIds }
+}
+
+/**
+ * 非表示人物のうち、可視の誰かから辿れるものだけを返す(バッジ用の従来インターフェース)。
+ * 一覧側と同じ走査結果を使うため、`computeHiddenPartition`の一部として算出する。
+ */
+export function computeHiddenCounts(
+  doc: TreeDocument,
+  visibleIds: ReadonlySet<PersonId>,
+): Map<PersonId, HiddenNeighborInfo> {
+  return computeHiddenPartition(doc, visibleIds).counts
+}
+
+/**
+ * 「図に現れていない人物」の一覧(design.md D5)を、視点(main_id)となる人物1人から求める。
+ *
+ * `offChartIds`は「可視人物の連結成分の外にいる人物」であり、可視集合そのものではなく
+ * **可視集合が触れている連結成分**にしか依存しない。折りたたみ表示でfamily-chartが描画する
+ * 人物は必ず`main_id`と同じ連結成分に属するため、視点1人を可視集合として与えても
+ * 描画済みの全員を与えた場合と同じ結果になる。これにより、family-chart内部の描画結果を
+ * 読み出さずに(=Reactのレンダー中に純粋な導出として)一覧を求められる。
+ */
+export function computeOffChartPersonIds(doc: TreeDocument, viewpointId: PersonId): PersonId[] {
+  if (!doc.persons[viewpointId]) return Object.keys(doc.persons)
+  return computeHiddenPartition(doc, new Set([viewpointId])).offChartIds
 }
 
 /**
