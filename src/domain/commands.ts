@@ -112,6 +112,85 @@ export function addChildLink(
 }
 
 /**
+ * 配偶者の組み合わせが2人とも一致する別の家族を返す。
+ * 「1組の夫婦につき家族は1件」(`linkSpouse`が2件目の作成を拒む不変条件)を、
+ * 既存の家族へ2人目の配偶者を加える経路でも保つために使う
+ */
+function findCoupleFamily(
+  doc: TreeDocument,
+  spouseId: PersonId,
+  otherSpouseId: PersonId,
+  excludeFamilyId: FamilyId,
+): Family | undefined {
+  return Object.values(doc.families).find(
+    (f) =>
+      f.id !== excludeFamilyId &&
+      f.spouseIds.length === 2 &&
+      f.spouseIds.includes(spouseId) &&
+      f.spouseIds.includes(otherSpouseId),
+  )
+}
+
+/**
+ * 婚姻・離婚イベントの同一性キー。家族の統合で、同じ出来事が両方の家族に記録されていた場合に
+ * 2件へ増やさないために使う。日付(原文・修飾子・暦日)と場所まで一致するものだけ同一とみなす
+ */
+function eventKey(event: LifeEvent<FamilyEventType>): string {
+  const { date } = event
+  return [
+    event.type,
+    event.place ?? '',
+    date?.original ?? '',
+    date?.qualifier ?? '',
+    date?.date?.year ?? '',
+    date?.date?.month ?? '',
+    date?.date?.day ?? '',
+  ].join('|')
+}
+
+/**
+ * 家族へ2人目の配偶者を加える(spec family-data-model「同一の夫婦に対する家族の一意性」)。
+ *
+ * その2人を配偶者とする家族が既に別にある場合、単に配偶者参照を足すと同じ夫婦の家族が
+ * 2件並び、子がその2件に分かれて記録される。この状態では図の系線が夫婦の婚姻線ではなく
+ * 片方の親から直接伸びてしまい、しかも双方に子がいるため重複した家族を削除して直すことも
+ * できない。そこで子とイベントを既存の家族へ移し、1件へ統合する(design.md D2)。
+ *
+ * 統合が足す事実は「その2人が夫婦である」という、利用者がこの操作で明示した内容だけであり、
+ * 推測で親子関係を作らない原則(`fix-spouseless-family-handling` design.md D5)には抵触しない。
+ */
+function attachSpouse(
+  doc: TreeDocument,
+  family: Family,
+  personId: PersonId,
+): { doc: TreeDocument; familyId: FamilyId } {
+  const partnerId = family.spouseIds[0]
+  const duplicate =
+    partnerId === undefined ? undefined : findCoupleFamily(doc, partnerId, personId, family.id)
+  if (!duplicate) {
+    return {
+      doc: putFamily(doc, { ...family, spouseIds: [...family.spouseIds, personId] }),
+      familyId: family.id,
+    }
+  }
+
+  const knownEventKeys = new Set(duplicate.events.map(eventKey))
+  const merged: Family = {
+    ...duplicate,
+    // 「不明」しか分かっていない側に、もう一方で判明している種別があればそれを残す
+    kind: duplicate.kind === 'unknown' ? family.kind : duplicate.kind,
+    events: [...duplicate.events, ...family.events.filter((e) => !knownEventKeys.has(eventKey(e)))],
+    children: [
+      ...duplicate.children,
+      ...family.children.filter((c) => !duplicate.children.some((d) => d.childId === c.childId)),
+    ],
+  }
+  const families = { ...doc.families, [merged.id]: merged }
+  delete families[family.id]
+  return { doc: { ...doc, families }, familyId: merged.id }
+}
+
+/**
  * 既存人物を既存の家族へ2人目の配偶者として加える。親子関係と婚姻関係が別々の家族に
  * 分かれて記録された状態を、利用者の明示的な操作で1つの家族へ統合するための経路
  * (spec family-data-model「既存の家族への配偶者の追加」)。
@@ -131,7 +210,7 @@ export function addSpouseLink(
   if (family.children.some((c) => c.childId === personId)) {
     throw new Error(`家族の子を配偶者にはできません: ${personId}`)
   }
-  return touch(putFamily(doc, { ...family, spouseIds: [...family.spouseIds, personId] }))
+  return touch(attachSpouse(doc, family, personId).doc)
 }
 
 /**
@@ -281,15 +360,23 @@ export function linkChild(
  *
  * 帰属先の決め方は次の順で、いずれも「既にある家族を壊さない」ことを優先する。
  * 1. 子が配偶者1件のみの親家族に属していれば、その家族の2人目の配偶者として加わる
- *    (`addParent`と同じ。ひとり親として記録済みの家族へもう一方の親を補う経路)
- * 2. 親が配偶者として属する家族がちょうど1件なら、その家族の子として加える。
+ *    (`addParent`と同じ。ひとり親として記録済みの家族へもう一方の親を補う経路)。
+ *    その2人の家族が既に別にあれば`attachSpouse`が1件へ統合する
+ * 2. 親の婚姻(配偶者2人の家族)がちょうど1件なら、その家族の子として加える。
  *    親に既に配偶者がいるのに配偶者不在の家族を新設すると、同じ夫婦の家族が二重になり
  *    「配偶者未登録」の枠が生まれてしまうため(婿養子のように、既存の夫婦へ後から
  *    養子を加える経路がこれにあたる)
- * 3. どちらにも当てはまらなければ、その親だけの家族を新設する
+ * 3. 婚姻が1件に定まらなくても、親が配偶者として属する家族がちょうど1件ならその家族へ加える
+ * 4. どれにも当てはまらなければ、その親だけの家族を新設する
  *
- * 2 は親の配偶者を子のもう一方の親として扱うことになるため、親が複数の家族を持つ場合
- * (再婚等でどの家族の子か決められない場合)は行わず、3 の新設にとどめる。
+ * 2 で数えるのを「親が属する家族」ではなく「親の婚姻」に限るのは、婚姻でない家族
+ * (空き殻や、もう一方の親が不明なひとり親の家族)の存在が判断を鈍らせないようにするため。
+ * 件数で数えていた頃は、配偶者1件・子0件の空き殻が1つ残っているだけで規則2が働かなくなり、
+ * 「親を追加」のたびに配偶者不在の家族が新設されて、夫婦の子が片方の親だけの子として
+ * 記録されていた(design.md D1)。
+ *
+ * 2・3 は親の配偶者を子のもう一方の親として扱うことになるため、親が複数の婚姻を持つ場合
+ * (再婚等でどの家族の子か決められない場合)は行わず、4 の新設にとどめる。
  * 続柄は`defaultLinkPedigree`に従い、既に親家族を持つ人物なら「不明」で記録する
  */
 export function linkParent(
@@ -308,22 +395,26 @@ export function linkParent(
   )
   if (existing) {
     if (existing.spouseIds.includes(parentId)) return { doc, familyId: existing.id }
-    return {
-      doc: touch(putFamily(doc, { ...existing, spouseIds: [...existing.spouseIds, parentId] })),
-      familyId: existing.id,
-    }
+    const attached = attachSpouse(doc, existing, parentId)
+    return { doc: touch(attached.doc), familyId: attached.familyId }
   }
 
   const pedigree = defaultLinkPedigree(doc, childId)
   const parentFamilies = Object.values(doc.families).filter((f) => f.spouseIds.includes(parentId))
-  if (parentFamilies.length === 1) {
-    const family = parentFamilies[0]
-    if (family.children.some((c) => c.childId === childId)) return { doc, familyId: family.id }
+  const marriages = parentFamilies.filter((f) => f.spouseIds.length === 2)
+  const target =
+    marriages.length === 1
+      ? marriages[0]
+      : parentFamilies.length === 1
+        ? parentFamilies[0]
+        : undefined
+  if (target) {
+    if (target.children.some((c) => c.childId === childId)) return { doc, familyId: target.id }
     return {
       doc: touch(
-        putFamily(doc, { ...family, children: [...family.children, { childId, pedigree }] }),
+        putFamily(doc, { ...target, children: [...target.children, { childId, pedigree }] }),
       ),
-      familyId: family.id,
+      familyId: target.id,
     }
   }
 

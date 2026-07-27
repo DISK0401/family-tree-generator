@@ -290,6 +290,51 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     expect(next.families[p.familyId].spouseIds).toEqual([p.parentId, q.personId])
   })
 
+  it('もう一方の親を選ぶと、夫婦の子として記録し直される', () => {
+    // 片方の親Pだけが登録された子A(=系線がPから直接伸びる状態)と、別の家族にいるPの配偶者Q
+    let doc = useTreeStore.getState().document
+    const p = addParent(doc, personAId, { name: { given: 'P' } })
+    doc = p.doc
+    const q = addSpouse(doc, p.parentId, { name: { given: 'Q' } })
+    useTreeStore.getState().replace(q.doc)
+
+    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    selectExisting('親を追加', 'Q')
+
+    const next = useTreeStore.getState().document
+    // 同じ夫婦の家族が二重にならず、AはP・Qの子として1つの家族に属する
+    expect(next.families[p.familyId]).toBeUndefined()
+    expect(next.families[q.familyId].spouseIds).toEqual([p.parentId, q.spouseId])
+    expect(next.families[q.familyId].children.map((c) => c.childId)).toEqual([personAId])
+    expect(Object.values(next.families).filter((f) => f.spouseIds.includes(p.parentId))).toHaveLength(1)
+  })
+
+  it('親に空き殻の家族が残っていても、既存の人物を親にすると夫婦の家族へ入る', () => {
+    // 親Pが婚姻(Q)に加えて、旧バージョンが残した空き殻(配偶者1件・子0件)を持つ
+    let doc = useTreeStore.getState().document
+    const p = addPerson(doc, { name: { given: 'P' } })
+    doc = p.doc
+    const q = addSpouse(doc, p.personId, { name: { given: 'Q' } })
+    doc = q.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        shell: { id: 'shell', spouseIds: [p.personId], kind: 'unknown', events: [], children: [] },
+      },
+    }
+    useTreeStore.getState().replace(doc)
+
+    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    selectExisting('親を追加', 'P')
+
+    const next = useTreeStore.getState().document
+    expect(next.families[q.familyId].children.map((c) => c.childId)).toEqual([personAId])
+    // 配偶者不在の家族が新設されない(空き殻は残るが、子は増えない)
+    expect(next.families.shell.children).toEqual([])
+    expect(Object.values(next.families)).toHaveLength(2)
+  })
+
   it('氏名で絞り込める', () => {
     let doc = useTreeStore.getState().document
     doc = addPerson(doc, { name: { given: 'Xavier' } }).doc

@@ -287,3 +287,64 @@ describe('FamilyEventEditor: 配偶者が未登録の家族への紐づけ', () 
     ])
   })
 })
+
+describe('FamilyEventEditor: 分裂した家族の統合', () => {
+  /**
+   * 親子関係と婚姻関係が別々の家族に分かれ、双方に子がいる状態
+   * (子Cは配偶者未登録の家族、子DはP・Qの家族)
+   */
+  function splitFamilies() {
+    let doc = createTreeDocument()
+    const c = addPerson(doc, { name: { given: 'C' } })
+    doc = c.doc
+    const parent = addParent(doc, c.personId, { name: { given: 'P' } })
+    doc = parent.doc
+    const q = addSpouse(doc, parent.parentId, { name: { given: 'Q' } })
+    doc = q.doc
+    const d = addChild(doc, parent.parentId, { name: { given: 'D' } }, {
+      otherParentId: q.spouseId,
+    })
+    useTreeStore.getState().replace(d.doc)
+    return {
+      childCId: c.personId,
+      childDId: d.childId,
+      parentId: parent.parentId,
+      spouselessFamilyId: parent.familyId,
+      coupleFamilyId: q.familyId,
+      qId: q.spouseId,
+    }
+  }
+
+  it('配偶者未登録の枠で既存の配偶者を選ぶと、2つの枠が1つにまとまる', () => {
+    const { parentId, qId, childCId, childDId, spouselessFamilyId, coupleFamilyId } =
+      splitFamilies()
+    render(<FamilyEventEditor personId={parentId} />)
+    // 統合前は「(配偶者未登録)」とQの2つの枠が並ぶ
+    expect(screen.getByText('(配偶者未登録)')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), { target: { value: 'Q' } })
+    fireEvent.click(screen.getByRole('option', { name: 'Q' }))
+
+    const doc = useTreeStore.getState().document
+    expect(doc.families[spouselessFamilyId]).toBeUndefined()
+    expect(doc.families[coupleFamilyId].spouseIds).toEqual([parentId, qId])
+    // 双方の家族の子が1つの家族へ集まり、どちらも親を失わない
+    expect(doc.families[coupleFamilyId].children.map((c) => c.childId).sort()).toEqual(
+      [childCId, childDId].sort(),
+    )
+    expect(screen.queryByText('(配偶者未登録)')).not.toBeInTheDocument()
+  })
+
+  it('統合直後のundoで2つの家族と子の帰属が復元される', () => {
+    const { parentId, childCId, childDId, spouselessFamilyId, coupleFamilyId } = splitFamilies()
+    render(<FamilyEventEditor personId={parentId} />)
+
+    fireEvent.change(screen.getByLabelText('配偶者に既存の人物を設定'), { target: { value: 'Q' } })
+    fireEvent.click(screen.getByRole('option', { name: 'Q' }))
+    useTreeStore.getState().undo()
+
+    const doc = useTreeStore.getState().document
+    expect(doc.families[spouselessFamilyId].children.map((c) => c.childId)).toEqual([childCId])
+    expect(doc.families[coupleFamilyId].children.map((c) => c.childId)).toEqual([childDId])
+  })
+})
