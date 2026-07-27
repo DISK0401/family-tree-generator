@@ -124,8 +124,10 @@ describe('assignCoordinates', () => {
         .map((id) => centerXOf.get(id))
         .filter((x): x is number => x !== undefined)
       if (spouseCenters.length < 2) continue
-      expect(familyPos.x).toBeGreaterThanOrEqual(Math.min(...spouseCenters))
-      expect(familyPos.x).toBeLessThanOrEqual(Math.max(...spouseCenters))
+      // 配偶者の中心どうしの範囲に収めるだけでは足りない。端の配偶者の中心へ寄り切ると、
+      // 子への系線が「婚姻線の真ん中」ではなく「その人物のカード」から直接出ているように見える
+      expect(familyPos.x).toBeGreaterThanOrEqual(Math.min(...spouseCenters) + CARD_SIZE.width / 2)
+      expect(familyPos.x).toBeLessThanOrEqual(Math.max(...spouseCenters) - CARD_SIZE.width / 2)
     }
 
     // 親子線の始点(結合点)が婚姻線の経路上にあることを、経路そのもので確かめる
@@ -138,6 +140,53 @@ describe('assignCoordinates', () => {
       expect(link.points[0].x).toBeGreaterThanOrEqual(Math.min(...xs))
       expect(link.points[0].x).toBeLessThanOrEqual(Math.max(...xs))
     }
+  })
+
+  it('子たちが夫婦の外側に寄っていても、結合点はカードとカードのあいだに残る', () => {
+    // 子の中央が夫婦の範囲の外にあると、結合点が端の配偶者の中心へ寄り切り、
+    // 子への系線がその人物のカードから直接出ているように見える(実機で報告された)
+    const doc = testDoc(
+      [
+        person('husband', '夫'),
+        person('wife', '妻'),
+        person('child', '子'),
+        person('childSpouse', '子の配偶者'),
+        person('other1', '無関係1'),
+        person('other2', '無関係2'),
+        person('otherChild', '無関係の子'),
+      ],
+      [
+        family('fCouple', ['husband', 'wife'], [{ childId: 'child', pedigree: 'biological' }]),
+        // 子を別の家系と婚姻させ、層1の中で夫婦の真下から離れた位置へ引っぱる
+        family('fChildMarriage', ['child', 'childSpouse'], []),
+        family('fOther', ['other1', 'other2'], [{ childId: 'otherChild', pedigree: 'biological' }]),
+      ],
+    )
+    const { result } = layoutOf(doc)
+    const centerXOf = new Map(result.persons.map((p) => [p.personId, p.x + CARD_SIZE.width / 2]))
+    const unionX = result.families.find((f) => f.familyId === 'fCouple')!.x
+    const left = Math.min(centerXOf.get('husband')!, centerXOf.get('wife')!)
+    const right = Math.max(centerXOf.get('husband')!, centerXOf.get('wife')!)
+
+    // 夫・妻いずれのカードの上にも乗らない = 2枚のあいだの隙間にある
+    expect(unionX).toBeGreaterThanOrEqual(left + CARD_SIZE.width / 2)
+    expect(unionX).toBeLessThanOrEqual(right - CARD_SIZE.width / 2)
+  })
+
+  it('配偶者が1人の家族は、その人物の中心から系線が出る', () => {
+    // 婚姻線が無いので「あいだ」が存在しない。カードの中心から出るのが自然
+    const doc = testDoc(
+      [person('soleParent', 'ひとり親'), person('c1', '子1'), person('c2', '子2')],
+      [
+        family('f1', ['soleParent'], [
+          { childId: 'c1', pedigree: 'biological' },
+          { childId: 'c2', pedigree: 'biological' },
+        ]),
+      ],
+    )
+    const { result } = layoutOf(doc)
+    const parent = result.persons.find((p) => p.personId === 'soleParent')!
+    expect(result.families.find((f) => f.familyId === 'f1')!.x).toBe(parent.x + CARD_SIZE.width / 2)
   })
 
   it('子は親の位置へ寄せられる(層ごとに左から詰めるだけにしない)', () => {

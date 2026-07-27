@@ -245,11 +245,7 @@ export function assignCoordinates(
       childCenters.length > 0
         ? childCenters.reduce((sum, x) => sum + x, 0) / childCenters.length
         : spouseCenters.reduce((sum, x) => sum + x, 0) / spouseCenters.length
-    // 婚姻線(配偶者の中心どうしを結ぶ横線)の範囲へ必ず収める
-    const centerX =
-      spouseCenters.length > 0
-        ? Math.min(Math.max(preferred, Math.min(...spouseCenters)), Math.max(...spouseCenters))
-        : preferred
+    const centerX = clampToUnionRange(preferred, spouseCenters)
 
     const y = rowTop(generation) + CARD_SIZE.height / 2
     families.push({ familyId, generation, x: centerX, y })
@@ -263,6 +259,25 @@ export function assignCoordinates(
   const height = persons.length > 0 ? Math.max(...persons.map((p) => p.y + CARD_SIZE.height)) : 0
 
   return { persons, families, links, width, height }
+}
+
+/**
+ * 結合点を置ける範囲へ収める。
+ *
+ * 配偶者が2人以上いる家族では、**カードとカードのあいだ**に収める。配偶者の中心どうしの範囲へ
+ * 収めるだけだと、子たちの中央が範囲の外にあるときに結合点が端の配偶者の中心へ寄り切り、
+ * 子への系線が「婚姻線の真ん中」ではなく「その人物のカード」から直接出ているように見える。
+ * 配偶者が1人の家族には婚姻線が無いため、その人物の中心をそのまま使う
+ */
+function clampToUnionRange(preferred: number, spouseCenters: number[]): number {
+  if (spouseCenters.length === 0) return preferred
+  if (spouseCenters.length === 1) return spouseCenters[0]
+
+  const low = Math.min(...spouseCenters) + CARD_SIZE.width / 2
+  const high = Math.max(...spouseCenters) - CARD_SIZE.width / 2
+  // カードが隣接していない(重婚などで間に別の人物がいる)場合を除き、範囲は隙間ぶんの幅になる
+  if (low > high) return (Math.min(...spouseCenters) + Math.max(...spouseCenters)) / 2
+  return Math.min(Math.max(preferred, low), high)
 }
 
 /**
