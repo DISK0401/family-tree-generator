@@ -1,6 +1,6 @@
-import { computeAge } from '../domain/age'
 import { displayName } from '../domain/helpers'
-import type { CalendarDate, Family, Pedigree, Person, PersonId, TreeDocument } from '../domain/types'
+import type { CalendarDate, Family, Pedigree, PersonId, TreeDocument } from '../domain/types'
+import { personToCardInput } from './person-card'
 
 /**
  * TreeDocument → family-chart描画用データへの変換アダプタ。
@@ -52,12 +52,6 @@ export interface FamilyChartDatum {
     spouses?: PersonId[]
     children?: PersonId[]
   }
-}
-
-function toGender(gender: Person['gender']): 'M' | 'F' | 'U' {
-  if (gender === 'male') return 'M'
-  if (gender === 'female') return 'F'
-  return 'U'
 }
 
 /**
@@ -457,21 +451,13 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
     return {
       id: person.id,
       data: {
-        personId: person.id,
-        gender: toGender(person.gender),
+        // カード表示に使う項目は`personToCardInput`(person-card.ts)を正本とする。
+        // ここで同じ変換をもう一度書くと、「カードに何を描くかを決める処理を描画系ごとに
+        // 重複して持たない」(spec tree-rendering「人物カードの表現の一致」)が、
+        // 表示設定の適用より手前の段階で崩れる
+        ...personToCardInput(person),
         displayName: displayName(person),
-        surname: person.name.surname,
-        given: person.name.given,
-        surnameKana: person.name.surnameKana,
-        givenKana: person.name.givenKana,
         birthYear: person.birth?.date?.date?.year,
-        deathYear: person.death?.date?.date?.year,
-        birthDate: person.birth?.date?.date,
-        deathDate: person.death?.date?.date,
-        birthPlace: person.birth?.place,
-        deathPlace: person.death?.place,
-        age: computeAge(person),
-        deceased: person.death !== undefined,
         pedigree: pedigreeByChild.get(person.id),
       },
       rels: {
