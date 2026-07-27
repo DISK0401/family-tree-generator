@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assignCoordinates, CARD_SIZE, HORIZONTAL_GAP, VERTICAL_GAP } from './coordinates'
+import { assignCoordinates, assignLinkLanes, CARD_SIZE, HORIZONTAL_GAP, VERTICAL_GAP } from './coordinates'
 import { assignGenerations } from './generations'
 import { buildGraph } from './graph'
 import { orderWithinLayers } from './ordering'
@@ -191,5 +191,68 @@ describe('assignCoordinates', () => {
     // 横に走る区間の高さが互いに異なることを確かめる
     const midYs = linksToD.map((l) => l.points[1].y)
     expect(new Set(midYs).size).toBe(2)
+  })
+
+  it('横に重なる別々の家族の親子線には、違うレーン(横に走る高さ)が割り当てられる', () => {
+    // どの家族も同じ高さで折れると、無関係な家族の横線どうしが一直線につながって見え、
+    // 図が読めなくなる(実データで8家族ぶんの横線が1本の長い棒に見えた)
+    const lanes = assignLinkLanes(
+      new Map([
+        [
+          0,
+          [
+            { familyId: 'fA', left: 0, right: 500 },
+            { familyId: 'fB', left: 200, right: 700 }, // fAと重なる
+            { familyId: 'fC', left: 900, right: 1000 }, // どちらとも重ならない
+          ],
+        ],
+      ]),
+    )
+
+    expect(lanes.get('fA')?.lane).not.toBe(lanes.get('fB')?.lane)
+    // 重ならない家族はレーンを使い回す(隙間を細かく分割しすぎないため)
+    expect(lanes.get('fC')?.lane).toBe(lanes.get('fA')?.lane)
+    expect(lanes.get('fA')?.laneCount).toBe(2)
+  })
+
+  it('レーンの割り当ては区間の左端・家族IDで決まり、入力順に依存しない', () => {
+    const intervals = [
+      { familyId: 'fB', left: 200, right: 700 },
+      { familyId: 'fA', left: 0, right: 500 },
+      { familyId: 'fC', left: 900, right: 1000 },
+    ]
+    const forward = assignLinkLanes(new Map([[0, intervals]]))
+    const reversed = assignLinkLanes(new Map([[0, [...intervals].reverse()]]))
+    expect([...reversed.entries()].sort()).toEqual([...forward.entries()].sort())
+  })
+
+  it('親子線が横に走る高さは、必ず層と層の隙間に収まる', () => {
+    // カードの並ぶ高さを横切ると、カードの隙間ごとに線が途切れて見え、図が読みづらくなる
+    const doc = testDoc(
+      [
+        person('gf', '祖父'),
+        person('gm', '祖母'),
+        person('father', '父'),
+        person('mother', '母'),
+        person('child', '孫'),
+      ],
+      [
+        family('f1', ['gf', 'gm'], [{ childId: 'father', pedigree: 'biological' }]),
+        family('f2', ['father', 'mother'], [{ childId: 'child', pedigree: 'biological' }]),
+      ],
+    )
+    const { generationOf, result } = layoutOf(doc)
+
+    for (const link of result.links) {
+      if (link.kind !== 'parent-child') continue
+      const parentGeneration = result.families.find((f) => f.familyId === link.familyId)?.generation ?? 0
+      const rowBottom = parentGeneration * (CARD_SIZE.height + VERTICAL_GAP) + CARD_SIZE.height
+      const laneY = link.points[1].y
+      expect(laneY).toBeGreaterThan(rowBottom)
+      expect(laneY).toBeLessThan(rowBottom + VERTICAL_GAP)
+      // 子の側はカードの上端で受ける(カードの上に線が重ならない)
+      const childGeneration = generationOf.get(link.childId) ?? 0
+      expect(link.points[3].y).toBe(childGeneration * (CARD_SIZE.height + VERTICAL_GAP))
+    }
   })
 })

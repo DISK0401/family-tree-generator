@@ -298,8 +298,56 @@ function desiredCenter(
 }
 
 /**
+ * 親子線が横に走る高さ(レーン)を家族ごとに決める。
+ *
+ * 親子線は「結合点から下へ→横へ→子の真上から下へ」というエルボー経路を取るが、
+ * その横に走る区間をどの家族も同じ高さに置くと、無関係な家族の線どうしが一直線に
+ * つながって見え、図が読めなくなる(実データで、8家族ぶんの横線が1本の長い棒に
+ * 見える状態が起きた)。
+ *
+ * そこで層と層の隙間(VERTICAL_GAP)を複数のレーンに分け、横方向に重なる家族には
+ * 必ず別のレーンを割り当てる。重なりのない家族どうしは同じレーンを使い回すため、
+ * レーン数は「同時に重なっている家族の最大数」で済み、隙間が細切れになりにくい。
+ * 割り当ては区間の左端→家族IDの順に貪欲に行い、結果を決定的にする(D5)。
+ */
+export function assignLinkLanes(
+  bands: Map<number, Array<{ familyId: FamilyId; left: number; right: number }>>,
+): Map<FamilyId, { lane: number; laneCount: number }> {
+  const result = new Map<FamilyId, { lane: number; laneCount: number }>()
+
+  for (const generation of [...bands.keys()].sort((a, b) => a - b)) {
+    const intervals = [...(bands.get(generation) ?? [])].sort(
+      (a, b) => a.left - b.left || a.familyId.localeCompare(b.familyId),
+    )
+    // 各レーンで最後に使った右端。次の区間の左端がそれより十分右にあれば同じレーンを再利用する
+    const laneRight: number[] = []
+    const laneOf = new Map<FamilyId, number>()
+
+    for (const interval of intervals) {
+      let lane = laneRight.findIndex((right) => interval.left > right + HORIZONTAL_GAP)
+      if (lane === -1) {
+        lane = laneRight.length
+        laneRight.push(interval.right)
+      } else {
+        laneRight[lane] = Math.max(laneRight[lane], interval.right)
+      }
+      laneOf.set(interval.familyId, lane)
+    }
+
+    for (const [familyId, lane] of laneOf) {
+      result.set(familyId, { lane, laneCount: Math.max(laneRight.length, 1) })
+    }
+  }
+
+  return result
+}
+
+/**
  * 系線の経路を求める(4.3, 4.4)。婚姻線は配偶者どうしを結ぶ横線、親子線は結合点から子への
- * 「エルボー」経路(結合点から下へ→層の中間で横へ→子の真上から下へ)とする。
+ * 「エルボー」経路(結合点から下へ→層の隙間のレーンで横へ→子の真上から下へ)とする。
+ * 横に走る高さは`assignLinkLanes`が家族ごとに決めるため、無関係な家族の線がつながって
+ * 見えることはなく、カードの並ぶ高さを横切ることもない。
+ *
  * 続柄(pedigree)は親子の組ごとに、渡された`family.children`からそのまま引き継ぐため、
  * 同一人物が複数の親家族を持つ場合も、家族ごとに正しい続柄の系線が別々に得られる
  * (spec「系線の種別と続柄の保持」「実親と養親の双方を持つ人物」)。
@@ -313,16 +361,22 @@ function buildLinks(
 ): PedigreeLink[] {
   const links: PedigreeLink[] = []
 
-  // 同じ子へ複数の親家族から系線が来る場合(実親+養親)、経路がまったく同じ高さで折れると
-  // 2本が重なって片方が見えなくなる。子ごとに親家族へ順位を振り、折れる高さをずらす
-  const parentRankOfChild = new Map<PersonId, Map<FamilyId, number>>()
+  // 家族ごとに、親子線が横に走る区間(結合点と子たちを含む範囲)を層の隙間ごとに集める
+  const bands = new Map<number, Array<{ familyId: FamilyId; left: number; right: number }>>()
   for (const familyId of [...graph.families.keys()].sort()) {
-    for (const child of graph.families.get(familyId)?.children ?? []) {
-      const ranks = parentRankOfChild.get(child.childId) ?? new Map<FamilyId, number>()
-      if (!ranks.has(familyId)) ranks.set(familyId, ranks.size)
-      parentRankOfChild.set(child.childId, ranks)
-    }
+    const family = graph.families.get(familyId)
+    const unionX = familyCenterX.get(familyId)
+    const unionGeneration = familyGeneration.get(familyId)
+    if (!family || unionX === undefined || unionGeneration === undefined) continue
+    const childXs = family.children
+      .map((c) => centerXOf.get(c.childId))
+      .filter((x): x is number => x !== undefined)
+    if (childXs.length === 0) continue
+    const list = bands.get(unionGeneration) ?? []
+    list.push({ familyId, left: Math.min(unionX, ...childXs), right: Math.max(unionX, ...childXs) })
+    bands.set(unionGeneration, list)
   }
+  const lanes = assignLinkLanes(bands)
 
   for (const familyId of [...graph.families.keys()].sort()) {
     const family = graph.families.get(familyId)
@@ -346,17 +400,19 @@ function buildLinks(
       }
     }
 
+    // 横に走る高さは、親の層のカード下端と子の層のカード上端のあいだ(VERTICAL_GAP)に収める。
+    // レーンをこの帯の内側で等間隔に配ることで、どの線もカードの並ぶ高さを横切らない
+    const { lane, laneCount } = lanes.get(familyId) ?? { lane: 0, laneCount: 1 }
+    const bandTop = rowTop(unionGeneration) + CARD_SIZE.height
+    const laneY = bandTop + (VERTICAL_GAP * (lane + 1)) / (laneCount + 1)
+
     const children = [...family.children].sort((a, b) => a.childId.localeCompare(b.childId))
     for (const child of children) {
       const childX = centerXOf.get(child.childId)
       const childGeneration = generationOf.get(child.childId)
       if (childX === undefined || childGeneration === undefined) continue
-      const childY = rowTop(childGeneration) + CARD_SIZE.height / 2
-      const rank = parentRankOfChild.get(child.childId)?.get(familyId) ?? 0
-      // 順位0は中点。以降は少しずつ子側へ寄せる(0.5 → 0.62 → 0.74 …)。
-      // 0.9で頭打ちにして、子のカードへめり込まないようにする
-      const midRatio = Math.min(0.5 + rank * 0.12, 0.9)
-      const midY = unionY + (childY - unionY) * midRatio
+      // 子のカードの上端で受ける(カード中心まで引くと、線がカードの上に重なって見える)
+      const childY = rowTop(childGeneration)
       links.push({
         kind: 'parent-child',
         familyId,
@@ -364,8 +420,8 @@ function buildLinks(
         pedigree: child.pedigree,
         points: [
           { x: unionX, y: unionY },
-          { x: unionX, y: midY },
-          { x: childX, y: midY },
+          { x: unionX, y: laneY },
+          { x: childX, y: laneY },
           { x: childX, y: childY },
         ],
       })
