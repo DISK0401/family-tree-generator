@@ -1,4 +1,4 @@
-import type { PersonId } from '../domain/types'
+import type { FamilyId, PersonId } from '../domain/types'
 import type { PedigreeGraph } from './graph'
 import type { LayerOrder } from './ordering'
 import type { CardSize, FamilyPosition, LinkPoint, PedigreeLink, PersonPosition } from './types'
@@ -7,9 +7,15 @@ import type { CardSize, FamilyPosition, LinkPoint, PedigreeLink, PersonPosition 
  * カードの寸法と層間隔(design.md D2-3)。
  * 実際の見た目は`PersonCardView`(6群)を描く側の裁量だが、レイアウタは重なり判定・
  * 層の高さ計算のために具体的な値を1つ持つ必要があるため、既存カードの縦書き2列組みが
- * おおむね収まる寸法をここで定める
+ * おおむね収まる寸法をここで定める。
+ *
+ * 1〜5群では暫定値(120×160)だったが、7群で実カードの寸法
+ * (`FamilyTreeCanvas.tsx`の`CARD_WIDTH`/`CARD_HEIGHT` = 104×116)と突き合わせて確定させた。
+ * `src/layout`は`src/rendering`に依存できない(`src/layout/types.test.ts`が機械的に検査する)ため、
+ * 依存の向きを守れる`src/layout`側にこの共通定数を置き、rendering側がここから読む形にする
+ * (rendering → layout の一方向)
  */
-export const CARD_SIZE: CardSize = { width: 120, height: 160 }
+export const CARD_SIZE: CardSize = { width: 104, height: 116 }
 export const HORIZONTAL_GAP = 24
 export const VERTICAL_GAP = 96
 
@@ -307,6 +313,17 @@ function buildLinks(
 ): PedigreeLink[] {
   const links: PedigreeLink[] = []
 
+  // 同じ子へ複数の親家族から系線が来る場合(実親+養親)、経路がまったく同じ高さで折れると
+  // 2本が重なって片方が見えなくなる。子ごとに親家族へ順位を振り、折れる高さをずらす
+  const parentRankOfChild = new Map<PersonId, Map<FamilyId, number>>()
+  for (const familyId of [...graph.families.keys()].sort()) {
+    for (const child of graph.families.get(familyId)?.children ?? []) {
+      const ranks = parentRankOfChild.get(child.childId) ?? new Map<FamilyId, number>()
+      if (!ranks.has(familyId)) ranks.set(familyId, ranks.size)
+      parentRankOfChild.set(child.childId, ranks)
+    }
+  }
+
   for (const familyId of [...graph.families.keys()].sort()) {
     const family = graph.families.get(familyId)
     const unionX = familyCenterX.get(familyId)
@@ -335,7 +352,11 @@ function buildLinks(
       const childGeneration = generationOf.get(child.childId)
       if (childX === undefined || childGeneration === undefined) continue
       const childY = rowTop(childGeneration) + CARD_SIZE.height / 2
-      const midY = unionY + (childY - unionY) / 2
+      const rank = parentRankOfChild.get(child.childId)?.get(familyId) ?? 0
+      // 順位0は中点。以降は少しずつ子側へ寄せる(0.5 → 0.62 → 0.74 …)。
+      // 0.9で頭打ちにして、子のカードへめり込まないようにする
+      const midRatio = Math.min(0.5 + rank * 0.12, 0.9)
+      const midY = unionY + (childY - unionY) * midRatio
       links.push({
         kind: 'parent-child',
         familyId,

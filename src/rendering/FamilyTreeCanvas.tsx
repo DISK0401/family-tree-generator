@@ -5,8 +5,11 @@ import { useTreeStore } from '../store/tree-store'
 import { AddPersonControl } from '../components/AddPersonControl'
 import { UnconnectedTray } from '../components/UnconnectedTray'
 import type { Pedigree } from '../domain/types'
+import { CARD_SIZE } from '../layout/coordinates'
 import { useDisplaySettingsStore } from '../settings/display-settings-store'
 import { formatDateForDisplay } from '../settings/display-settings'
+import { derivePersonCardView, personCardInnerHtml } from './person-card'
+import { PedigreeCanvas } from './PedigreeCanvas'
 import {
   buildPedigreeByEdge,
   compareChildrenByBirthThenName,
@@ -30,9 +33,18 @@ type SortSpousesFn = Parameters<ChartInstance['setSortSpousesFunction']>[0]
 
 // カード寸法。setCardHtml()にsetCardInnerHtmlCreatorを渡すとfamily-chart側の
 // カードサイズCSS(.f3 div.card-rect 等)は適用されないため、ここで定義した値を
-// setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる
-const CARD_WIDTH = 104
-const CARD_HEIGHT = 116
+// setCardDim(レイアウト計算用)とCSS(.tree-card の実サイズ)の両方に用いる。
+// 値そのものは`src/layout/coordinates.ts`のCARD_SIZEを正本とする(7群: PedigreeCanvasの
+// レイアウト計算にも同じ寸法を使う必要があり、layoutがrenderingに依存できない以上
+// (src/layout/types.test.ts)、layout側に定数を置きrenderingが読む向きにする)
+const CARD_WIDTH = CARD_SIZE.width
+const CARD_HEIGHT = CARD_SIZE.height
+
+/**
+ * 表示モード(design.md D7)。折りたたみ表示・全体表示(家系ごと)はfamily-chartのまま、
+ * つながった全体表示だけ自前レイアウタ(PedigreeCanvas)へ差し替える
+ */
+export type TreeViewMode = 'collapsed' | 'full' | 'connected'
 
 export interface FamilyTreeCanvasProps {
   selectedPersonId: string | null
@@ -112,16 +124,6 @@ function markLinkStyles(container: HTMLElement, pedigreeByEdge: Map<string, Pedi
   })
 }
 
-/** 氏名は利用者入力のため、innerHTMLへ渡す前に必ずエスケープする */
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
 /**
  * family-chartによる家系図キャンバス。
  * TreeDocumentの変更を購読し、toFamilyChartDataで射影した結果のみで再描画する
@@ -137,10 +139,13 @@ export function FamilyTreeCanvas({
   const selectedIdRef = useRef<string | null>(selectedPersonId)
   const onSelectPersonRef = useRef(onSelectPerson)
   const documentRef = useRef(document)
-  // 全体表示モード(design.md D5): 折りたたみ(main_idのクリック追従)を止め、
-  // 本人の兄弟姉妹も含めて描画可能な最大範囲を常に表示する
-  const [showAll, setShowAll] = useState(false)
-  const showAllRef = useRef(showAll)
+  // 表示モード(design.md D7): 'full'(全体表示・家系ごと)はfamily-chartの折りたたみ
+  // (main_idのクリック追従)を止め、本人の兄弟姉妹も含めて描画可能な最大範囲を常に表示する。
+  // 'connected'(つながった全体表示)はfamily-chart自体を描画せずPedigreeCanvasへ差し替える
+  // (8.3)。family-chart関連の分岐は元の真偽値と同様「mode === 'full'」で判定し続けられるよう、
+  // 'connected'とその他を区別する箇所だけ新たに増やす
+  const [mode, setMode] = useState<TreeViewMode>('collapsed')
+  const modeRef = useRef(mode)
   // 表示設定(design.md D9): カードの生年月日・没年月日の表示粒度
   const birthDateGranularity = useDisplaySettingsStore((s) => s.birthDateGranularity)
   const deathDateGranularity = useDisplaySettingsStore((s) => s.deathDateGranularity)
@@ -179,8 +184,8 @@ export function FamilyTreeCanvas({
   }, [document])
 
   useEffect(() => {
-    showAllRef.current = showAll
-  }, [showAll])
+    modeRef.current = mode
+  }, [mode])
 
   useEffect(() => {
     birthGranularityRef.current = birthDateGranularity
@@ -274,8 +279,10 @@ export function FamilyTreeCanvas({
       // 描画しない制約があるため、選択人物の最上位祖先へmain_idを追従させる
       // (選択人物自身をmain_idにすると、選択人物からさらに上の祖先の配偶者や
       // 傍系親族が今度は描画から漏れてしまうため。design.md リスク「family-chartの表現力限界」参照)。
-      // 全体表示モード中は視点(表示範囲)を固定するため、main_idを動かさない(design.md D5)
-      if (nextSelected && !showAllRef.current) {
+      // 全体表示モード中は視点(表示範囲)を固定するため、main_idを動かさない(design.md D5)。
+      // 'connected'時はfamily-chartのコンテナ自体が非表示のためこのハンドラは事実上発火しないが、
+      // 念のため'collapsed'のときだけ追従する判定にしておく
+      if (nextSelected && modeRef.current === 'collapsed') {
         const previousMainId = chart.store.getMainId()
         chart.updateMainId(findRootAncestor(documentRef.current, nextSelected))
         mainIdChangedRef.current = chart.store.getMainId() !== previousMainId
@@ -285,80 +292,28 @@ export function FamilyTreeCanvas({
       }
       onSelectPersonRef.current(nextSelected)
     })
+    // カードに何を描くかの導出(design.md D3, 6群)は、つながった全体表示(PedigreeCanvas)と
+    // person-card.tsを共有する。選択・非表示人数バッジは表示設定によらずこの描画系だけの
+    // 状態のため、導出結果(PersonCardView)には含めずHTML組み立て関数の引数として渡す
     card.setCardInnerHtmlCreator((d: TreeDatum) => {
       const person = (d.data as unknown as FamilyChartDatum).data
       // 全体表示モードの仮想ルート(design.md D5)自体は実在の人物ではないため、
       // 見た目上は何も描かない(位置計算のためだけにDOM上には存在させる)
       if (person.personId === FULL_VIEW_ROOT_ID) return '<div class="tree-card tree-card-virtual-root"></div>'
-      // 選択状態は朱で表現する(朱=選択の一意性を保つため、他の用途に流用しない)。
-      // 性別インジケーターは朱と別配色のトークンを使う(design.md D7)
-      const selectedClass = person.personId === selectedIdRef.current ? ' selected' : ''
-      const deceasedClass = person.deceased ? ' deceased' : ''
-      // カード表示項目の選択(design.md D8)。項目ごとに「表示対象かつデータが存在する」場合のみ描く
-      const fields = visibleCardFieldsRef.current
-      const years = [
-        fields.birthDate
-          ? formatDateForDisplay(person.birthDate, birthGranularityRef.current, calendarModeRef.current)
-          : undefined,
-        fields.deathDate
-          ? formatDateForDisplay(person.deathDate, deathGranularityRef.current, calendarModeRef.current)
-          : undefined,
-      ]
-        .filter((y) => y !== undefined)
-        .join(' – ')
-      const ageLabel =
-        fields.age && person.age !== undefined
-          ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)`
-          : ''
-      // 故人は伝統的な系譜記法にならい「†」を付す(カードのマーカー色と対応)。
-      // 名前の縦書き列の中に文字として埋め込むと、ふりがな・生没地等の追加項目で
-      // 列の縦方向スペースが狭まった際に、†が意図しない別列へ折り返されて名前の
-      // 前に浮いて見える不具合が起きるため、名前列とは独立した固定位置バッジとして描く
-      const deceasedMarkHtml = person.deceased
-        ? '<div class="tree-card-deceased-mark" title="故人">†</div>'
-        : ''
-      // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
-      // 表示対象かつデータが存在する方だけを対象にし、両方非表示の場合は名前欄を空にする
-      // (データはあるのに未入力と誤解させないため、未入力時のフォールバック文言は出さない。design.md D8)
-      const surnameText = fields.surname ? person.surname : undefined
-      const givenText = fields.given ? person.given : undefined
-      const nameHtml =
-        surnameText && givenText
-          ? `<div class="tree-card-surname">${escapeHtml(surnameText)}</div><div class="tree-card-given">${escapeHtml(givenText)}</div>`
-          : surnameText
-            ? `<div class="tree-card-given">${escapeHtml(surnameText)}</div>`
-            : givenText
-              ? `<div class="tree-card-given">${escapeHtml(givenText)}</div>`
-              : ''
-      const kanaText = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : ''
-      const kanaHtml = kanaText ? `<div class="tree-card-kana">${escapeHtml(kanaText)}</div>` : ''
-      const placesText = [fields.birthPlace ? person.birthPlace : undefined, fields.deathPlace ? person.deathPlace : undefined]
-        .filter((p): p is string => !!p)
-        .join(' / ')
-      const placesHtml = placesText ? `<div class="tree-card-places">${escapeHtml(placesText)}</div>` : ''
+      const view = derivePersonCardView(person, {
+        birthDateGranularity: birthGranularityRef.current,
+        deathDateGranularity: deathGranularityRef.current,
+        calendarMode: calendarModeRef.current,
+        visibleCardFields: visibleCardFieldsRef.current,
+      })
       // 折りたたみ表示時、この人物の先に隠れている人数をバッジで示す(design.md D6)。
-      // 全体表示モード中は表示しない
+      // 全体表示モード中は実質的に空集合(getHiddenCounts参照)
       const hidden = getHiddenCounts().get(person.personId)
-      const badgeHtml =
-        hidden !== undefined
-          ? `<div class="tree-card-hidden-badge" data-reveal-id="${escapeHtml(hidden.revealId)}" title="非表示の人物が${hidden.count}人います。クリックすると表示します">+${hidden.count}</div>`
-          : ''
-      // 性別を色のみに依存せず形状(四角/丸/破線ひし形)でも判別できるようにする(design.md D7)
-      const genderClass =
-        person.gender === 'M' ? 'tree-card-gender-male' : person.gender === 'F' ? 'tree-card-gender-female' : 'tree-card-gender-unknown'
-      const genderTitle = person.gender === 'M' ? '男' : person.gender === 'F' ? '女' : '性別不明'
-      const genderHtml = fields.genderIcon
-        ? `<div class="tree-card-gender ${genderClass}" title="${genderTitle}"></div>`
-        : ''
-      return `<div class="tree-card${selectedClass}${deceasedClass}">
-        ${genderHtml}
-        ${deceasedMarkHtml}
-        ${badgeHtml}
-        ${kanaHtml}
-        <div class="tree-card-name-row">${nameHtml}</div>
-        ${years ? `<div class="tree-card-years">${escapeHtml(years)}${ageLabel ? ` ${escapeHtml(ageLabel)}` : ''}</div>` : ''}
-        ${placesHtml}
-      </div>`
+      // 選択状態は朱で表現する(朱=選択の一意性を保つため、他の用途に流用しない)
+      return personCardInnerHtml(view, {
+        selected: person.personId === selectedIdRef.current,
+        hiddenBadge: hidden,
+      })
     })
 
     // 系線の意味づけ: 養子は破線、婚姻線は二重線。updateTreeのたびに再適用が必要
@@ -377,15 +332,16 @@ export function FamilyTreeCanvas({
     const chart = chartRef.current
     if (!chart) return
     // 全体表示モード中にツリーを編集した場合も、通常データへ差し戻さず
-    // 全体表示用データのまま更新する(showAllRef.currentで現在のモードを判定)
-    const data = showAllRef.current ? toFullViewFamilyChartData(document) : toFamilyChartData(document)
+    // 全体表示用データのまま更新する(modeRef.currentで現在のモードを判定)。
+    // 'connected'時はfamily-chartのコンテナが非表示のため、'collapsed'と同じ通常データで構わない
+    const data = modeRef.current === 'full' ? toFullViewFamilyChartData(document) : toFamilyChartData(document)
     chart.updateData(data as unknown as never)
     // 親を追加・変更すると、選択中の人物からたどれる最上位祖先(=視点)が変わりうる。
     // main_idはカードのクリック時にしか追従しないため、ここで追従させないと
     // 「既存の人物を親として紐づけたのに、その親が図に現れない」状態のまま残ってしまう。
     // 全体表示モード中は視点を仮想ルートに固定するため動かさない(design.md D5)
     const selectedId = selectedIdRef.current
-    if (!showAllRef.current && selectedId && document.persons[selectedId]) {
+    if (modeRef.current !== 'full' && selectedId && document.persons[selectedId]) {
       const nextMainId = findRootAncestor(document, selectedId)
       if (nextMainId !== chart.store.getMainId()) chart.updateMainId(nextMainId)
     }
@@ -410,23 +366,24 @@ export function FamilyTreeCanvas({
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
-    if (showAll) {
+    if (mode === 'full') {
       // 実親・養親の両方を持つ人物のような複数所属も、仮想ルート配下の各家系の根から
       // すべて辿れるよう、全体表示専用データ(仮想ルート+非主たる家族向けスタブカード)に
       // 差し替える(design.md D5)。以降はクリックしてもこの視点(main_id)を動かさない
       chart.updateData(toFullViewFamilyChartData(documentRef.current) as unknown as never)
       chart.updateMainId(FULL_VIEW_ROOT_ID)
     } else {
-      // 通常データへ戻す。選択中の人物がいればその祖先へ即座に再追従させる。
-      // これを省略すると次にカードをクリックするまで表示が変化せず、
-      // 「折りたたみ表示に戻す」を押しても何も起きていないように見えてしまう
+      // 通常データへ戻す('collapsed'/'connected'共通)。選択中の人物がいればその祖先へ
+      // 即座に再追従させる。これを省略すると次にカードをクリックするまで表示が変化せず、
+      // 「折りたたみ表示に戻す」を押しても何も起きていないように見えてしまう。
+      // 'connected'時はfamily-chart自体が非表示のため、この更新は見た目に影響しない
       chart.updateData(toFamilyChartData(documentRef.current) as unknown as never)
       if (selectedIdRef.current) {
         chart.updateMainId(findRootAncestor(documentRef.current, selectedIdRef.current))
       }
     }
     chart.updateTree({ tree_position: 'fit' })
-  }, [showAll])
+  }, [mode])
 
   function zoomBy(amount: number) {
     const chart = chartRef.current
@@ -440,12 +397,14 @@ export function FamilyTreeCanvas({
     chart.updateTree({ tree_position: 'fit' })
   }
 
-  // 全体表示モードは全人物を描画するため一覧は常に空になる(spec tree-rendering)。
+  // 全体表示('full')・つながった全体表示('connected')はいずれも全人物を描画するため
+  // 一覧は常に空になる(spec tree-rendering「関係を持たない人物も表示される」、design.md D4)。
   // 折りたたみ表示では、視点(未クリックならデータ先頭=family-chartの既定main_id)と
   // 同じ連結成分に属さない人物が一覧の対象になる
-  const offChartIds = showAll
-    ? []
-    : computeOffChartPersonIds(document, viewpointId ?? Object.keys(document.persons)[0] ?? '')
+  const offChartIds =
+    mode === 'collapsed'
+      ? computeOffChartPersonIds(document, viewpointId ?? Object.keys(document.persons)[0] ?? '')
+      : []
 
   // "f3" はfamily-chart本体のCSS(family-chart.css)が前提とするスコープクラス。
   // 凡例・ズームコントロールはfamily-chartが管理するDOM(containerRef配下)の外、兄弟要素として置く。
@@ -460,19 +419,58 @@ export function FamilyTreeCanvas({
       }}
     >
       <div className="tree-canvas-stage">
-      <div ref={containerRef} className="f3 tree-canvas-root" />
+      {/*
+        family-chartのDOM(d3が内部で保持するノード参照)は一度作ったら破棄しない。
+        'connected'選択時にこのdivごとReactツリーから外すと、'collapsed'/'full'へ戻した際に
+        d3が古い(切り離された)DOMノードを参照し続けて再描画できなくなるため、
+        見た目とヒットテストだけを止める(8.3)。
+
+        hidden属性だけでは隠れない。family-chart.cssが`.f3`に`display: flex`を与えており、
+        hidden属性のUAスタイル(display: none)はそれに打ち消されるため、隠したはずの
+        キャンバスが残ったままPedigreeCanvasがその下(画面外)へ押し出される。
+        どのスタイルシートよりも強いインラインstyleで確実に止める(hidden属性は支援技術向けに残す)
+      */}
+      <div
+        ref={containerRef}
+        className="f3 tree-canvas-root"
+        hidden={mode === 'connected'}
+        style={mode === 'connected' ? { display: 'none' } : undefined}
+      />
+      {mode === 'connected' ? (
+        <PedigreeCanvas selectedPersonId={selectedPersonId} onSelectPerson={onSelectPerson} />
+      ) : null}
       <div className="tree-corner-panel">
         {/* 選択中の人物がなくても押せる必要があるため、人物編集パネルではなく
             キャンバス側に置く(spec tree-editor「関係を指定しない人物の追加」) */}
         <AddPersonControl onAdded={(personId) => onSelectPerson(personId)} />
-        <button
-          type="button"
-          className="tree-show-all-toggle"
-          aria-pressed={showAll}
-          onClick={() => setShowAll((v) => !v)}
-        >
-          {showAll ? '折りたたみ表示に戻す' : '全体表示モード'}
-        </button>
+        {/* 表示モードの3値切り替え(design.md D7)。現在の表示はaria-pressedと
+            (既存の).tree-show-all-toggle[aria-pressed='true']の配色で判別できる */}
+        <div className="tree-view-mode-toggle" role="group" aria-label="表示モード">
+          <button
+            type="button"
+            className="tree-show-all-toggle"
+            aria-pressed={mode === 'collapsed'}
+            onClick={() => setMode('collapsed')}
+          >
+            折りたたみ表示
+          </button>
+          <button
+            type="button"
+            className="tree-show-all-toggle"
+            aria-pressed={mode === 'full'}
+            onClick={() => setMode('full')}
+          >
+            全体表示(家系ごと)
+          </button>
+          <button
+            type="button"
+            className="tree-show-all-toggle"
+            aria-pressed={mode === 'connected'}
+            onClick={() => setMode('connected')}
+          >
+            つながった全体表示
+          </button>
+        </div>
         <div className="tree-legend">
           <div className="tree-legend-item">
             <span className="tree-legend-swatch" />
@@ -501,17 +499,20 @@ export function FamilyTreeCanvas({
           <p className="tree-legend-hint">カードを選ぶと編集できます</p>
         </div>
       </div>
-      <div className="tree-zoom-controls" role="group" aria-label="表示倍率">
-        <button type="button" onClick={() => zoomBy(1.3)} aria-label="拡大">
-          +
-        </button>
-        <button type="button" onClick={() => zoomBy(1 / 1.3)} aria-label="縮小">
-          −
-        </button>
-        <button type="button" onClick={fitToView} aria-label="画面に合わせる">
-          ⊡
-        </button>
-      </div>
+      {/* family-chart用のズーム操作。'connected'時はPedigreeCanvasが自前のパン・ズームを持つため隠す */}
+      {mode !== 'connected' ? (
+        <div className="tree-zoom-controls" role="group" aria-label="表示倍率">
+          <button type="button" onClick={() => zoomBy(1.3)} aria-label="拡大">
+            +
+          </button>
+          <button type="button" onClick={() => zoomBy(1 / 1.3)} aria-label="縮小">
+            −
+          </button>
+          <button type="button" onClick={fitToView} aria-label="画面に合わせる">
+            ⊡
+          </button>
+        </div>
+      ) : null}
       </div>
       <UnconnectedTray
         personIds={offChartIds}

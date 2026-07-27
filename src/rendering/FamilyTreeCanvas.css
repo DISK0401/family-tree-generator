@@ -335,6 +335,14 @@
   color: var(--ink-faint);
 }
 
+/* 表示モードの3値切り替え(design.md D7)。既存の.tree-show-all-toggleを個々のボタンに
+   そのまま使い、横並びの群として束ねる */
+.tree-view-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
 .tree-show-all-toggle {
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
@@ -343,6 +351,9 @@
   background: var(--paper-raised);
   color: var(--ink-soft);
   cursor: pointer;
+  /* 3値化(design.md D7)でボタン文言が長くなったため、文字の途中で折り返さないようにする
+     (過去にボタンの文字折り返しの不具合を出しているため必ず付ける) */
+  white-space: nowrap;
 }
 
 .tree-show-all-toggle[aria-pressed='true'] {

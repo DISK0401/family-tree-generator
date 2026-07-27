@@ -186,5 +186,10 @@ describe('assignCoordinates', () => {
     expect(linksToD).toHaveLength(2)
     const pedigrees = linksToD.map((l) => l.kind === 'parent-child' && l.pedigree).sort()
     expect(pedigrees).toEqual(['adopted', 'biological'])
+
+    // 2本が同じ高さで折れると重なって片方が見えなくなる(実機で実子の線が養子の線を隠していた)。
+    // 横に走る区間の高さが互いに異なることを確かめる
+    const midYs = linksToD.map((l) => l.points[1].y)
+    expect(new Set(midYs).size).toBe(2)
   })
 })

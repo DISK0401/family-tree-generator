@@ -1,0 +1,94 @@
+/*
+ * つながった全体表示(design.md D1〜D7, tasks.md 7群)。
+ * カード自体(.tree-card系)のスタイルはFamilyTreeCanvas.cssのものをそのまま流用する
+ * (design.md D3: 見た目の一致はマークアップごと共有することで保証する)。
+ * ここでは系線・パン/ズーム・キャンバスの土台だけを持つ
+ */
+
+/* 図の領域(.tree-canvas-stage)いっぱいに敷く。絶対配置にするのは、同じ領域に居る
+   family-chartのキャンバス(隠していてもDOMは残す)の有無に高さを左右されないため */
+.pedigree-canvas-root {
+  position: absolute;
+  inset: 0;
+}
+
+.pedigree-canvas-svg {
+  width: 100%;
+  height: 100%;
+  /* ブラウザ標準のタッチスクロール/ピンチズームとドラッグ操作が競合しないようにする */
+  touch-action: none;
+  cursor: grab;
+  background: var(--paper);
+}
+
+.pedigree-canvas-svg:active {
+  cursor: grabbing;
+}
+
+.pedigree-link {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.75px;
+  stroke-linecap: round;
+}
+
+/* 養子の系線は実子と視覚的に区別する(破線)。FamilyTreeCanvas.cssの.adopted-linkと同じ見え方 */
+.pedigree-link.adopted-link {
+  stroke-dasharray: 5 4;
+}
+
+/* 婚姻線は伝統的な系図記法にならい二重線にする。FamilyTreeCanvas.cssの.spouse-linkと同じ手法
+   (drop-shadowで並行線を「複製」する。0ブラーで縁取りがそのまま複製コピーとして描画される) */
+.pedigree-link.spouse-link {
+  filter: drop-shadow(0 3px 0 var(--line-strong));
+}
+
+.pedigree-card {
+  cursor: pointer;
+  overflow: visible;
+}
+
+.pedigree-card > div {
+  width: 100%;
+  height: 100%;
+}
+
+.pedigree-zoom-controls {
+  z-index: 10;
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+
+.pedigree-zoom-controls button {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-md);
+  line-height: 1;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.pedigree-zoom-controls button:last-child {
+  border-bottom: none;
+}
+
+.pedigree-zoom-controls button:hover {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
