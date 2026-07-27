@@ -172,6 +172,46 @@ describe('assignCoordinates', () => {
     expect(unionX).toBeCloseTo((left + right) / 2)
   })
 
+  it('層が離れた子より、隣の層の子のほうが親を強く引く', () => {
+    // 婚入して数世代下へ移った子は図の反対側に置かれることがある。そこへ等しく引かれると、
+    // 実家とその近い世代の子たちまでまとめて引きずられ、他家の真上へ入り込んでしまう
+    const doc = testDoc(
+      [
+        person('p1', '親1'),
+        person('p2', '親2'),
+        person('near1', '隣の層の子1'),
+        person('near2', '隣の層の子2'),
+        person('far', '数世代下へ嫁いだ子'),
+        // 遠くの家系。farはこの家系の孫と婚姻して層2まで下がる
+        person('o1', '他家1'),
+        person('o2', '他家2'),
+        person('oChild', '他家の子'),
+        person('oGrand', '他家の孫'),
+      ],
+      [
+        family('fParents', ['p1', 'p2'], [
+          { childId: 'near1', pedigree: 'biological' },
+          { childId: 'near2', pedigree: 'biological' },
+          { childId: 'far', pedigree: 'biological' },
+        ]),
+        family('fOther', ['o1', 'o2'], [{ childId: 'oChild', pedigree: 'biological' }]),
+        family('fOtherChild', ['oChild'], [{ childId: 'oGrand', pedigree: 'biological' }]),
+        family('fFar', ['oGrand', 'far'], []),
+      ],
+    )
+    const { generationOf, result } = layoutOf(doc)
+    expect(generationOf.get('near1')).toBe(1)
+    expect(generationOf.get('far')).toBe(2) // 前提: きょうだいが別々の層にいる
+
+    const centerXOf = new Map(result.persons.map((p) => [p.personId, p.x + CARD_SIZE.width / 2]))
+    const parentsCenter = (centerXOf.get('p1')! + centerXOf.get('p2')!) / 2
+    const nearCenter = (centerXOf.get('near1')! + centerXOf.get('near2')!) / 2
+    const farCenter = centerXOf.get('far')!
+
+    // 親は、遠くへ嫁いだ子より隣の層の子たちの近くに置かれる
+    expect(Math.abs(parentsCenter - nearCenter)).toBeLessThan(Math.abs(parentsCenter - farCenter))
+  })
+
   it('配偶者が1人の家族は、その人物の中心から系線が出る', () => {
     // 婚姻線が無いので「あいだ」が存在しない。カードの中心から出るのが自然
     const doc = testDoc(

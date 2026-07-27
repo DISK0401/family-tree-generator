@@ -196,7 +196,7 @@ export function assignCoordinates(
       const blocks = blocksOf.get(generation) ?? []
       const lefts = leftsOf.get(generation) ?? []
       const currentCenters = blocks.map((block, index) => lefts[index] + block.width / 2)
-      const targets = blocks.map((block) => desiredCenter(block, graph, centerXOf, direction))
+      const targets = blocks.map((block) => desiredCenter(block, graph, generationOf, centerXOf, direction))
       leftsOf.set(generation, placeLayer(blocks, targets, currentCenters))
       refreshCenters()
     }
@@ -280,15 +280,24 @@ function unionCenterX(spouseCenters: number[], childCenters: number[]): number {
 /**
  * 緩和で塊を寄せる先(重心)を求める。
  * 下向きのパスでは親家族の配偶者たちの中央、上向きのパスでは自分たちの子たちの中央。
- * 塊を構成する全員ぶんを平均するため、婚入した配偶者(実家が未記録)は相手の実家へ引かれる
+ * 塊を構成する全員ぶんを平均するため、婚入した配偶者(実家が未記録)は相手の実家へ引かれる。
+ *
+ * **層が離れた相手ほど弱く引く**(重みは層の隔たりの逆数)。婚入して数世代下へ移った子は
+ * 図の反対側に置かれることがあり、そこへ等しく引かれると、実家とその近い世代の子たちまで
+ * まとめて引きずられて他家の真上へ入り込んでしまう。遠い相手との系線はどのみち長くなるので、
+ * 隣の世代との位置関係を優先し、遠い相手の影響は弱めるほうが図全体として読みやすくなる
  */
 function desiredCenter(
   block: Block,
   graph: PedigreeGraph,
+  generationOf: Map<PersonId, number>,
   centerXOf: Map<PersonId, number>,
   direction: 'down' | 'up',
 ): number | undefined {
-  const values: number[] = []
+  const blockGeneration = Math.min(...block.personIds.map((id) => generationOf.get(id) ?? 0))
+  let weightedSum = 0
+  let weightTotal = 0
+
   for (const personId of block.personIds) {
     const node = graph.persons.get(personId)
     if (!node) continue
@@ -301,12 +310,16 @@ function desiredCenter(
       for (const relatedId of relatedIds) {
         if (block.personIds.includes(relatedId)) continue // 塊の内側は基準にしない
         const center = centerXOf.get(relatedId)
-        if (center !== undefined) values.push(center)
+        if (center === undefined) continue
+        const distance = Math.max(Math.abs((generationOf.get(relatedId) ?? 0) - blockGeneration), 1)
+        const weight = 1 / distance
+        weightedSum += center * weight
+        weightTotal += weight
       }
     }
   }
-  if (values.length === 0) return undefined
-  return values.reduce((sum, x) => sum + x, 0) / values.length
+  if (weightTotal === 0) return undefined
+  return weightedSum / weightTotal
 }
 
 /** 1本の親子線の束(1つの家族が、ある層にいる子たちへ引く線)が横に走る区間 */
