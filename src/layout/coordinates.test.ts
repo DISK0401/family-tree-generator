@@ -201,9 +201,9 @@ describe('assignCoordinates', () => {
         [
           0,
           [
-            { familyId: 'fA', left: 0, right: 500 },
-            { familyId: 'fB', left: 200, right: 700 }, // fAと重なる
-            { familyId: 'fC', left: 900, right: 1000 }, // どちらとも重ならない
+            { key: 'fA', left: 0, right: 500 },
+            { key: 'fB', left: 200, right: 700 }, // fAと重なる
+            { key: 'fC', left: 900, right: 1000 }, // どちらとも重ならない
           ],
         ],
       ]),
@@ -217,13 +217,55 @@ describe('assignCoordinates', () => {
 
   it('レーンの割り当ては区間の左端・家族IDで決まり、入力順に依存しない', () => {
     const intervals = [
-      { familyId: 'fB', left: 200, right: 700 },
-      { familyId: 'fA', left: 0, right: 500 },
-      { familyId: 'fC', left: 900, right: 1000 },
+      { key: 'fB', left: 200, right: 700 },
+      { key: 'fA', left: 0, right: 500 },
+      { key: 'fC', left: 900, right: 1000 },
     ]
     const forward = assignLinkLanes(new Map([[0, intervals]]))
     const reversed = assignLinkLanes(new Map([[0, [...intervals].reverse()]]))
     expect([...reversed.entries()].sort()).toEqual([...forward.entries()].sort())
+  })
+
+  it('層をまたぐ親子線は、子のすぐ上の隙間で横に走る', () => {
+    // 婚入して数世代下へ移った人物の親子線を親のすぐ下の隙間へ置くと、その横線が
+    // 上の層の混み合った隙間を端から端まで横断してしまう(実データで発生)。
+    // 子のすぐ上に置けば、長い移動は縦線が受け持ち、横線は子の真上だけに現れる
+    const doc = testDoc(
+      [
+        person('gf', '祖父'),
+        person('gm', '祖母'),
+        person('near', '近い子'),
+        person('nearSpouse', '近い子の配偶者'),
+        person('grandchild', '孫'),
+        person('far', '遠い子'),
+      ],
+      [
+        family('fTop', ['gf', 'gm'], [
+          { childId: 'near', pedigree: 'biological' },
+          // 孫の世代の人物と婚姻することで、この子だけが2層下へ引き下げられる
+          { childId: 'far', pedigree: 'biological' },
+        ]),
+        family('fNear', ['near', 'nearSpouse'], [{ childId: 'grandchild', pedigree: 'biological' }]),
+        family('fFar', ['grandchild', 'far'], []),
+      ],
+    )
+    const { generationOf, result } = layoutOf(doc)
+
+    expect(generationOf.get('near')).toBe(1)
+    expect(generationOf.get('far')).toBe(2) // 前提: 同じ家族の子が別々の層にいる
+
+    const laneYOf = (childId: string) =>
+      result.links.find((l) => l.kind === 'parent-child' && l.childId === childId)?.points[1].y
+
+    // それぞれの横線は、その子の層のすぐ上の隙間にある
+    for (const childId of ['near', 'far']) {
+      const childGeneration = generationOf.get(childId) ?? 0
+      const childTop = childGeneration * (CARD_SIZE.height + VERTICAL_GAP)
+      expect(laneYOf(childId)).toBeGreaterThan(childTop - VERTICAL_GAP)
+      expect(laneYOf(childId)).toBeLessThan(childTop)
+    }
+    // 同じ家族でも子の層が違えば別の高さで横に走る
+    expect(laneYOf('near')).not.toBe(laneYOf('far'))
   })
 
   it('親子線が横に走る高さは、必ず層と層の隙間に収まる', () => {

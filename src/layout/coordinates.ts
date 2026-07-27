@@ -297,31 +297,39 @@ function desiredCenter(
   return values.reduce((sum, x) => sum + x, 0) / values.length
 }
 
+/** 1本の親子線の束(1つの家族が、ある層にいる子たちへ引く線)が横に走る区間 */
+export interface LinkBusInterval {
+  /** 束を識別するキー。同じ家族でも子の層が違えば別の束になる */
+  key: string
+  left: number
+  right: number
+}
+
 /**
- * 親子線が横に走る高さ(レーン)を家族ごとに決める。
+ * 親子線が横に走る高さ(レーン)を、束ごとに決める。
  *
  * 親子線は「結合点から下へ→横へ→子の真上から下へ」というエルボー経路を取るが、
  * その横に走る区間をどの家族も同じ高さに置くと、無関係な家族の線どうしが一直線に
  * つながって見え、図が読めなくなる(実データで、8家族ぶんの横線が1本の長い棒に
  * 見える状態が起きた)。
  *
- * そこで層と層の隙間(VERTICAL_GAP)を複数のレーンに分け、横方向に重なる家族には
- * 必ず別のレーンを割り当てる。重なりのない家族どうしは同じレーンを使い回すため、
- * レーン数は「同時に重なっている家族の最大数」で済み、隙間が細切れになりにくい。
- * 割り当ては区間の左端→家族IDの順に貪欲に行い、結果を決定的にする(D5)。
+ * そこで層と層の隙間(VERTICAL_GAP)を複数のレーンに分け、横方向に重なる束には
+ * 必ず別のレーンを割り当てる。重なりのない束どうしは同じレーンを使い回すため、
+ * レーン数は「同時に重なっている束の最大数」で済み、隙間が細切れになりにくい。
+ * 割り当ては区間の左端→キーの順に貪欲に行い、結果を決定的にする(D5)。
  */
 export function assignLinkLanes(
-  bands: Map<number, Array<{ familyId: FamilyId; left: number; right: number }>>,
-): Map<FamilyId, { lane: number; laneCount: number }> {
-  const result = new Map<FamilyId, { lane: number; laneCount: number }>()
+  bands: Map<number, LinkBusInterval[]>,
+): Map<string, { lane: number; laneCount: number }> {
+  const result = new Map<string, { lane: number; laneCount: number }>()
 
   for (const generation of [...bands.keys()].sort((a, b) => a - b)) {
     const intervals = [...(bands.get(generation) ?? [])].sort(
-      (a, b) => a.left - b.left || a.familyId.localeCompare(b.familyId),
+      (a, b) => a.left - b.left || a.key.localeCompare(b.key),
     )
     // 各レーンで最後に使った右端。次の区間の左端がそれより十分右にあれば同じレーンを再利用する
     const laneRight: number[] = []
-    const laneOf = new Map<FamilyId, number>()
+    const laneOf = new Map<string, number>()
 
     for (const interval of intervals) {
       let lane = laneRight.findIndex((right) => interval.left > right + HORIZONTAL_GAP)
@@ -331,15 +339,20 @@ export function assignLinkLanes(
       } else {
         laneRight[lane] = Math.max(laneRight[lane], interval.right)
       }
-      laneOf.set(interval.familyId, lane)
+      laneOf.set(interval.key, lane)
     }
 
-    for (const [familyId, lane] of laneOf) {
-      result.set(familyId, { lane, laneCount: Math.max(laneRight.length, 1) })
+    for (const [key, lane] of laneOf) {
+      result.set(key, { lane, laneCount: Math.max(laneRight.length, 1) })
     }
   }
 
   return result
+}
+
+/** 束のキー。家族と「子がいる層」の組で1本の束になる */
+function busKey(familyId: FamilyId, childGeneration: number): string {
+  return `${familyId}|${childGeneration}`
 }
 
 /**
@@ -361,20 +374,38 @@ function buildLinks(
 ): PedigreeLink[] {
   const links: PedigreeLink[] = []
 
-  // 家族ごとに、親子線が横に走る区間(結合点と子たちを含む範囲)を層の隙間ごとに集める
-  const bands = new Map<number, Array<{ familyId: FamilyId; left: number; right: number }>>()
+  // 束(家族 × 子のいる層)ごとに、横に走る区間を「子のいる層のすぐ上の隙間」へ集める。
+  //
+  // 束を親のすぐ下の隙間へ置くと、層をまたぐ親子(婚入して数世代下へ移った人物など)の
+  // 横線が、上の層の混み合った隙間を端から端まで横断してしまう。子のすぐ上に置けば、
+  // どの横線も「その線がつなぐ子たちの真上」にあり、長い移動は縦線が受け持つ。
+  // 同じ家族でも子の層が違えば別の束になるため、一部の子だけが下の層にいる家族は
+  // 「近くの子への短い束」と「遠くの子への束」に分かれる
+  const bands = new Map<number, LinkBusInterval[]>()
   for (const familyId of [...graph.families.keys()].sort()) {
     const family = graph.families.get(familyId)
     const unionX = familyCenterX.get(familyId)
     const unionGeneration = familyGeneration.get(familyId)
     if (!family || unionX === undefined || unionGeneration === undefined) continue
-    const childXs = family.children
-      .map((c) => centerXOf.get(c.childId))
-      .filter((x): x is number => x !== undefined)
-    if (childXs.length === 0) continue
-    const list = bands.get(unionGeneration) ?? []
-    list.push({ familyId, left: Math.min(unionX, ...childXs), right: Math.max(unionX, ...childXs) })
-    bands.set(unionGeneration, list)
+
+    const xsByChildGeneration = new Map<number, number[]>()
+    for (const child of family.children) {
+      const x = centerXOf.get(child.childId)
+      const childGeneration = generationOf.get(child.childId)
+      if (x === undefined || childGeneration === undefined) continue
+      xsByChildGeneration.set(childGeneration, [...(xsByChildGeneration.get(childGeneration) ?? []), x])
+    }
+
+    for (const [childGeneration, xs] of [...xsByChildGeneration.entries()].sort((a, b) => a[0] - b[0])) {
+      const band = childGeneration - 1
+      const list = bands.get(band) ?? []
+      list.push({
+        key: busKey(familyId, childGeneration),
+        left: Math.min(unionX, ...xs),
+        right: Math.max(unionX, ...xs),
+      })
+      bands.set(band, list)
+    }
   }
   const lanes = assignLinkLanes(bands)
 
@@ -400,17 +431,18 @@ function buildLinks(
       }
     }
 
-    // 横に走る高さは、親の層のカード下端と子の層のカード上端のあいだ(VERTICAL_GAP)に収める。
-    // レーンをこの帯の内側で等間隔に配ることで、どの線もカードの並ぶ高さを横切らない
-    const { lane, laneCount } = lanes.get(familyId) ?? { lane: 0, laneCount: 1 }
-    const bandTop = rowTop(unionGeneration) + CARD_SIZE.height
-    const laneY = bandTop + (VERTICAL_GAP * (lane + 1)) / (laneCount + 1)
-
     const children = [...family.children].sort((a, b) => a.childId.localeCompare(b.childId))
     for (const child of children) {
       const childX = centerXOf.get(child.childId)
       const childGeneration = generationOf.get(child.childId)
       if (childX === undefined || childGeneration === undefined) continue
+
+      // 横に走る高さは、子の層のすぐ上の隙間(VERTICAL_GAP)に収める。レーンをこの帯の
+      // 内側で等間隔に配ることで、どの線もカードの並ぶ高さを横切らない
+      const { lane, laneCount } = lanes.get(busKey(familyId, childGeneration)) ?? { lane: 0, laneCount: 1 }
+      const bandTop = rowTop(childGeneration) - VERTICAL_GAP
+      const laneY = bandTop + (VERTICAL_GAP * (lane + 1)) / (laneCount + 1)
+
       // 子のカードの上端で受ける(カード中心まで引くと、線がカードの上に重なって見える)
       const childY = rowTop(childGeneration)
       links.push({

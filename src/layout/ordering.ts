@@ -54,19 +54,6 @@ function groupIntoUnits(graph: PedigreeGraph, generationOf: Map<PersonId, number
   return byGeneration
 }
 
-/** 単位の列を先頭から順に並べたときの、各人物の位置(0始まりの通し番号)を返す */
-function flattenPositions(units: Unit[]): Map<PersonId, number> {
-  const positions = new Map<PersonId, number>()
-  let index = 0
-  for (const unit of units) {
-    for (const personId of unit.personIds) {
-      positions.set(personId, index)
-      index += 1
-    }
-  }
-  return positions
-}
-
 function flattenToLayerOrder(unitsByGeneration: Map<number, Unit[]>): LayerOrder {
   const order: LayerOrder = new Map()
   for (const [generation, units] of unitsByGeneration) {
@@ -80,9 +67,10 @@ function cloneUnitsMap(map: Map<number, Unit[]>): Map<number, Unit[]> {
 }
 
 /**
- * 単位の直近の親家族(1つ上の層に配偶者が揃っている家族)を探し、その位置ときょうだい内の
- * 順位を返す。1つ上の層をまたぐ関係(世代の離れた婚姻等)は初期順序では対象にしない
- * (交差削減の重心法パス側で層をまたいだ調整までは行わない。design.md「交差の多い図になる」)
+ * 単位の直近の親家族を探し、その位置ときょうだい内の順位を返す。
+ * 上の層であればよく、1つ上の層に限定しない(限定すると、実家が2層以上離れた婚入者が
+ * 「親が見つからない」扱いで層の末尾へ回され、子から遠く離れた位置に固定されてしまう)。
+ * 最も近い層の親家族を優先する
  */
 function findParentRank(
   unit: Unit,
@@ -90,6 +78,7 @@ function findParentRank(
   generationOf: Map<PersonId, number>,
   previousPositions: Map<PersonId, number>,
 ): { position: number; siblingRank: number } | undefined {
+  let best: { position: number; siblingRank: number; distance: number } | undefined
   for (const memberId of [...unit.personIds].sort()) {
     const node = graph.persons.get(memberId)
     if (!node) continue
@@ -98,17 +87,19 @@ function findParentRank(
       if (!family || family.spouseIds.length === 0) continue
       const familyGeneration = Math.min(...family.spouseIds.map((id) => generationOf.get(id) ?? 0))
       const memberGeneration = generationOf.get(memberId) ?? 0
-      if (familyGeneration !== memberGeneration - 1) continue
+      const distance = memberGeneration - familyGeneration
+      if (distance <= 0) continue
+      if (best !== undefined && distance >= best.distance) continue
       const positions = family.spouseIds
         .map((id) => previousPositions.get(id))
         .filter((p): p is number => p !== undefined)
       if (positions.length === 0) continue
       const position = positions.reduce((sum, p) => sum + p, 0) / positions.length
       const siblingRank = family.children.findIndex((c) => c.childId === memberId)
-      return { position, siblingRank }
+      best = { position, siblingRank, distance }
     }
   }
-  return undefined
+  return best
 }
 
 /**
@@ -124,12 +115,15 @@ function buildInitialUnitOrder(graph: PedigreeGraph, generationOf: Map<PersonId,
   const unitsByGeneration = groupIntoUnits(graph, generationOf)
   const generations = [...unitsByGeneration.keys()].sort((a, b) => a - b)
   const result = new Map<number, Unit[]>()
-  let previousPositions = new Map<PersonId, number>()
+  // 確定済みの層すべての位置を持ち回る。親家族が1つ上の層とは限らないため
+  // (婚入者の実家は2層以上離れうる。findParentRank参照)、直前の層だけでは足りない。
+  // 層ごとに人数が違うので、比較できるよう0〜1へ正規化した位置を入れる
+  const settledPositions = new Map<PersonId, number>()
 
   for (const generation of generations) {
     const units = unitsByGeneration.get(generation) ?? []
     const decorated = units.map((unit) => {
-      const parent = findParentRank(unit, graph, generationOf, previousPositions)
+      const parent = findParentRank(unit, graph, generationOf, settledPositions)
       return {
         unit,
         parentPosition: parent?.position ?? Number.POSITIVE_INFINITY,
@@ -143,7 +137,9 @@ function buildInitialUnitOrder(graph: PedigreeGraph, generationOf: Map<PersonId,
     })
     const orderedUnits = decorated.map((d) => d.unit)
     result.set(generation, orderedUnits)
-    previousPositions = flattenPositions(orderedUnits)
+    const ids = orderedUnits.flatMap((unit) => unit.personIds)
+    const last = Math.max(ids.length - 1, 1)
+    ids.forEach((personId, index) => settledPositions.set(personId, index / last))
   }
 
   return result
@@ -155,18 +151,38 @@ export function buildInitialOrder(graph: PedigreeGraph, generationOf: Map<Person
 }
 
 /**
- * 単位からみて1つ隣(親側 or 子側)の層にいる、家族関係でつながった人物の位置一覧を返す。
- * 重心の算出に使う。層をまたいだ関係(2層以上離れた親子)は対象にしない(隣接層限定)
+ * 層内での位置を0〜1へ正規化した表。層ごとに人数が違うため(この家系図では8人の層と13人の層が
+ * 隣り合う)、生の添字のまま層をまたいで平均すると、人数の多い層の位置が過大に効いてしまう。
+ */
+function normalizedPositions(unitsByGeneration: Map<number, Unit[]>): Map<PersonId, number> {
+  const normalized = new Map<PersonId, number>()
+  for (const units of unitsByGeneration.values()) {
+    const ids = units.flatMap((unit) => unit.personIds)
+    const last = Math.max(ids.length - 1, 1)
+    ids.forEach((personId, index) => normalized.set(personId, index / last))
+  }
+  return normalized
+}
+
+/**
+ * 単位からみて親側 or 子側にいる、家族関係でつながった人物の正規化位置の一覧を返す。重心の算出に使う。
+ *
+ * **隣の層に限定しない**。婚入した配偶者は相手の層へ引き上げ/引き下げられるため、その人物の実家が
+ * 2層以上離れることは珍しくない(実データでは、孫の世代へ嫁いだ人物の実家が3層上にあった)。
+ * 隣の層だけを見ると、そうした家族は「基準が無い」と判定されて層の末尾へ固定され、
+ * 子から遠く離れた位置に置かれてしまう。結果として、図の端から端まで走る長い系線が生まれ、
+ * 無関係な家族のカードの下をくぐって読めなくなる
  */
 function collectNeighborPositions(
   unit: Unit,
   graph: PedigreeGraph,
   generationOf: Map<PersonId, number>,
-  neighborGeneration: number,
-  neighborPositions: Map<PersonId, number>,
+  normalized: Map<PersonId, number>,
   direction: 'up' | 'down',
 ): number[] {
+  const unitGeneration = Math.min(...unit.personIds.map((id) => generationOf.get(id) ?? 0))
   const positions: number[] = []
+
   for (const memberId of unit.personIds) {
     const node = graph.persons.get(memberId)
     if (!node) continue
@@ -175,9 +191,9 @@ function collectNeighborPositions(
         const family = graph.families.get(familyId)
         if (!family || family.spouseIds.length === 0) continue
         const familyGeneration = Math.min(...family.spouseIds.map((id) => generationOf.get(id) ?? 0))
-        if (familyGeneration !== neighborGeneration) continue
+        if (familyGeneration >= unitGeneration) continue
         for (const spouseId of family.spouseIds) {
-          const pos = neighborPositions.get(spouseId)
+          const pos = normalized.get(spouseId)
           if (pos !== undefined) positions.push(pos)
         }
       }
@@ -186,8 +202,8 @@ function collectNeighborPositions(
         const family = graph.families.get(familyId)
         if (!family) continue
         for (const child of family.children) {
-          if ((generationOf.get(child.childId) ?? -1) !== neighborGeneration) continue
-          const pos = neighborPositions.get(child.childId)
+          if ((generationOf.get(child.childId) ?? -1) <= unitGeneration) continue
+          const pos = normalized.get(child.childId)
           if (pos !== undefined) positions.push(pos)
         }
       }
@@ -217,18 +233,15 @@ function sweepOnce(
 ): void {
   const order = direction === 'down' ? generations : [...generations].reverse()
   for (const generation of order) {
-    const neighborGeneration = direction === 'down' ? generation - 1 : generation + 1
-    const neighborUnits = unitsByGeneration.get(neighborGeneration)
     const units = unitsByGeneration.get(generation)
-    if (!units || !neighborUnits) continue
+    if (!units) continue
 
-    const neighborPositions = flattenPositions(neighborUnits)
+    // 層をまたぐ関係も基準にするため、毎回すべての層の正規化位置を取り直す
+    const normalized = normalizedPositions(unitsByGeneration)
     const lookupDirection = direction === 'down' ? 'up' : 'down'
     const decorated = units.map((unit) => ({
       unit,
-      value: average(
-        collectNeighborPositions(unit, graph, generationOf, neighborGeneration, neighborPositions, lookupDirection),
-      ),
+      value: average(collectNeighborPositions(unit, graph, generationOf, normalized, lookupDirection)),
     }))
     decorated.sort((a, b) => {
       if (a.value === undefined && b.value === undefined) return a.unit.key.localeCompare(b.unit.key)
@@ -292,24 +305,72 @@ export function countCrossings(
 const SWEEP_DIRECTIONS: Array<'down' | 'up'> = ['down', 'up', 'down', 'up']
 
 /**
+ * 親子線が層内をどれだけ横切るかの総量(正規化位置で測る)。
+ *
+ * 交差数だけを見て並びを選ぶと、交差はしていないが図の端から端まで走る長い系線が残る。
+ * 実データで「無関係な家族のカードの下を長い線がくぐって読めない」状態が起きたのはこれが原因で、
+ * 交差数では差が付かなかった。交差を最優先しつつ、同点なら線の短い並びを選ぶための第2の指標
+ */
+function totalEdgeSpan(
+  order: LayerOrder,
+  graph: PedigreeGraph,
+  generationOf: Map<PersonId, number>,
+): number {
+  const normalized = new Map<PersonId, number>()
+  for (const ids of order.values()) {
+    const last = Math.max(ids.length - 1, 1)
+    ids.forEach((personId, index) => normalized.set(personId, index / last))
+  }
+
+  let total = 0
+  for (const familyId of [...graph.families.keys()].sort()) {
+    const family = graph.families.get(familyId)
+    if (!family) continue
+    const spousePositions = family.spouseIds
+      .map((id) => normalized.get(id))
+      .filter((p): p is number => p !== undefined)
+    if (spousePositions.length === 0) continue
+    const unionPosition = spousePositions.reduce((sum, p) => sum + p, 0) / spousePositions.length
+    for (const child of family.children) {
+      const childPosition = normalized.get(child.childId)
+      if (childPosition === undefined) continue
+      const generationGap = Math.max(
+        (generationOf.get(child.childId) ?? 0) -
+          Math.min(...family.spouseIds.map((id) => generationOf.get(id) ?? 0)),
+        1,
+      )
+      // 層をまたぐ関係ほど長い縦線になるため、横方向の距離を層数ぶん重く見る
+      total += Math.abs(unionPosition - childPosition) * generationGap
+    }
+  }
+  return total
+}
+
+/**
  * 層内の並び順を決める(design.md D2-2)。初期順序(3.1)に重心法を上下方向へ往復させて適用し、
- * 系線の交差を減らす(3.2)。各パス後の交差数を数え、それまでで最良の並びを保持することで、
- * 発見的手法であっても初期順序より悪化した結果を返さないようにする。
+ * 系線の交差を減らす(3.2)。各パス後に「交差数」と「系線の長さの総量」で並びを採点し、
+ * それまでで最良の並びを保持することで、発見的手法であっても初期順序より悪化した結果を返さない。
  * 比較はすべて全順序にし、同値は人物IDで決着させる(3.3, spec「レイアウトの決定性」)
  */
 export function orderWithinLayers(graph: PedigreeGraph, generationOf: Map<PersonId, number>): LayerOrder {
   const initial = buildInitialUnitOrder(graph, generationOf)
   const generations = [...initial.keys()].sort((a, b) => a - b)
 
+  const score = (units: Map<number, Unit[]>): number => {
+    const order = flattenToLayerOrder(units)
+    // 交差を最優先し、同数のときだけ線の長さで決める
+    return countCrossings(order, graph, generationOf) * 1000 + totalEdgeSpan(order, graph, generationOf)
+  }
+
   let best = cloneUnitsMap(initial)
-  let bestCrossings = countCrossings(flattenToLayerOrder(best), graph, generationOf)
+  let bestScore = score(best)
   const current = cloneUnitsMap(initial)
 
   for (const direction of SWEEP_DIRECTIONS) {
     sweepOnce(current, generations, graph, generationOf, direction)
-    const crossings = countCrossings(flattenToLayerOrder(current), graph, generationOf)
-    if (crossings <= bestCrossings) {
-      bestCrossings = crossings
+    const currentScore = score(current)
+    if (currentScore <= bestScore) {
+      bestScore = currentScore
       best = cloneUnitsMap(current)
     }
   }

@@ -110,3 +110,42 @@ describe('レイアウトの決定性(D5)', () => {
     expect([...order1.entries()]).toEqual([...order2.entries()])
   })
 })
+
+describe('層をまたぐ関係の並び替え', () => {
+  it('実家が2層以上離れた人物の親も、子の近くへ寄せられる', () => {
+    // 婚入した配偶者は相手の層へ引き上げ/引き下げられるため、その実家が2層以上離れることがある。
+    // 隣の層だけを基準にすると、その実家は「基準が無い」と判定されて層の末尾へ固定され、
+    // 図の端から端まで走る長い系線が生まれる(実データで発生)
+    const doc = testDoc(
+      [
+        person('a1', 'A1'),
+        person('a2', 'A2'),
+        person('achild', 'Aの子'),
+        person('agrand', 'Aの孫'),
+        person('inlaw', '孫の配偶者'),
+        person('f1', '孫の配偶者の父'),
+        person('f2', '孫の配偶者の母'),
+      ],
+      [
+        family('fA', ['a1', 'a2'], [{ childId: 'achild', pedigree: 'biological' }]),
+        family('fChild', ['achild'], [{ childId: 'agrand', pedigree: 'biological' }]),
+        family('fGrand', ['agrand', 'inlaw'], []),
+        // inlawの実家は層0にあるが、inlaw自身はagrandに合わせて層2へ下がる
+        family('fInlaw', ['f1', 'f2'], [{ childId: 'inlaw', pedigree: 'biological' }]),
+      ],
+    )
+    const graph = buildGraph(doc)
+    const { generationOf } = assignGenerations(graph)
+    expect(generationOf.get('inlaw')).toBe(2) // 前提: 実家(層0)と2層離れている
+
+    const order = orderWithinLayers(graph, generationOf)
+    const gen0 = order.get(0) ?? []
+    const gen2 = order.get(2) ?? []
+
+    // 実家(f1/f2)が層0の末尾へ追いやられていないこと。層0はA夫婦と実家の2組しかないので、
+    // 「子(inlaw)が層2のどちら側にいるか」と実家の左右が揃っていればよい
+    const inlawOnLeft = gen2.indexOf('inlaw') < gen2.indexOf('agrand')
+    const inlawParentsOnLeft = gen0.indexOf('f1') < gen0.indexOf('a1')
+    expect(inlawParentsOnLeft).toBe(inlawOnLeft)
+  })
+})
