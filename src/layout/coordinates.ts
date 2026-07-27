@@ -241,11 +241,7 @@ export function assignCoordinates(
         ? Math.min(...family.spouseIds.map((id) => generationOf.get(id) ?? 0))
         : Math.min(...family.children.map((c) => (generationOf.get(c.childId) ?? 1) - 1))
 
-    const preferred =
-      childCenters.length > 0
-        ? childCenters.reduce((sum, x) => sum + x, 0) / childCenters.length
-        : spouseCenters.reduce((sum, x) => sum + x, 0) / spouseCenters.length
-    const centerX = clampToUnionRange(preferred, spouseCenters)
+    const centerX = unionCenterX(spouseCenters, childCenters)
 
     const y = rowTop(generation) + CARD_SIZE.height / 2
     families.push({ familyId, generation, x: centerX, y })
@@ -262,22 +258,23 @@ export function assignCoordinates(
 }
 
 /**
- * 結合点を置ける範囲へ収める。
+ * 結合点のx座標を決める。
  *
- * 配偶者が2人以上いる家族では、**カードとカードのあいだ**に収める。配偶者の中心どうしの範囲へ
- * 収めるだけだと、子たちの中央が範囲の外にあるときに結合点が端の配偶者の中心へ寄り切り、
- * 子への系線が「婚姻線の真ん中」ではなく「その人物のカード」から直接出ているように見える。
- * 配偶者が1人の家族には婚姻線が無いため、その人物の中心をそのまま使う
+ * 配偶者が2人以上いる家族では、**婚姻線のちょうど真ん中**に置く。
+ * 「子たちの中央へ寄せる」調整をここで行うと、子が夫婦の真下から離れているときに結合点が
+ * 端の配偶者側へ寄り切り、子への系線がその人物のカードから直接出ているように見えてしまう。
+ * 子の位置へ寄せる調整はカードの配置(`assignCoordinates`のx座標の緩和)が受け持ち、
+ * 結合点はその結果として夫婦の真ん中に付いてくる、という役割分担にする。
+ *
+ * 配偶者が1人の家族には婚姻線が無いため、その人物の中心をそのまま使う。
+ * 配偶者が1人も配置されていない(欠損参照だけの)家族に限り、子たちの中央で代用する
  */
-function clampToUnionRange(preferred: number, spouseCenters: number[]): number {
-  if (spouseCenters.length === 0) return preferred
+function unionCenterX(spouseCenters: number[], childCenters: number[]): number {
+  if (spouseCenters.length >= 2) {
+    return (Math.min(...spouseCenters) + Math.max(...spouseCenters)) / 2
+  }
   if (spouseCenters.length === 1) return spouseCenters[0]
-
-  const low = Math.min(...spouseCenters) + CARD_SIZE.width / 2
-  const high = Math.max(...spouseCenters) - CARD_SIZE.width / 2
-  // カードが隣接していない(重婚などで間に別の人物がいる)場合を除き、範囲は隙間ぶんの幅になる
-  if (low > high) return (Math.min(...spouseCenters) + Math.max(...spouseCenters)) / 2
-  return Math.min(Math.max(preferred, low), high)
+  return childCenters.reduce((sum, x) => sum + x, 0) / childCenters.length
 }
 
 /**

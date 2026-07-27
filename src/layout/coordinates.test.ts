@@ -124,10 +124,9 @@ describe('assignCoordinates', () => {
         .map((id) => centerXOf.get(id))
         .filter((x): x is number => x !== undefined)
       if (spouseCenters.length < 2) continue
-      // 配偶者の中心どうしの範囲に収めるだけでは足りない。端の配偶者の中心へ寄り切ると、
-      // 子への系線が「婚姻線の真ん中」ではなく「その人物のカード」から直接出ているように見える
-      expect(familyPos.x).toBeGreaterThanOrEqual(Math.min(...spouseCenters) + CARD_SIZE.width / 2)
-      expect(familyPos.x).toBeLessThanOrEqual(Math.max(...spouseCenters) - CARD_SIZE.width / 2)
+      // 配偶者の中心どうしの範囲に収めるだけでは足りない。端の配偶者側へ寄ると、
+      // 子への系線が「婚姻線の真ん中」ではなく「その人物のカード」から出ているように見える
+      expect(familyPos.x).toBeCloseTo((Math.min(...spouseCenters) + Math.max(...spouseCenters)) / 2)
     }
 
     // 親子線の始点(結合点)が婚姻線の経路上にあることを、経路そのもので確かめる
@@ -168,9 +167,9 @@ describe('assignCoordinates', () => {
     const left = Math.min(centerXOf.get('husband')!, centerXOf.get('wife')!)
     const right = Math.max(centerXOf.get('husband')!, centerXOf.get('wife')!)
 
-    // 夫・妻いずれのカードの上にも乗らない = 2枚のあいだの隙間にある
-    expect(unionX).toBeGreaterThanOrEqual(left + CARD_SIZE.width / 2)
-    expect(unionX).toBeLessThanOrEqual(right - CARD_SIZE.width / 2)
+    // 隙間の中に入っているだけでは足りない。どちらかのカードに接するまで寄ると、
+    // 系線がその人物から直接出ているように見える。ちょうど真ん中であることを求める
+    expect(unionX).toBeCloseTo((left + right) / 2)
   })
 
   it('配偶者が1人の家族は、その人物の中心から系線が出る', () => {
