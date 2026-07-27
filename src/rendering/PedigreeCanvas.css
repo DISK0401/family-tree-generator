@@ -17,6 +17,10 @@
   height: 100%;
   /* ブラウザ標準のタッチスクロール/ピンチズームとドラッグ操作が競合しないようにする */
   touch-action: none;
+  /* カードはforeignObject上のHTMLなので、パンのドラッグがそのまま文字の範囲選択になってしまう。
+     図の上を掴んで動かすのが主な操作であり、カードの文字を選びたい場面は無いため一律で止める */
+  user-select: none;
+  -webkit-user-select: none;
   cursor: grab;
   background: var(--paper);
 }
