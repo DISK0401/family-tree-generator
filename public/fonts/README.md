@@ -1,8 +1,12 @@
 # 自己ホストWebフォント
 
 Google Fonts CSS2 APIの配信物(unicode-range分割woff2スライス)をベンダリングしたもの。
-参照する`@font-face`定義は `src/styles/fonts.css` にあり、ブラウザは表示に必要な文字を
-含むスライスだけをダウンロードする。
+参照する`@font-face`定義は `public/fonts.css` にあり(バンドルCSSに含めると全ルートの
+初回描画をブロックするため、`src/main.tsx` が非同期に適用する)、ブラウザは表示に
+必要な文字を含むスライスだけをダウンロードする。
+
+ライセンス全文は同ディレクトリの `OFL.txt` を参照(SIL OFL 1.1 は再配布時の
+ライセンス文書同梱を求めるため、URL参照ではなく全文を置いている)。
 
 外部CDN(fonts.googleapis.com / fonts.gstatic.com)を使わないのは、
 「データはあなたの端末から出ません」という製品の約束をフォント取得の
@@ -21,4 +25,8 @@ Google Fonts CSS2 APIの配信物(unicode-range分割woff2スライス)をベン
 
 Google Fonts CSS2 APIをChrome系User-Agentで取得し、CSS中の各スライスURLを
 ダウンロードしてこのディレクトリへ置き、URLを `/fonts/<ファイル名>` へ
-書き換えたCSSを `src/styles/fonts.css` として保存する。
+書き換えたCSSを `public/fonts.css` として保存する。
+
+注意: `/fonts/` 配下は Worker が1年の immutable キャッシュを付けて配信する
+(`worker/index.ts`)。同名ファイルの中身だけを差し替えると再訪ブラウザに反映されない
+ため、更新時は必ず新しいファイル名(Google配信のURL由来の名前)ごと入れ替えること。

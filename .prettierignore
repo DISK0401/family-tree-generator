@@ -5,3 +5,5 @@ node_modules
 docs
 openspec
 README.md
+# Google Fonts配信物の書き換え(1行1@font-face・600件超)。整形対象にしない
+public/fonts.css

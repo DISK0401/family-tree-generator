@@ -13,6 +13,12 @@ dist-ssr
 *.local
 .wrangler
 
+# Secrets(将来 Worker にシークレットを足したときのコミット事故防止)
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
