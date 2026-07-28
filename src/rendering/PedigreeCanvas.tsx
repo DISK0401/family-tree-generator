@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -37,12 +38,77 @@ interface Camera {
 const MIN_SCALE = 0.25
 const MAX_SCALE = 3
 
-function fitCamera(layout: PedigreeLayout): Camera {
-  return {
+/**
+ * 画面左に浮くコントロール群(人物を追加・表示モード・凡例)のための予約幅(px)。
+ * 初期フィットがこの帯の下までカードを敷くと図の左端が隠れて見えるため(監査後の
+ * デザイン検証での指摘)、フィット時だけ左にこの幅を空ける。パン操作では自由に潜り込める。
+ * 640px以下ではコントロールが下部へ回り込む配置になるため予約しない
+ */
+const CONTROLS_INSET_LEFT_PX = 232
+
+/**
+ * 640px以下での最小フィット倍率(px / viewBox単位)。人数の多い図で「全景は収まるが
+ * 文字が全く読めない」初期表示になるより可読性を優先し、これ以上は縮めずに
+ * 選択中の人物(いなければ図の中央)を中心へ切り出す
+ */
+const MIN_FIT_SCALE_MOBILE = 0.5
+
+function isNarrowViewport(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(max-width: 640px)')?.matches ?? false)
+  )
+}
+
+/**
+ * 図全体が収まるviewBoxを求める。svgの実寸が取れる場合(マウント後)は、
+ * コントロール帯の回避(広い画面)と最小フィット倍率(狭い画面)を適用する。
+ * 実寸が取れない場合(初期state・テスト環境)は素朴な全景フィットに落ちる
+ */
+function computeFitCamera(
+  layout: PedigreeLayout,
+  svg: SVGSVGElement | null,
+  focus?: { x: number; y: number },
+): Camera {
+  const base: Camera = {
     x: -PADDING,
     y: -PADDING,
     width: Math.max(layout.width, 1) + PADDING * 2,
     height: Math.max(layout.height, 1) + PADDING * 2,
+  }
+  const rect = svg?.getBoundingClientRect()
+  if (!rect || rect.width === 0 || rect.height === 0) return base
+
+  if (!isNarrowViewport()) {
+    // コントロール帯の分だけ実描画領域が狭いものとしてフィットし、図の左端を帯の右へ寄せる。
+    // 帯が画面の大半を占めるような極端に狭いウィンドウでは補正しない(ゼロ除算・負幅の防止)
+    if (rect.width > CONTROLS_INSET_LEFT_PX * 2) {
+      const width =
+        (base.width * rect.width) / (rect.width - CONTROLS_INSET_LEFT_PX)
+      return {
+        ...base,
+        width,
+        x: base.x - CONTROLS_INSET_LEFT_PX * (width / rect.width),
+      }
+    }
+    return base
+  }
+
+  // 640px以下: フィット倍率が下限を割る場合のみ、下限倍率で焦点を中心に切り出す。
+  // preserveAspectRatio(meet)と同じ「小さい方の倍率」で判定する
+  const scale = Math.min(rect.width / base.width, rect.height / base.height)
+  if (scale >= MIN_FIT_SCALE_MOBILE) return base
+  const width = rect.width / MIN_FIT_SCALE_MOBILE
+  const height = rect.height / MIN_FIT_SCALE_MOBILE
+  const center = focus ?? {
+    x: base.x + base.width / 2,
+    y: base.y + base.height / 2,
+  }
+  return {
+    x: center.x - width / 2,
+    y: center.y - height / 2,
+    width,
+    height,
   }
 }
 
@@ -84,23 +150,35 @@ export function PedigreeCanvas({
 
   // viewBoxは選択状態(selectedPersonId)に一切依存させない(spec「カードの選択」: 選択操作で
   // 表示範囲が変化してはならない)。パン・ズーム操作(ドラッグ・ホイール・ボタン)でのみ動かす。
-  // レイアウトの寸法が変わった(=documentが変わった)ときだけ初期化し直す。
-  // refではなくstateで前回値を持つ(レンダー中にrefを書き換えるのはReactのルール違反のため。
-  // 「レンダー中に前回の値と比較してstateを調整する」公式パターンに従う)
-  const [camera, setCamera] = useState<Camera>(() => fitCamera(layout))
-  const [prevLayoutSize, setPrevLayoutSize] = useState({
-    width: layout.width,
-    height: layout.height,
-  })
-  if (
-    prevLayoutSize.width !== layout.width ||
-    prevLayoutSize.height !== layout.height
-  ) {
-    setPrevLayoutSize({ width: layout.width, height: layout.height })
-    setCamera(fitCamera(layout))
-  }
+  // 初期stateはsvg実寸が無いため素朴な全景フィット。実寸を反映したフィット
+  // (コントロール帯の回避・最小倍率)は下のuseLayoutEffectが担う
+  const [camera, setCamera] = useState<Camera>(() =>
+    computeFitCamera(layout, null),
+  )
 
   const svgRef = useRef<SVGSVGElement>(null)
+
+  // 選択中の人物カードの中心。モバイル最小倍率での切り出しの焦点にのみ使う。
+  // 選択の変化そのものでは再フィットしない(上記spec)ため、依存配列には入れず
+  // refで持ち、フィット実行時にだけ読む
+  const focusRef = useRef<{ x: number; y: number } | undefined>(undefined)
+  focusRef.current = (() => {
+    if (!selectedPersonId) return undefined
+    const pos = layout.persons.find((p) => p.personId === selectedPersonId)
+    if (!pos) return undefined
+    return {
+      x: pos.x + layout.cardSize.width / 2,
+      y: pos.y + layout.cardSize.height / 2,
+    }
+  })()
+
+  // 図の寸法が変わった(=人物・家族の増減があった)ときだけフィットし直す。
+  // svgの実寸を反映するため、描画後・ペイント前のuseLayoutEffectで行う(チラつかない)。
+  // マウント直後の初回実行が「実寸込みの初期フィット」を兼ねる
+  useLayoutEffect(() => {
+    setCamera(computeFitCamera(layout, svgRef.current, focusRef.current))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 寸法の変化のみで再フィットする(選択・内容編集では動かさない)
+  }, [layout.width, layout.height])
   /**
    * ドラッグ中の状態。pointerup時にnullへ戻す。
    * カードの上から始めたドラッグでも図を動かす(既存のfamily-chartのキャンバスはd3.zoomが
@@ -218,7 +296,7 @@ export function PedigreeCanvas({
     setCamera((prev) => {
       const nextWidth = prev.width * scaleFactor
       const nextHeight = prev.height * scaleFactor
-      // fitCamera時の幅を基準に拡大率を求め、極端な拡大/縮小を防ぐ
+      // 全景フィット時の幅を基準に拡大率を求め、極端な拡大/縮小を防ぐ
       const baseWidth = Math.max(layout.width, 1) + PADDING * 2
       const nextScale = baseWidth / nextWidth
       if (nextScale < MIN_SCALE || nextScale > MAX_SCALE) return prev
@@ -366,7 +444,9 @@ export function PedigreeCanvas({
       <ZoomControls
         onZoomIn={() => zoomButton(1 / 1.3)}
         onZoomOut={() => zoomButton(1.3)}
-        onFit={() => setCamera(fitCamera(layout))}
+        onFit={() =>
+          setCamera(computeFitCamera(layout, svgRef.current, focusRef.current))
+        }
       />
     </div>
   )

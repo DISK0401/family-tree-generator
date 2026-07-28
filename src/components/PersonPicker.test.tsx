@@ -141,3 +141,48 @@ describe('PersonPicker: フォーカス離脱(中7: setTimeout廃止)', () => {
     expect(onSelect).toHaveBeenCalledWith(people[2].id)
   })
 })
+
+describe('PersonPicker: inline変形(ダイアログ内。デザイン検証の指摘)', () => {
+  it('候補リストはフォーカスなしでも常時表示される', () => {
+    render(
+      <PersonPicker
+        candidates={candidates()}
+        onSelect={() => {}}
+        listLayout="inline"
+      />,
+    )
+
+    // フォーカス操作なしで最初から表示されている(popoverではフォーカスするまで非表示)
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  it('Escapeでリストが消えない(閉じる操作はダイアログ側に委ねる)', () => {
+    render(
+      <PersonPicker
+        candidates={candidates()}
+        onSelect={() => {}}
+        listLayout="inline"
+      />,
+    )
+    const input = screen.getByRole('combobox')
+    fireEvent.focus(input)
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+  })
+
+  it('リストは浮かせず文書フローに置かれる(inline用クラスが付く)', () => {
+    const { container } = render(
+      <PersonPicker
+        candidates={candidates()}
+        onSelect={() => {}}
+        listLayout="inline"
+      />,
+    )
+    expect(container.querySelector('.person-picker--inline')).not.toBeNull()
+  })
+})

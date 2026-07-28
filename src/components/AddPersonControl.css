@@ -44,8 +44,36 @@
   color: var(--ink-soft);
 }
 
+/* ボタンはPersonPanelの関係フォーム(.person-panel-relation-actions)と同じ語彙で描く:
+   確定(submit)=藍のwash、キャンセル(button)=紙+線。素の<button>のままだと
+   ブラウザ既定の見た目になり、アプリ内の他のボタンと不揃いになる */
 .add-person-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+.add-person-actions button {
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.add-person-actions button[type='submit'] {
+  border: 1px solid var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+.add-person-actions button[type='submit']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-person-actions button[type='button'] {
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
 }

@@ -97,20 +97,9 @@
   box-shadow: var(--shadow-hover);
 }
 
-/* 故人マーカー: 左上の小さな輪(†と対応)。没の記録がある人物にのみ付け、
-   記録の無い人物を「存命」と断定する表示はしない。
-   ズームアウトして文字が潰れても、故人の分布が一目で読めるようにする */
-.tree-card.deceased::before {
-  content: '';
-  box-sizing: border-box;
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1.5px solid var(--line-strong);
-}
+/* 故人の印は右上の「†」(.tree-card-deceased-mark)に一本化する。
+   以前は左上に小さな輪(::before)も重ねていたが、同じ位置の性別インジケーターと
+   重なって「ずれた二重描画」に見えるだけで、†と情報が重複していたため廃止した */
 
 /* 故人カードは面を一段沈める(古びた頁の趣) */
 .tree-card.deceased {
@@ -339,15 +328,14 @@
   flex-shrink: 0;
 }
 
-/* カードの故人マーカーと同じ描画 */
-.tree-legend-dot {
-  box-sizing: border-box;
+/* カード右上の故人マーク(†)と同じ文字を凡例のスウォッチ位置に置く */
+.tree-legend-deceased {
   display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin: 0 calc((24px - 7px) / 2);
-  border-radius: 50%;
-  border: 1.5px solid var(--line-strong);
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 1;
+  color: var(--ink-soft);
 }
 
 .tree-legend-hint {
