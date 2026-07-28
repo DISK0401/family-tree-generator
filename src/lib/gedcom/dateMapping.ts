@@ -26,6 +26,14 @@ const MONTH_INDEX: Record<string, number> = MONTHS.reduce(
   {} as Record<string, number>,
 )
 
+/**
+ * Date(実時刻)をGEDCOMヘッダのDATE値(例: `28 JUL 2026`)へ書式化する。
+ * updatedAt(ISO文字列)由来の値を端末タイムゾーンへ依存させないため、UTC基準で読む。
+ */
+export function formatGedcomHeaderDate(date: Date): string {
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
+}
+
 const QUALIFIER_PREFIX: Partial<Record<DateQualifier, string>> = {
   about: 'ABT',
   before: 'BEF',

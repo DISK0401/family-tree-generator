@@ -140,6 +140,50 @@ describe('exportGedcom 5.5.1互換モード', () => {
     expect(findChild(head, 'CHAR')?.value).toBe('UTF-8')
   })
 
+  it('5.5.1で必須のSOUR・SUBM参照・GEDC FORM・SUBMレコードが出力される', () => {
+    const document = createTreeDocument()
+    const { text } = exportGedcom(document, '5.5.1')
+    const { roots } = parseGedcomText(text)
+    const head = roots.find((r) => r.tag === 'HEAD')!
+
+    const sour = findChild(head, 'SOUR')!
+    expect(sour.value).toBe('KAKEIZUCHO')
+    expect(findChild(sour, 'NAME')?.value).toBe('家系図帖')
+
+    expect(findChild(head, 'SUBM')?.value).toBe('@U1@')
+    expect(findChild(findChild(head, 'GEDC')!, 'FORM')?.value).toBe(
+      'LINEAGE-LINKED',
+    )
+
+    const subm = roots.find((r) => r.tag === 'SUBM')
+    expect(subm?.xref).toBe('U1')
+    expect(findChild(subm!, 'NAME')?.value).toBe('家系図帖の利用者')
+  })
+
+  it('両バージョンでヘッダにDATE(updatedAt由来・大文字月名)が出力される', () => {
+    const document = {
+      ...createTreeDocument(),
+      updatedAt: '2026-07-28T12:34:56.000Z',
+    }
+
+    for (const version of ['5.5.1', '7.0'] as const) {
+      const { text } = exportGedcom(document, version)
+      const head = findRoot(text, 'HEAD')!
+      expect(findChild(head, 'DATE')?.value).toBe('28 JUL 2026')
+    }
+  })
+
+  it('7.0ではSUBM・SOUR・FORMを出力しない(5.5.1固有の必須要素)', () => {
+    const document = createTreeDocument()
+    const { text } = exportGedcom(document, '7.0')
+    const { roots } = parseGedcomText(text)
+    const head = roots.find((r) => r.tag === 'HEAD')!
+
+    expect(findChild(head, 'SOUR')).toBeUndefined()
+    expect(findChild(head, 'SUBM')).toBeUndefined()
+    expect(roots.some((r) => r.tag === 'SUBM')).toBe(false)
+  })
+
   it('事実婚(common-law)は_FAM_KIND拡張タグで両バージョンとも出力される', () => {
     let document = createTreeDocument()
     const partnerA = addPerson(document, { name: { given: 'A' } })
@@ -207,5 +251,167 @@ describe('exportGedcom xrefラウンドトリップ', () => {
 
     const { warnings } = exportGedcom(document, '7.0')
     expect(warnings.some((w) => w.includes('3名以上'))).toBe(true)
+  })
+})
+
+describe('exportGedcom 7.0のSCHMA拡張タグ宣言', () => {
+  it('使用する独自拡張タグをSCHMAのTAGで宣言する', () => {
+    const document = createTreeDocument()
+    const { text } = exportGedcom(document, '7.0')
+    const head = findRoot(text, 'HEAD')!
+    const schma = findChild(head, 'SCHMA')!
+
+    const declared = findChildren(schma, 'TAG').map(
+      (n) => n.value?.split(' ')[0],
+    )
+    expect(declared).toEqual([
+      '_KANA_SURN',
+      '_KANA_GIVN',
+      '_FAM_KIND',
+      '_TREE_TITLE',
+      '_SPOUSE_ROLE_UNKNOWN',
+    ])
+    // 各宣言はタグ名+識別URIの形式
+    for (const tag of findChildren(schma, 'TAG')) {
+      expect(tag.value).toMatch(/^_[A-Z_]+ https:\/\//)
+    }
+  })
+
+  it('5.5.1ではSCHMAを出力しない', () => {
+    const document = createTreeDocument()
+    const { text } = exportGedcom(document, '5.5.1')
+    const head = findRoot(text, 'HEAD')!
+
+    expect(findChild(head, 'SCHMA')).toBeUndefined()
+  })
+})
+
+describe('exportGedcom HUSB/WIFEの性別ベース割当', () => {
+  it('妻→夫の順で登録された家族でもmaleがHUSB・femaleがWIFEになる', () => {
+    let document = createTreeDocument()
+    const wifeFirst = addPerson(document, {
+      name: { given: '花子' },
+      gender: 'female',
+    })
+    document = wifeFirst.doc
+    const family = addSpouse(document, wifeFirst.personId, {
+      name: { given: '太郎' },
+      gender: 'male',
+    })
+    document = family.doc
+
+    const { text } = exportGedcom(document, '7.0')
+    const { roots } = parseGedcomText(text)
+    const fam = roots.find((r) => r.tag === 'FAM')!
+
+    const husbXref = pointerToXref(findChild(fam, 'HUSB')?.value)
+    const husbIndi = roots.find((r) => r.tag === 'INDI' && r.xref === husbXref)!
+    expect(findChild(findChild(husbIndi, 'NAME')!, 'GIVN')?.value).toBe('太郎')
+    // 性別で確定できるため未確定フラグは出力されない
+    expect(findChild(fam, '_SPOUSE_ROLE_UNKNOWN')).toBeUndefined()
+  })
+
+  it('両者の性別が不明な場合は登録順で割り当て_SPOUSE_ROLE_UNKNOWNを出力する', () => {
+    let document = createTreeDocument()
+    const a = addPerson(document, { name: { given: 'A' } })
+    document = a.doc
+    const family = addSpouse(document, a.personId, { name: { given: 'B' } })
+    document = family.doc
+
+    const { text } = exportGedcom(document, '7.0')
+    const { roots } = parseGedcomText(text)
+    const fam = roots.find((r) => r.tag === 'FAM')!
+
+    const husbXref = pointerToXref(findChild(fam, 'HUSB')?.value)
+    const husbIndi = roots.find((r) => r.tag === 'INDI' && r.xref === husbXref)!
+    expect(findChild(findChild(husbIndi, 'NAME')!, 'GIVN')?.value).toBe('A')
+    expect(findChild(fam, '_SPOUSE_ROLE_UNKNOWN')?.value).toBe('Y')
+  })
+
+  it('ひとり親が女性の場合はWIFE枠のみに出力する', () => {
+    let document = createTreeDocument()
+    const mother = addPerson(document, {
+      name: { given: '母' },
+      gender: 'female',
+    })
+    document = mother.doc
+    const child = addChild(document, mother.personId, {
+      name: { given: '子' },
+    })
+    document = child.doc
+
+    const { text } = exportGedcom(document, '7.0')
+    const { roots } = parseGedcomText(text)
+    const fam = roots.find((r) => r.tag === 'FAM')!
+
+    expect(findChild(fam, 'WIFE')).toBeDefined()
+    expect(findChild(fam, 'HUSB')).toBeUndefined()
+    expect(findChild(fam, '_SPOUSE_ROLE_UNKNOWN')).toBeUndefined()
+  })
+})
+
+describe('exportGedcom 続柄unknownのPEDI出力', () => {
+  function documentWithUnknownPedigree() {
+    let document = createTreeDocument()
+    const parent = addPerson(document, { name: { given: '親' } })
+    document = parent.doc
+    const child = addChild(document, parent.personId, {
+      name: { given: '子' },
+    })
+    document = child.doc
+    document = {
+      ...document,
+      families: Object.fromEntries(
+        Object.entries(document.families).map(([id, family]) => [
+          id,
+          {
+            ...family,
+            children: family.children.map((link) => ({
+              ...link,
+              pedigree: 'unknown' as const,
+            })),
+          },
+        ]),
+      ),
+    }
+    return document
+  }
+
+  it('5.5.1では規格外値を出さずPEDIタグ自体を省略する', () => {
+    const { text } = exportGedcom(documentWithUnknownPedigree(), '5.5.1')
+    const { roots } = parseGedcomText(text)
+    const childIndi = roots.find(
+      (r) => r.tag === 'INDI' && findChild(r, 'FAMC') !== undefined,
+    )!
+    const famc = findChild(childIndi, 'FAMC')!
+
+    expect(findChild(famc, 'PEDI')).toBeUndefined()
+  })
+
+  it('7.0ではPEDI OTHER+PHRASE 続柄不明を出力する', () => {
+    const { text } = exportGedcom(documentWithUnknownPedigree(), '7.0')
+    const { roots } = parseGedcomText(text)
+    const childIndi = roots.find(
+      (r) => r.tag === 'INDI' && findChild(r, 'FAMC') !== undefined,
+    )!
+    const pedi = findChild(findChild(childIndi, 'FAMC')!, 'PEDI')!
+
+    expect(pedi.value).toBe('OTHER')
+    expect(findChild(pedi, 'PHRASE')?.value).toBe('続柄不明')
+  })
+})
+
+describe('exportGedcom 氏名が空の人物', () => {
+  it('氏名が完全に空の人物はNAMEタグ自体を省略する(両バージョン)', () => {
+    let document = createTreeDocument()
+    const person = addPerson(document, { name: {} })
+    document = person.doc
+
+    for (const version of ['5.5.1', '7.0'] as const) {
+      const { text } = exportGedcom(document, version)
+      const { roots } = parseGedcomText(text)
+      const indi = roots.find((r) => r.tag === 'INDI')!
+      expect(findChild(indi, 'NAME')).toBeUndefined()
+    }
   })
 })

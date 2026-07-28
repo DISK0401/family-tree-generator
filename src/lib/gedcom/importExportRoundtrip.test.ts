@@ -3,6 +3,7 @@ import { createTreeDocument } from '../../domain/helpers'
 import {
   addChild,
   addChildLink,
+  addFamilyEvent,
   addPerson,
   addSpouse,
   updateFamily,
@@ -57,10 +58,15 @@ describe('GEDCOM export→importのラウンドトリップ', () => {
     expect(Object.keys(reimported.document.persons)).toHaveLength(4)
     expect(Object.keys(reimported.document.families)).toHaveLength(2)
 
+    // かなを設定した人物のふりがなが復元される(_KANA_*とFONE併記のどちらからでも)
+    const reimportedParent = Object.values(reimported.document.persons).find(
+      (p) => p.name.given === '一',
+    )
+    expect(reimportedParent?.name.surnameKana).toBe('わたなべ')
+
     const reimportedChild = Object.values(reimported.document.persons).find(
       (p) => p.name.given === '五郎',
     )
-    expect(reimportedChild?.name.surnameKana).toBeUndefined()
     expect(reimportedChild?.birth?.date?.original).toBe('明治10年頃')
     expect(reimportedChild?.birth?.date?.date).toEqual({
       year: 1877,
@@ -81,15 +87,265 @@ describe('GEDCOM export→importのラウンドトリップ', () => {
   })
 })
 
+describe('GEDCOM 7.0の完全ラウンドトリップ', () => {
+  it('氏名+かな+場所+複数イベント+長文NOTE+和暦PHRASE+養子が復元される', () => {
+    const longNote = `代々の来歴に関する長いメモ。${'家伝の記録による補足。'.repeat(30)}`
+    expect(longNote.length).toBeGreaterThan(200)
+
+    let document = createTreeDocument({ title: '七〇検証家系図' })
+    const husband = addPerson(document, {
+      name: {
+        surname: '齋藤',
+        given: '榮吉',
+        surnameKana: 'さいとう',
+        givenKana: 'えいきち',
+      },
+      gender: 'male',
+      birth: (() => {
+        const parsed = parseDateInput('明治10年頃')
+        return parsed.ok
+          ? { type: 'birth' as const, date: parsed.value }
+          : undefined
+      })(),
+      death: {
+        type: 'death',
+        date: {
+          original: '1950年3月15日',
+          qualifier: 'exact',
+          date: { year: 1950, month: 3, day: 15 },
+        },
+        place: '東京都新宿区',
+      },
+      note: longNote,
+    })
+    document = husband.doc
+
+    const wife = addSpouse(document, husband.personId, {
+      name: { surname: '齋藤', given: '花', surnameKana: 'さいとう' },
+      gender: 'female',
+    })
+    document = updateFamily(wife.doc, wife.familyId, { kind: 'married' })
+
+    // 復縁: 婚姻→離婚→婚姻(日付なし)
+    document = addFamilyEvent(document, wife.familyId, {
+      type: 'marriage',
+      place: '東京府',
+    })
+    document = addFamilyEvent(document, wife.familyId, {
+      type: 'divorce',
+    })
+    document = addFamilyEvent(document, wife.familyId, {
+      type: 'marriage',
+    })
+
+    const child = addChild(
+      document,
+      husband.personId,
+      { name: { surname: '齋藤', given: '実子' } },
+      { otherParentId: wife.spouseId },
+    )
+    document = child.doc
+
+    const adoptiveParent = addPerson(document, {
+      name: { given: '養親' },
+      gender: 'female',
+    })
+    document = adoptiveParent.doc
+    const adoptiveFamily = addSpouse(document, adoptiveParent.personId, {
+      name: { given: '養親配偶者' },
+    })
+    document = adoptiveFamily.doc
+    document = addChildLink(
+      document,
+      adoptiveFamily.familyId,
+      child.childId,
+      'adopted',
+    )
+
+    const { text } = exportGedcom(document, '7.0')
+    const reimported = importGedcom(bytesOf(text))
+
+    expect(reimported.success).toBe(true)
+    if (!reimported.success) return
+
+    expect(reimported.document.title).toBe('七〇検証家系図')
+
+    const persons = Object.values(reimported.document.persons)
+    expect(persons).toHaveLength(5)
+
+    const reHusband = persons.find((p) => p.name.given === '榮吉')
+    expect(reHusband?.name).toEqual({
+      surname: '齋藤',
+      given: '榮吉',
+      surnameKana: 'さいとう',
+      givenKana: 'えいきち',
+    })
+    expect(reHusband?.gender).toBe('male')
+    expect(reHusband?.birth?.date?.original).toBe('明治10年頃')
+    expect(reHusband?.birth?.date?.qualifier).toBe('about')
+    expect(reHusband?.death?.date?.date).toEqual({
+      year: 1950,
+      month: 3,
+      day: 15,
+    })
+    expect(reHusband?.death?.place).toBe('東京都新宿区')
+    // 長文NOTEが欠損なく復元される(7.0はCONC分割なしの1行+CONTなし)
+    expect(reHusband?.note).toBe(longNote)
+
+    // 復縁の時系列(婚姻→離婚→婚姻)が保たれる
+    const mainFamily = Object.values(reimported.document.families).find(
+      (f) => f.kind === 'married',
+    )
+    expect(mainFamily?.events.map((e) => e.type)).toEqual([
+      'marriage',
+      'divorce',
+      'marriage',
+    ])
+    expect(mainFamily?.events[0].place).toBe('東京府')
+
+    // 実子と養子の両方の続柄が保たれる
+    const reChild = persons.find((p) => p.name.given === '実子')
+    const childPedigrees = Object.values(reimported.document.families)
+      .flatMap((f) => f.children)
+      .filter((c) => c.childId === reChild?.id)
+      .map((c) => c.pedigree)
+    expect(childPedigrees).toEqual(
+      expect.arrayContaining(['biological', 'adopted']),
+    )
+  })
+
+  it('続柄unknownが7.0経由の往復で保たれる(OTHER+PHRASE)', () => {
+    let document = createTreeDocument()
+    const parent = addPerson(document, { name: { given: '親' } })
+    document = parent.doc
+    const child = addChild(document, parent.personId, {
+      name: { given: '子' },
+    })
+    document = child.doc
+    document = {
+      ...document,
+      families: Object.fromEntries(
+        Object.entries(document.families).map(([id, family]) => [
+          id,
+          {
+            ...family,
+            children: family.children.map((link) => ({
+              ...link,
+              pedigree: 'unknown' as const,
+            })),
+          },
+        ]),
+      ),
+    }
+
+    const { text } = exportGedcom(document, '7.0')
+    const reimported = importGedcom(bytesOf(text))
+
+    expect(reimported.success).toBe(true)
+    if (!reimported.success) return
+    const family = Object.values(reimported.document.families)[0]
+    expect(family.children[0].pedigree).toBe('unknown')
+  })
+})
+
+describe('配偶者の順序と役割の往復', () => {
+  it('妻→夫の順で登録された家族は順序が入れ替わり得るが配偶者集合は保たれる', () => {
+    let document = createTreeDocument()
+    const wifeFirst = addPerson(document, {
+      name: { surname: '山田', given: '花子' },
+      gender: 'female',
+    })
+    document = wifeFirst.doc
+    const family = addSpouse(document, wifeFirst.personId, {
+      name: { surname: '山田', given: '太郎' },
+      gender: 'male',
+    })
+    document = family.doc
+
+    const { text } = exportGedcom(document, '7.0')
+    const reimported = importGedcom(bytesOf(text))
+
+    expect(reimported.success).toBe(true)
+    if (!reimported.success) return
+
+    const reFamily = Object.values(reimported.document.families)[0]
+    const spouseNames = reFamily.spouseIds
+      .map((id) => reimported.document.persons[id]?.name.given)
+      .sort()
+    // 順序は性別ベース割当(HUSB/WIFE)により入れ替わり得るため、集合として比較する
+    expect(spouseNames).toEqual(['太郎', '花子'])
+  })
+})
+
+describe('FAMイベント順序の往復', () => {
+  it('日付なしの婚姻→離婚→婚姻(復縁)がexport→importで順序保持される', () => {
+    let document = createTreeDocument()
+    const a = addPerson(document, { name: { given: 'A' } })
+    document = a.doc
+    const family = addSpouse(document, a.personId, { name: { given: 'B' } })
+    document = family.doc
+    document = addFamilyEvent(document, family.familyId, { type: 'marriage' })
+    document = addFamilyEvent(document, family.familyId, { type: 'divorce' })
+    document = addFamilyEvent(document, family.familyId, { type: 'marriage' })
+
+    for (const version of ['5.5.1', '7.0'] as const) {
+      const { text } = exportGedcom(document, version)
+      const reimported = importGedcom(bytesOf(text))
+
+      expect(reimported.success).toBe(true)
+      if (!reimported.success) return
+
+      const reFamily = Object.values(reimported.document.families)[0]
+      // 復縁が「離婚済み」に反転しない
+      expect(reFamily.events.map((e) => e.type)).toEqual([
+        'marriage',
+        'divorce',
+        'marriage',
+      ])
+    }
+  })
+})
+
+describe('特殊文字を含む値の往復', () => {
+  it('先頭が@のメモ・改行/復帰文字を含むメモが安全に往復する', () => {
+    let document = createTreeDocument()
+    const person = addPerson(document, {
+      name: { given: 'メモ持ち' },
+      note: '@先頭アットマーク\r\n二行目\rさらに0 @X@ INDIという行',
+    })
+    document = person.doc
+
+    for (const version of ['5.5.1', '7.0'] as const) {
+      const { text } = exportGedcom(document, version)
+      const reimported = importGedcom(bytesOf(text))
+
+      expect(reimported.success).toBe(true)
+      if (!reimported.success) return
+
+      // 偽のINDIレコードが注入されない
+      expect(Object.keys(reimported.document.persons)).toHaveLength(1)
+      const restored = Object.values(reimported.document.persons)[0]
+      // \r\n・\rは\nへ正規化されて保全される
+      expect(restored.note).toBe(
+        '@先頭アットマーク\n二行目\nさらに0 @X@ INDIという行',
+      )
+    }
+  })
+})
+
 describe('関係を持たない人物のラウンドトリップ', () => {
   it('どのFamilyにも属さない人物がFAMS/FAMCなしのINDIとして出力され、復元される', () => {
     let document = createTreeDocument()
     const a = addPerson(document, { name: { surname: '山田', given: '太郎' } })
     document = a.doc
-    const spouse = addSpouse(document, a.personId, { name: { surname: '山田', given: '花子' } })
+    const spouse = addSpouse(document, a.personId, {
+      name: { surname: '山田', given: '花子' },
+    })
     document = spouse.doc
     // 系統を決めずに先に登録した人物(旧字体を含む)
-    const standalone = addPerson(document, { name: { surname: '富岡', given: '榮' } })
+    const standalone = addPerson(document, {
+      name: { surname: '富岡', given: '榮' },
+    })
     document = standalone.doc
 
     const { text } = exportGedcom(document, '7.0')
