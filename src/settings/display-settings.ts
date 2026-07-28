@@ -84,7 +84,7 @@ function parseVisibleCardFields(value: unknown): CardFieldVisibility {
   const record = value as Record<string, unknown>
   const result = { ...DEFAULT_VISIBLE_CARD_FIELDS }
   for (const key of CARD_FIELD_KEYS) {
-    if (typeof record[key] === 'boolean') result[key] = record[key] as boolean
+    if (typeof record[key] === 'boolean') result[key] = record[key]
   }
   return result
 }

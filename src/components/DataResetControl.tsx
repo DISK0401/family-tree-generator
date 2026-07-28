@@ -65,7 +65,10 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
           confirmLabel={isDeleting ? '削除中…' : '削除する'}
           confirmDanger
           confirmDisabled={!canConfirm || isDeleting}
-          onConfirm={handleConfirm}
+          onConfirm={() => {
+            // handleConfirm は失敗を内部で処理する(catch/finally 済み)ため投げっぱなしで安全
+            void handleConfirm()
+          }}
           cancelDisabled={isDeleting}
           onCancel={closeDialog}
         >

@@ -96,7 +96,7 @@ export function PersonPicker({
     // フォーカスの移動先がピッカー内(候補リスト等)なら閉じない。
     // 以前のsetTimeout(100)方式はタイマーの競合で「選択できたりできなかったり」する
     // 揺らぎの温床だったため、relatedTargetによる判定へ置き換えた(監査 中7)
-    if (rootRef.current?.contains(e.relatedTarget as Node)) return
+    if (rootRef.current?.contains(e.relatedTarget)) return
     setOpen(false)
     setActiveIndex(-1)
   }

@@ -11,7 +11,7 @@ const sourceFiles = import.meta.glob('./*.ts', {
   query: '?raw',
   import: 'default',
   eager: true,
-}) as Record<string, string>
+})
 
 describe('src/layout の依存境界', () => {
   it('family-chart / react / DOM 型を import していない', () => {

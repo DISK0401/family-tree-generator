@@ -7,9 +7,12 @@ import { exportFamilyTreeJsonText } from '../lib/json/export'
 import { ImportExportControl } from './ImportExportControl'
 import { MAX_IMPORT_FILE_SIZE } from '../features/import-export/fileIO'
 
+const createObjectURLSpy = vi.fn(() => 'blob:mock-url')
+
 beforeEach(() => {
   useTreeStore.getState().replace(createTreeDocument())
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url')
+  createObjectURLSpy.mockClear()
+  URL.createObjectURL = createObjectURLSpy
   URL.revokeObjectURL = vi.fn()
 })
 
@@ -20,9 +23,7 @@ function openDialog() {
 }
 
 function selectFile(file: File) {
-  const input = screen.getByLabelText(
-    '家系図ファイルを選択',
-  ) as HTMLInputElement
+  const input = screen.getByLabelText('家系図ファイルを選択')
   fireEvent.change(input, { target: { files: [file] } })
 }
 
@@ -264,6 +265,6 @@ describe('ImportExportControl', () => {
       screen.getByRole('button', { name: 'エクスポート' }),
     ).not.toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'エクスポート' }))
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+    expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
   })
 })

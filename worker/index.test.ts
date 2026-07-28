@@ -6,12 +6,13 @@ function makeEnv(environment?: string): Env {
   return {
     ...(environment !== undefined && { ENVIRONMENT: environment }),
     ASSETS: {
-      fetch: vi.fn(
-        async () =>
+      fetch: vi.fn(() =>
+        Promise.resolve(
           new Response('<html></html>', {
             status: 200,
             headers: { 'content-type': 'text/html' },
           }),
+        ),
       ),
     } as unknown as Fetcher,
   }

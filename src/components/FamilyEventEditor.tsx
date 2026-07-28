@@ -212,7 +212,7 @@ function EventFields({
 
   function handleBlur(e: FocusEvent<HTMLFieldSetElement>) {
     // fieldset内のフォーカス移動(日付→場所へのTab等)はまだ編集の途中。commitしない
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    if (e.currentTarget.contains(e.relatedTarget)) return
     commit()
   }
 

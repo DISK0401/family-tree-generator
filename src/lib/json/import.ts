@@ -202,7 +202,7 @@ export function importFamilyTreeJson(text: string): JsonImportResult {
         reason: `JSONファイルの内容が不正です(${details})`,
       }
     }
-    const repaired = repairDocument(result.data as TreeDocument)
+    const repaired = repairDocument(result.data)
     return {
       success: true,
       document: repaired.document,
