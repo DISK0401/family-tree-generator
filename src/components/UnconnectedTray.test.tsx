@@ -1,6 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { addPerson, addSpouse, linkSpouse, unlinkChild, addChild } from '../domain/commands'
+import {
+  addPerson,
+  addSpouse,
+  linkSpouse,
+  unlinkChild,
+  addChild,
+} from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
 import { computeOffChartPersonIds } from '../rendering/to-family-chart-data'
 import { useTreeStore } from '../store/tree-store'
@@ -42,14 +48,20 @@ describe('UnconnectedTray', () => {
 
   it('対象が0人のときは領域ごと描画しない', () => {
     const { container } = render(
-      <UnconnectedTray personIds={[]} selectedPersonId={null} onSelectPerson={() => {}} />,
+      <UnconnectedTray
+        personIds={[]}
+        selectedPersonId={null}
+        onSelectPerson={() => {}}
+      />,
     )
     expect(container.firstChild).toBeNull()
     expect(screen.queryByLabelText('図に現れていない人物')).toBeNull()
   })
 
   it('チップのクリックでその人物が選択される', () => {
-    const x = addPerson(useTreeStore.getState().document, { name: { given: 'X' } })
+    const x = addPerson(useTreeStore.getState().document, {
+      name: { given: 'X' },
+    })
     useTreeStore.getState().replace(x.doc)
     const onSelectPerson = vi.fn()
 
@@ -66,7 +78,9 @@ describe('UnconnectedTray', () => {
   })
 
   it('選択中の人物のチップは選択状態として示される', () => {
-    const x = addPerson(useTreeStore.getState().document, { name: { given: 'X' } })
+    const x = addPerson(useTreeStore.getState().document, {
+      name: { given: 'X' },
+    })
     useTreeStore.getState().replace(x.doc)
 
     render(
@@ -76,11 +90,15 @@ describe('UnconnectedTray', () => {
         onSelectPerson={() => {}}
       />,
     )
-    expect(screen.getByRole('button', { name: 'X' }).getAttribute('aria-pressed')).toBe('true')
+    expect(
+      screen.getByRole('button', { name: 'X' }).getAttribute('aria-pressed'),
+    ).toBe('true')
   })
 
   it('関係を持たない人物は現れ、配偶者としてリンクすると消える', () => {
-    const x = addPerson(useTreeStore.getState().document, { name: { given: 'X' } })
+    const x = addPerson(useTreeStore.getState().document, {
+      name: { given: 'X' },
+    })
     useTreeStore.getState().replace(x.doc)
 
     const { rerender } = render(
@@ -92,7 +110,9 @@ describe('UnconnectedTray', () => {
     )
     expect(screen.getByRole('button', { name: 'X' })).toBeDefined()
 
-    useTreeStore.getState().apply((doc) => linkSpouse(doc, personAId, x.personId).doc)
+    useTreeStore
+      .getState()
+      .apply((doc) => linkSpouse(doc, personAId, x.personId).doc)
     rerender(
       <UnconnectedTray
         personIds={offChartIds()}
@@ -123,7 +143,9 @@ describe('UnconnectedTray', () => {
   })
 
   it('関係を解除した人物が対象になる', () => {
-    const c = addChild(useTreeStore.getState().document, personAId, { name: { given: 'C' } })
+    const c = addChild(useTreeStore.getState().document, personAId, {
+      name: { given: 'C' },
+    })
     useTreeStore.getState().replace(c.doc)
 
     const { rerender } = render(
@@ -135,7 +157,9 @@ describe('UnconnectedTray', () => {
     )
     expect(screen.queryByRole('button', { name: 'C' })).toBeNull()
 
-    useTreeStore.getState().apply((doc) => unlinkChild(doc, c.familyId, c.childId))
+    useTreeStore
+      .getState()
+      .apply((doc) => unlinkChild(doc, c.familyId, c.childId))
     rerender(
       <UnconnectedTray
         personIds={offChartIds()}

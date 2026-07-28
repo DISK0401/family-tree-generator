@@ -8,7 +8,10 @@ import {
   unlinkChild,
 } from './commands'
 import { createTreeDocument } from './helpers'
-import { computeOffChartPersonIds, toFamilyChartData } from '../rendering/to-family-chart-data'
+import {
+  computeOffChartPersonIds,
+  toFamilyChartData,
+} from '../rendering/to-family-chart-data'
 import type { TreeDocument } from './types'
 
 /**
@@ -42,9 +45,9 @@ describe('通し: 役割の取り違えの修正', () => {
     doc = c.doc
     const original = doc.persons[c.childId]
     // 図の上ではAの子として描かれている
-    expect(toFamilyChartData(doc).find((d) => d.id === c.childId)?.rels.parents).toEqual([
-      a.personId,
-    ])
+    expect(
+      toFamilyChartData(doc).find((d) => d.id === c.childId)?.rels.parents,
+    ).toEqual([a.personId])
 
     // 1) 親子関係を解除する。ひとり親の家族だったため家族ごと消え、Cは図から外れる
     doc = unlinkChild(doc, c.familyId, c.childId)
@@ -79,19 +82,27 @@ describe('通し: 先に登録して後から繋ぐ', () => {
     doc = x.doc
     const y = addPerson(doc, { name: { surname: '富岡', given: '榮' } })
     doc = y.doc
-    expect(offChart(doc, a.personId).sort()).toEqual([x.personId, y.personId].sort())
+    expect(offChart(doc, a.personId).sort()).toEqual(
+      [x.personId, y.personId].sort(),
+    )
 
     // 2) 2人を配偶者として結ぶ。本体とは切り離されたクラスタのため、まだ一覧に残る
     doc = linkSpouse(doc, x.personId, y.personId).doc
-    expect(offChart(doc, a.personId).sort()).toEqual([x.personId, y.personId].sort())
+    expect(offChart(doc, a.personId).sort()).toEqual(
+      [x.personId, y.personId].sort(),
+    )
 
     // 3) 本体の人物Aの子としてXを繋ぐと、Yもクラスタごと図に現れて一覧が空になる
     doc = linkChild(doc, a.personId, x.personId).doc
     expect(offChart(doc, a.personId)).toEqual([])
 
     const data = toFamilyChartData(doc)
-    expect(data.find((d) => d.id === x.personId)?.rels.parents).toEqual([a.personId])
-    expect(data.find((d) => d.id === x.personId)?.rels.spouses).toEqual([y.personId])
+    expect(data.find((d) => d.id === x.personId)?.rels.parents).toEqual([
+      a.personId,
+    ])
+    expect(data.find((d) => d.id === x.personId)?.rels.spouses).toEqual([
+      y.personId,
+    ])
     // 旧字体を含む氏名は正規化されない
     expect(doc.persons[y.personId].name.given).toBe('榮')
   })

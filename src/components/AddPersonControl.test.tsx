@@ -42,7 +42,9 @@ describe('AddPersonControl: 関係を指定しない人物の追加', () => {
   it('姓も名も空では追加できない', () => {
     render(<AddPersonControl onAdded={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: '人物を追加' }))
-    expect(screen.getByRole('button', { name: '追加する' }).hasAttribute('disabled')).toBe(true)
+    expect(
+      screen.getByRole('button', { name: '追加する' }).hasAttribute('disabled'),
+    ).toBe(true)
   })
 
   it('追加直後のundoで人物が消える', () => {
@@ -50,10 +52,14 @@ describe('AddPersonControl: 関係を指定しない人物の追加', () => {
     fireEvent.click(screen.getByRole('button', { name: '人物を追加' }))
     fireEvent.change(screen.getByLabelText('名'), { target: { value: 'X' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
-    expect(Object.values(useTreeStore.getState().document.persons)).toHaveLength(2)
+    expect(
+      Object.values(useTreeStore.getState().document.persons),
+    ).toHaveLength(2)
 
     useTreeStore.getState().undo()
-    expect(Object.values(useTreeStore.getState().document.persons)).toHaveLength(1)
+    expect(
+      Object.values(useTreeStore.getState().document.persons),
+    ).toHaveLength(1)
   })
 
   it('キャンセルするとフォームが閉じ、ドキュメントは変化しない', () => {

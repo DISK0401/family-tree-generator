@@ -6,11 +6,19 @@ import type { Family, Person, PersonId, TreeDocument } from '../domain/types'
  * (src/domain/helpers.ts)はUUIDを生成するため、期待値の記述がしやすい固定IDが要るテストには使わない
  */
 
-export function person(id: PersonId, given: string, gender: Person['gender'] = 'unknown'): Person {
+export function person(
+  id: PersonId,
+  given: string,
+  gender: Person['gender'] = 'unknown',
+): Person {
   return { id, name: { given }, gender }
 }
 
-export function family(id: string, spouseIds: PersonId[], children: Family['children'] = []): Family {
+export function family(
+  id: string,
+  spouseIds: PersonId[],
+  children: Family['children'] = [],
+): Family {
   return { id, spouseIds, kind: 'unknown', events: [], children }
 }
 

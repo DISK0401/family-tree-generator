@@ -1,13 +1,13 @@
 // family-chart スパイク検証:
 // (1) 複数配偶者(再婚) (2) 養子リンクの視覚区別(後処理) (3) HTMLカスタムカードでの縦書き
-import f3 from 'family-chart';
-import 'family-chart/styles/family-chart.css';
+import f3 from 'family-chart'
+import 'family-chart/styles/family-chart.css'
 
 type SpikeDatum = {
-  id: string;
-  data: { gender: 'M' | 'F'; label: string; years: string; adopted?: boolean };
-  rels: { parents?: string[]; spouses?: string[]; children?: string[] };
-};
+  id: string
+  data: { gender: 'M' | 'F'; label: string; years: string; adopted?: boolean }
+  rels: { parents?: string[]; spouses?: string[]; children?: string[] }
+}
 
 // 髙・廣など旧字体を含む3世代+再婚+養子のサンプル
 const data: SpikeDatum[] = [
@@ -52,53 +52,58 @@ const data: SpikeDatum[] = [
     data: { gender: 'M', label: '髙橋 翔', years: '平成2–' },
     rels: { parents: ['D', 'G'] },
   },
-];
+]
 
 const chart = f3
   .createChart('#FamilyChart', data as never)
   .setTransitionTime(0)
   .setCardYSpacing(170)
   .setCardXSpacing(180)
-  .setSingleParentEmptyCard(false);
+  .setSingleParentEmptyCard(false)
 
-const card = chart.setCardHtml();
-card.setStyle('rect');
-card.setCardDim({ w: 96, h: 150, img: false });
+const card = chart.setCardHtml()
+card.setStyle('rect')
+card.setCardDim({ w: 96, h: 150, img: false })
 // 検証(3): 縦書きカスタムカード
 card.setCardInnerHtmlCreator((d) => {
-  const p = d.data as unknown as SpikeDatum;
-  const female = p.data.gender === 'F' ? ' female' : '';
+  const p = d.data as unknown as SpikeDatum
+  const female = p.data.gender === 'F' ? ' female' : ''
   return `<div class="spike-card${female}">
     <div class="name">${p.data.label}</div>
     <div class="years">${p.data.years}</div>
-  </div>`;
-});
+  </div>`
+})
 
-chart.updateTree({ initial: true });
+chart.updateTree({ initial: true })
 
 // 検証(2): 養子リンクを後処理で破線化
 // link datum: { source, target, is_ancestry, ... } / 子→親リンクは source=child(ancestry側)
 function markAdoptedLinks() {
-  const svg = document.querySelector('#FamilyChart svg');
-  if (!svg) return;
-  const links = svg.querySelectorAll('path.link');
+  const svg = document.querySelector('#FamilyChart svg')
+  if (!svg) return
+  const links = svg.querySelectorAll('path.link')
   links.forEach((el) => {
-    const datum = (el as unknown as { __data__?: { source?: unknown; target?: unknown } })
-      .__data__;
-    if (!datum) return;
-    const nodes = [datum.source, datum.target]
-      .flat()
-      .filter(Boolean) as { data?: { data?: { adopted?: boolean } } }[];
+    const datum = (
+      el as unknown as { __data__?: { source?: unknown; target?: unknown } }
+    ).__data__
+    if (!datum) return
+    const nodes = [datum.source, datum.target].flat().filter(Boolean) as {
+      data?: { data?: { adopted?: boolean } }
+    }[]
     if (nodes.some((n) => n?.data?.data?.adopted)) {
-      el.classList.add('adopted-link');
+      el.classList.add('adopted-link')
     }
-  });
+  })
   document.body.dataset.adoptedLinks = String(
     svg.querySelectorAll('path.link.adopted-link').length,
-  );
+  )
 }
-markAdoptedLinks();
+markAdoptedLinks()
 
 // 検証結果をテストから読めるように書き出す
-document.body.dataset.cards = String(document.querySelectorAll('.spike-card').length);
-document.body.dataset.links = String(document.querySelectorAll('path.link').length);
+document.body.dataset.cards = String(
+  document.querySelectorAll('.spike-card').length,
+)
+document.body.dataset.links = String(
+  document.querySelectorAll('path.link').length,
+)

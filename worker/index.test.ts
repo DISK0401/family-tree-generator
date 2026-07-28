@@ -54,7 +54,9 @@ describe('worker', () => {
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
     expect(response.headers.get('Referrer-Policy')).toBe('no-referrer')
     expect(response.headers.get('Permissions-Policy')).toContain('camera=()')
-    expect(response.headers.get('Strict-Transport-Security')).toBe('max-age=31536000')
+    expect(response.headers.get('Strict-Transport-Security')).toBe(
+      'max-age=31536000',
+    )
   })
 
   it('marks hashed assets and font slices as immutable', async () => {
@@ -63,7 +65,9 @@ describe('worker', () => {
         new Request(`https://example.com${path}`),
         makeEnv('production'),
       )
-      expect(response.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable')
+      expect(response.headers.get('Cache-Control')).toBe(
+        'public, max-age=31536000, immutable',
+      )
     }
   })
 
@@ -81,7 +85,10 @@ describe('worker', () => {
 
   it('preserves the upstream status and body', async () => {
     const env = makeEnv('dev')
-    const response = await worker.fetch(new Request('https://example.com/'), env)
+    const response = await worker.fetch(
+      new Request('https://example.com/'),
+      env,
+    )
     expect(response.status).toBe(200)
     expect(await response.text()).toBe('<html></html>')
   })

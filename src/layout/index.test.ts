@@ -496,7 +496,9 @@ describe('レイアウトの不変条件(主要fixture横断)', () => {
   ]
 
   for (const [name, doc] of fixtures) {
-    it(`${name} で不変条件が保たれる`, () => {
+    // 300名fixtureの線分×カード交差検査は重く、全ファイル並列実行のCPU競合下では
+    // 既定の5秒タイムアウトを超えることがある(単独実行では4秒未満)。上限を明示する
+    it(`${name} で不変条件が保たれる`, { timeout: 30_000 }, () => {
       expectLayoutInvariants(layoutPedigree(doc), doc)
     })
   }
@@ -589,21 +591,25 @@ describe('layoutPedigree の計算時間(5.4)', () => {
     expect(elapsedMs).toBeLessThan(1000) // 回帰検知用の緩い上限。実測値はdesign.mdのRisksへ記録する
   })
 
-  it('300名規模+層をまたぐ婚姻のデータを現実的な時間で計算できる', () => {
-    // 交差数の計算をO(E^2)からO(E log E)へ置き換えた回帰の検知用。層をまたぐ婚姻を混ぜ、
-    // 縦線のスナップ・レーン割り当てまで含めた全経路を実データ規模で通す
-    const doc = buildSyntheticDoc(300, 5)
-    expect(Object.keys(doc.persons)).toHaveLength(300)
+  it(
+    '300名規模+層をまたぐ婚姻のデータを現実的な時間で計算できる',
+    { timeout: 30_000 },
+    () => {
+      // 交差数の計算をO(E^2)からO(E log E)へ置き換えた回帰の検知用。層をまたぐ婚姻を混ぜ、
+      // 縦線のスナップ・レーン割り当てまで含めた全経路を実データ規模で通す
+      const doc = buildSyntheticDoc(300, 5)
+      expect(Object.keys(doc.persons)).toHaveLength(300)
 
-    const start = performance.now()
-    const layout = layoutPedigree(doc)
-    const elapsedMs = performance.now() - start
+      const start = performance.now()
+      const layout = layoutPedigree(doc)
+      const elapsedMs = performance.now() - start
 
-    console.log(
-      `[layoutPedigree] 300名規模の計算時間: ${elapsedMs.toFixed(2)}ms`,
-    )
+      console.log(
+        `[layoutPedigree] 300名規模の計算時間: ${elapsedMs.toFixed(2)}ms`,
+      )
 
-    expect(layout.persons).toHaveLength(300)
-    expect(elapsedMs).toBeLessThan(2000) // 回帰検知用の緩い上限
-  })
+      expect(layout.persons).toHaveLength(300)
+      expect(elapsedMs).toBeLessThan(2000) // 回帰検知用の緩い上限
+    },
+  )
 })

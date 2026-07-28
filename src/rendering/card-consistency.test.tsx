@@ -24,16 +24,29 @@ function docWithOnePerson(): TreeDocument {
   const doc = createTreeDocument()
   doc.persons[PERSON_ID] = {
     id: PERSON_ID,
-    name: { surname: '山田', given: '太郎', surnameKana: 'やまだ', givenKana: 'たろう' },
+    name: {
+      surname: '山田',
+      given: '太郎',
+      surnameKana: 'やまだ',
+      givenKana: 'たろう',
+    },
     gender: 'male',
     birth: {
       type: 'birth',
-      date: { original: '1900-04-01', qualifier: 'exact', date: { year: 1900, month: 4, day: 1 } },
+      date: {
+        original: '1900-04-01',
+        qualifier: 'exact',
+        date: { year: 1900, month: 4, day: 1 },
+      },
       place: '東京',
     },
     death: {
       type: 'death',
-      date: { original: '1970-05-06', qualifier: 'exact', date: { year: 1970, month: 5, day: 6 } },
+      date: {
+        original: '1970-05-06',
+        qualifier: 'exact',
+        date: { year: 1970, month: 5, day: 6 },
+      },
       place: '京都',
     },
   }
@@ -42,7 +55,9 @@ function docWithOnePerson(): TreeDocument {
 
 /** 折りたたみ表示・つながった全体表示それぞれで実際に描かれたカードのHTMLを取り出す */
 function renderBothModes(): { collapsed: string; connected: string } {
-  const { container, unmount } = render(<FamilyTreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />)
+  const { container, unmount } = render(
+    <FamilyTreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+  )
 
   const collapsedCard = container.querySelector('.f3 .tree-card')
   expect(collapsedCard, '折りたたみ表示にカードが描かれていない').not.toBeNull()
@@ -51,7 +66,10 @@ function renderBothModes(): { collapsed: string; connected: string } {
   fireEvent.click(screen.getByRole('button', { name: 'つながった全体表示' }))
 
   const connectedCard = container.querySelector('.pedigree-card .tree-card')
-  expect(connectedCard, 'つながった全体表示にカードが描かれていない').not.toBeNull()
+  expect(
+    connectedCard,
+    'つながった全体表示にカードが描かれていない',
+  ).not.toBeNull()
   const connected = connectedCard?.outerHTML ?? ''
 
   unmount()

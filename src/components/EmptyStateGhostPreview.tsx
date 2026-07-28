@@ -23,13 +23,43 @@ export function EmptyStateGhostPreview() {
       focusable="false"
     >
       {/* 婚姻線(第1世代・第2世代) */}
-      <line x1={40 + CARD_W} y1={10 + CARD_H / 2} x2={110} y2={10 + CARD_H / 2} className="empty-state-ghost-line" />
-      <line x1={75 + CARD_W} y1={100 + CARD_H / 2} x2={145} y2={100 + CARD_H / 2} className="empty-state-ghost-line" />
+      <line
+        x1={40 + CARD_W}
+        y1={10 + CARD_H / 2}
+        x2={110}
+        y2={10 + CARD_H / 2}
+        className="empty-state-ghost-line"
+      />
+      <line
+        x1={75 + CARD_W}
+        y1={100 + CARD_H / 2}
+        x2={145}
+        y2={100 + CARD_H / 2}
+        className="empty-state-ghost-line"
+      />
       {/* 親子線 */}
-      <line x1={95} y1={10 + CARD_H} x2={95} y2={100} className="empty-state-ghost-line" />
-      <line x1={130} y1={100 + CARD_H} x2={130} y2={190} className="empty-state-ghost-line" />
+      <line
+        x1={95}
+        y1={10 + CARD_H}
+        x2={95}
+        y2={100}
+        className="empty-state-ghost-line"
+      />
+      <line
+        x1={130}
+        y1={100 + CARD_H}
+        x2={130}
+        y2={190}
+        className="empty-state-ghost-line"
+      />
       {CARDS.map((c) => (
-        <foreignObject key={c.given} x={c.x} y={c.y} width={CARD_W} height={CARD_H}>
+        <foreignObject
+          key={c.given}
+          x={c.x}
+          y={c.y}
+          width={CARD_W}
+          height={CARD_H}
+        >
           <div className="empty-state-ghost-card">
             <span>{c.given}</span>
           </div>

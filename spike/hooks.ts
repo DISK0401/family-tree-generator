@@ -18,11 +18,39 @@ type Datum = {
 
 /** 婿養子: 徳雄・ぎんの子に実子 榮 と養子 兎一 が並び、その2人が夫婦 */
 const mukoyoshi: Datum[] = [
-  { id: 'tokuo', data: { gender: 'M', label: '徳雄' }, rels: { parents: [], spouses: ['gin'], children: ['sakae', 'taichi'] } },
-  { id: 'gin', data: { gender: 'F', label: 'ぎん' }, rels: { parents: [], spouses: ['tokuo'], children: ['sakae', 'taichi'] } },
-  { id: 'sakae', data: { gender: 'F', label: '榮' }, rels: { parents: ['tokuo', 'gin'], spouses: ['taichi'], children: ['noriyoshi'] } },
-  { id: 'taichi', data: { gender: 'M', label: '兎一' }, rels: { parents: ['tokuo', 'gin'], spouses: ['sakae'], children: ['noriyoshi'] } },
-  { id: 'noriyoshi', data: { gender: 'M', label: '紀佳' }, rels: { parents: ['taichi', 'sakae'], spouses: [], children: [] } },
+  {
+    id: 'tokuo',
+    data: { gender: 'M', label: '徳雄' },
+    rels: { parents: [], spouses: ['gin'], children: ['sakae', 'taichi'] },
+  },
+  {
+    id: 'gin',
+    data: { gender: 'F', label: 'ぎん' },
+    rels: { parents: [], spouses: ['tokuo'], children: ['sakae', 'taichi'] },
+  },
+  {
+    id: 'sakae',
+    data: { gender: 'F', label: '榮' },
+    rels: {
+      parents: ['tokuo', 'gin'],
+      spouses: ['taichi'],
+      children: ['noriyoshi'],
+    },
+  },
+  {
+    id: 'taichi',
+    data: { gender: 'M', label: '兎一' },
+    rels: {
+      parents: ['tokuo', 'gin'],
+      spouses: ['sakae'],
+      children: ['noriyoshi'],
+    },
+  },
+  {
+    id: 'noriyoshi',
+    data: { gender: 'M', label: '紀佳' },
+    rels: { parents: ['taichi', 'sakae'], spouses: [], children: [] },
+  },
 ]
 
 /**
@@ -31,19 +59,63 @@ const mukoyoshi: Datum[] = [
  * (family-chart の `formatData` は createChart へ渡した配列しか正規化しないため)
  */
 const twoFamilies: Datum[] = [
-  { id: 'ga', data: { gender: 'M', label: 'A祖父' }, rels: { parents: [], spouses: ['gaw'], children: ['fa'] } },
-  { id: 'gaw', data: { gender: 'F', label: 'A祖母' }, rels: { parents: [], spouses: ['ga'], children: ['fa'] } },
-  { id: 'fa', data: { gender: 'M', label: 'A父' }, rels: { parents: ['ga', 'gaw'], spouses: ['ma'], children: ['a'] } },
-  { id: 'ma', data: { gender: 'F', label: 'A母' }, rels: { parents: [], spouses: ['fa'], children: ['a'] } },
-  { id: 'a', data: { gender: 'M', label: '夫A' }, rels: { parents: ['fa', 'ma'], spouses: ['b'], children: ['kid'] } },
+  {
+    id: 'ga',
+    data: { gender: 'M', label: 'A祖父' },
+    rels: { parents: [], spouses: ['gaw'], children: ['fa'] },
+  },
+  {
+    id: 'gaw',
+    data: { gender: 'F', label: 'A祖母' },
+    rels: { parents: [], spouses: ['ga'], children: ['fa'] },
+  },
+  {
+    id: 'fa',
+    data: { gender: 'M', label: 'A父' },
+    rels: { parents: ['ga', 'gaw'], spouses: ['ma'], children: ['a'] },
+  },
+  {
+    id: 'ma',
+    data: { gender: 'F', label: 'A母' },
+    rels: { parents: [], spouses: ['fa'], children: ['a'] },
+  },
+  {
+    id: 'a',
+    data: { gender: 'M', label: '夫A' },
+    rels: { parents: ['fa', 'ma'], spouses: ['b'], children: ['kid'] },
+  },
 
-  { id: 'gb', data: { gender: 'M', label: 'B祖父' }, rels: { parents: [], spouses: ['gbw'], children: ['fb'] } },
-  { id: 'gbw', data: { gender: 'F', label: 'B祖母' }, rels: { parents: [], spouses: ['gb'], children: ['fb'] } },
-  { id: 'fb', data: { gender: 'M', label: 'B父' }, rels: { parents: ['gb', 'gbw'], spouses: ['mb'], children: ['b'] } },
-  { id: 'mb', data: { gender: 'F', label: 'B母' }, rels: { parents: [], spouses: ['fb'], children: ['b'] } },
-  { id: 'b', data: { gender: 'F', label: '妻B' }, rels: { parents: ['fb', 'mb'], spouses: ['a'], children: ['kid'] } },
+  {
+    id: 'gb',
+    data: { gender: 'M', label: 'B祖父' },
+    rels: { parents: [], spouses: ['gbw'], children: ['fb'] },
+  },
+  {
+    id: 'gbw',
+    data: { gender: 'F', label: 'B祖母' },
+    rels: { parents: [], spouses: ['gb'], children: ['fb'] },
+  },
+  {
+    id: 'fb',
+    data: { gender: 'M', label: 'B父' },
+    rels: { parents: ['gb', 'gbw'], spouses: ['mb'], children: ['b'] },
+  },
+  {
+    id: 'mb',
+    data: { gender: 'F', label: 'B母' },
+    rels: { parents: [], spouses: ['fb'], children: ['b'] },
+  },
+  {
+    id: 'b',
+    data: { gender: 'F', label: '妻B' },
+    rels: { parents: ['fb', 'mb'], spouses: ['a'], children: ['kid'] },
+  },
 
-  { id: 'kid', data: { gender: 'M', label: '子' }, rels: { parents: ['a', 'b'], spouses: [], children: [] } },
+  {
+    id: 'kid',
+    data: { gender: 'M', label: '子' },
+    rels: { parents: ['a', 'b'], spouses: [], children: [] },
+  },
 ]
 
 type ChartOptions = {
@@ -56,7 +128,9 @@ function render(sel: string, data: Datum[], options: ChartOptions = {}) {
   // main_id は data の先頭要素で決まる(calculateTree: `main_id = data_stash[0].id`)。
   // updateMainId を初回 updateTree より前に呼ぶと内部で落ちるため、並べ替えで指定する
   const ordered = options.mainId
-    ? [...data].sort((a, b) => (a.id === options.mainId ? -1 : b.id === options.mainId ? 1 : 0))
+    ? [...data].sort((a, b) =>
+        a.id === options.mainId ? -1 : b.id === options.mainId ? 1 : 0,
+      )
     : data
   const chart = f3
     .createChart(sel, structuredClone(ordered) as never)
@@ -93,7 +167,8 @@ function safeRender(sel: string, data: Datum[], options: ChartOptions = {}) {
   } catch (e) {
     const el = document.querySelector(sel)
     const message = e instanceof Error ? e.message : String(e)
-    if (el) el.innerHTML = `<p style="padding:12px;color:#c73e3a">失敗: ${message}</p>`
+    if (el)
+      el.innerHTML = `<p style="padding:12px;color:#c73e3a">失敗: ${message}</p>`
     console.error(sel, e)
   }
 }
@@ -116,7 +191,9 @@ safeRender('#c4', twoFamilies, {
   mainId: 'a',
   modifyTreeHierarchy: (rootUnknown, isAncestry) => {
     if (!isAncestry) return
-    const root = rootUnknown as d3.HierarchyNode<Datum> & { children?: unknown[] }
+    const root = rootUnknown as d3.HierarchyNode<Datum> & {
+      children?: unknown[]
+    }
     const byId = new Map(twoFamilies.map((d) => [d.id, d]))
     const wife = byId.get('b')
     if (!wife) return
@@ -132,11 +209,17 @@ safeRender('#c4', twoFamilies, {
         ),
       )
     for (const g of grafted) {
-      const node = g as unknown as { parent: unknown; depth: number; each: (fn: (n: { depth: number }) => void) => void }
+      const node = g as unknown as {
+        parent: unknown
+        depth: number
+        each: (fn: (n: { depth: number }) => void) => void
+      }
       node.parent = root
       // 接ぎ木した部分木の depth を、接続先に合わせてずらす
       const shift = root.depth + 1
-      g.each((n) => { (n as { depth: number }).depth += shift })
+      g.each((n) => {
+        ;(n as { depth: number }).depth += shift
+      })
       void node
     }
     root.children = [...(root.children ?? []), ...(grafted as unknown[])]
@@ -145,9 +228,9 @@ safeRender('#c4', twoFamilies, {
 
 // 検証結果をテストから読めるように、描かれたカード枚数を書き出す
 setTimeout(() => {
-const counts = ['c1', 'c2', 'c3', 'c4'].map((id) => {
-  const el = document.getElementById(id)
-  return `${id}=${el ? el.querySelectorAll('.spike-card').length : 0}`
-})
-document.body.dataset.cardCounts = counts.join(',')
+  const counts = ['c1', 'c2', 'c3', 'c4'].map((id) => {
+    const el = document.getElementById(id)
+    return `${id}=${el ? el.querySelectorAll('.spike-card').length : 0}`
+  })
+  document.body.dataset.cardCounts = counts.join(',')
 }, 1000)

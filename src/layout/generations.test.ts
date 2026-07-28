@@ -14,8 +14,16 @@ describe('assignGenerations', () => {
         person('child', '孫'),
       ],
       [
-        family('f1', ['gf', 'gm'], [{ childId: 'father', pedigree: 'biological' }]),
-        family('f2', ['father', 'mother'], [{ childId: 'child', pedigree: 'biological' }]),
+        family(
+          'f1',
+          ['gf', 'gm'],
+          [{ childId: 'father', pedigree: 'biological' }],
+        ),
+        family(
+          'f2',
+          ['father', 'mother'],
+          [{ childId: 'child', pedigree: 'biological' }],
+        ),
       ],
     )
     const { generationOf, converged } = assignGenerations(buildGraph(doc))
@@ -30,9 +38,18 @@ describe('assignGenerations', () => {
 
   it('婚入した配偶者(実家が未記録)は相手と同じ層に揃う', () => {
     const doc = testDoc(
-      [person('gf', '祖父'), person('gm', '祖母'), person('son', '息子'), person('inLaw', '嫁')],
       [
-        family('f1', ['gf', 'gm'], [{ childId: 'son', pedigree: 'biological' }]),
+        person('gf', '祖父'),
+        person('gm', '祖母'),
+        person('son', '息子'),
+        person('inLaw', '嫁'),
+      ],
+      [
+        family(
+          'f1',
+          ['gf', 'gm'],
+          [{ childId: 'son', pedigree: 'biological' }],
+        ),
         family('f2', ['son', 'inLaw'], []),
       ],
     )
@@ -62,7 +79,9 @@ describe('assignGenerations', () => {
     // 打ち切ったときの層数がそのまま図の高さになるため、反復の上限は人数から導く。
     // 固定の大きな上限だと、カード2枚の循環データが数千層の図になってしまう
     const deepest = Math.max(...generationOf.values())
-    expect(deepest).toBeLessThanOrEqual(2 * (Object.keys(doc.persons).length + 2))
+    expect(deepest).toBeLessThanOrEqual(
+      2 * (Object.keys(doc.persons).length + 2),
+    )
   })
 
   it('親子が2層以上またぐ婚姻(世代の離れた婚姻)でも例外を出さない', () => {
@@ -78,11 +97,19 @@ describe('assignGenerations', () => {
         person('young', '若い配偶者'),
       ],
       [
-        family('f1', ['gf', 'gm'], [
-          { childId: 'father', pedigree: 'biological' },
-          { childId: 'aunt', pedigree: 'biological' },
-        ]),
-        family('f2', ['father'], [{ childId: 'child', pedigree: 'biological' }]),
+        family(
+          'f1',
+          ['gf', 'gm'],
+          [
+            { childId: 'father', pedigree: 'biological' },
+            { childId: 'aunt', pedigree: 'biological' },
+          ],
+        ),
+        family(
+          'f2',
+          ['father'],
+          [{ childId: 'child', pedigree: 'biological' }],
+        ),
         family('f3', ['child'], [{ childId: 'young', pedigree: 'biological' }]),
         family('f4', ['aunt', 'young'], []), // 叔母(層1)と孫世代のyoung(層3相当)の婚姻
       ],
