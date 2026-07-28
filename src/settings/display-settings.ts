@@ -59,19 +59,28 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
 const STORAGE_KEY = 'family-tree-generator:display-settings'
 const GRANULARITIES: readonly DateGranularity[] = ['year', 'year-month', 'full']
 const CALENDAR_MODES: readonly CalendarMode[] = ['gregorian', 'wareki']
-const CARD_FIELD_KEYS = Object.keys(DEFAULT_VISIBLE_CARD_FIELDS) as (keyof CardFieldVisibility)[]
+const CARD_FIELD_KEYS = Object.keys(
+  DEFAULT_VISIBLE_CARD_FIELDS,
+) as (keyof CardFieldVisibility)[]
 
 function isGranularity(value: unknown): value is DateGranularity {
-  return typeof value === 'string' && (GRANULARITIES as readonly string[]).includes(value)
+  return (
+    typeof value === 'string' &&
+    (GRANULARITIES as readonly string[]).includes(value)
+  )
 }
 
 function isCalendarMode(value: unknown): value is CalendarMode {
-  return typeof value === 'string' && (CALENDAR_MODES as readonly string[]).includes(value)
+  return (
+    typeof value === 'string' &&
+    (CALENDAR_MODES as readonly string[]).includes(value)
+  )
 }
 
 /** キー単位でフォールバックする(未保存・不正な項目のみデフォルト値を補う。design.md Migration Plan) */
 function parseVisibleCardFields(value: unknown): CardFieldVisibility {
-  if (typeof value !== 'object' || value === null) return DEFAULT_VISIBLE_CARD_FIELDS
+  if (typeof value !== 'object' || value === null)
+    return DEFAULT_VISIBLE_CARD_FIELDS
   const record = value as Record<string, unknown>
   const result = { ...DEFAULT_VISIBLE_CARD_FIELDS }
   for (const key of CARD_FIELD_KEYS) {
@@ -86,16 +95,26 @@ export function loadDisplaySettings(): DisplaySettings {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_DISPLAY_SETTINGS
     const parsed: unknown = JSON.parse(raw)
-    if (typeof parsed !== 'object' || parsed === null) return DEFAULT_DISPLAY_SETTINGS
-    const { birthDateGranularity, deathDateGranularity, calendarMode, visibleCardFields, showMarriageDateOnLink } =
-      parsed as Record<string, unknown>
-    if (!isGranularity(birthDateGranularity) || !isGranularity(deathDateGranularity)) {
+    if (typeof parsed !== 'object' || parsed === null)
       return DEFAULT_DISPLAY_SETTINGS
-    }
-    return {
+    const {
       birthDateGranularity,
       deathDateGranularity,
-      calendarMode: isCalendarMode(calendarMode) ? calendarMode : DEFAULT_DISPLAY_SETTINGS.calendarMode,
+      calendarMode,
+      visibleCardFields,
+      showMarriageDateOnLink,
+    } = parsed as Record<string, unknown>
+    // 粒度2種もキー単位でフォールバックする(不正なgranularityが他キーの設定を巻き添えにしない)
+    return {
+      birthDateGranularity: isGranularity(birthDateGranularity)
+        ? birthDateGranularity
+        : DEFAULT_DISPLAY_SETTINGS.birthDateGranularity,
+      deathDateGranularity: isGranularity(deathDateGranularity)
+        ? deathDateGranularity
+        : DEFAULT_DISPLAY_SETTINGS.deathDateGranularity,
+      calendarMode: isCalendarMode(calendarMode)
+        ? calendarMode
+        : DEFAULT_DISPLAY_SETTINGS.calendarMode,
       visibleCardFields: parseVisibleCardFields(visibleCardFields),
       showMarriageDateOnLink:
         typeof showMarriageDateOnLink === 'boolean'

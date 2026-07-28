@@ -5,6 +5,9 @@ import { SCHEMA_VERSION } from '../../domain/types'
  * 渋沢栄一サンプル — 死別後の再婚パターン。
  * 人名は旧字体表記「澁澤榮一」をそのまま保持し、旧字体対応のショーケースを兼ねる。
  * Wikipedia等の公知情報を基に主要人物のみへ簡略化している。登場人物は全員故人。
+ *
+ * 構造化日付(date)は、明治6年(1873年)のグレゴリオ暦採用以降の日付に限り
+ * originalの月日をそのまま写している。それより前(天保・安政・明治5年以前)は旧暦のため年のみとする。
  */
 export const shibusawaEiichiSample: TreeDocument = {
   schemaVersion: SCHEMA_VERSION,
@@ -34,7 +37,7 @@ export const shibusawaEiichiSample: TreeDocument = {
         date: {
           original: '昭和6年11月11日',
           qualifier: 'exact',
-          date: { year: 1931 },
+          date: { year: 1931, month: 11, day: 11 },
         },
       },
       note: '実業家。「日本資本主義の父」。旧字体表記のまま記録した例。〔公知情報を基に簡略化したサンプルです〕',
@@ -61,7 +64,7 @@ export const shibusawaEiichiSample: TreeDocument = {
         date: {
           original: '明治15年7月14日',
           qualifier: 'exact',
-          date: { year: 1882 },
+          date: { year: 1882, month: 7, day: 14 },
         },
       },
       note: '先妻(尾高家出身)',
@@ -126,7 +129,7 @@ export const shibusawaEiichiSample: TreeDocument = {
         date: {
           original: '昭和17年10月2日',
           qualifier: 'exact',
-          date: { year: 1942 },
+          date: { year: 1942, month: 10, day: 2 },
         },
       },
       note: '長男',

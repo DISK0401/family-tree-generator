@@ -34,22 +34,49 @@ describe('display-settings', () => {
   })
 
   it('壊れたJSONの場合はデフォルト値にフォールバックする', () => {
-    localStorage.setItem('family-tree-generator:display-settings', '{not valid json')
+    localStorage.setItem(
+      'family-tree-generator:display-settings',
+      '{not valid json',
+    )
     expect(loadDisplaySettings()).toEqual(DEFAULT_DISPLAY_SETTINGS)
   })
 
   it('不正な粒度の値が含まれる場合はデフォルト値にフォールバックする', () => {
     localStorage.setItem(
       'family-tree-generator:display-settings',
-      JSON.stringify({ birthDateGranularity: 'century', deathDateGranularity: 'full' }),
+      JSON.stringify({
+        birthDateGranularity: 'century',
+        deathDateGranularity: 'full',
+      }),
     )
     expect(loadDisplaySettings()).toEqual(DEFAULT_DISPLAY_SETTINGS)
+  })
+
+  it('粒度もキー単位でフォールバックする(不正なgranularityが他キーを巻き添えにしない)', () => {
+    localStorage.setItem(
+      'family-tree-generator:display-settings',
+      JSON.stringify({
+        birthDateGranularity: 'century', // 不正
+        deathDateGranularity: 'year', // 有効
+        calendarMode: 'wareki', // 有効
+      }),
+    )
+    expect(loadDisplaySettings()).toEqual({
+      ...DEFAULT_DISPLAY_SETTINGS,
+      birthDateGranularity: DEFAULT_DISPLAY_SETTINGS.birthDateGranularity,
+      deathDateGranularity: 'year',
+      calendarMode: 'wareki',
+    })
   })
 
   it('calendarModeが未保存・不正な場合はcalendarModeのみデフォルト値にフォールバックする(粒度は維持)', () => {
     localStorage.setItem(
       'family-tree-generator:display-settings',
-      JSON.stringify({ birthDateGranularity: 'year', deathDateGranularity: 'full', calendarMode: 'unknown' }),
+      JSON.stringify({
+        birthDateGranularity: 'year',
+        deathDateGranularity: 'full',
+        calendarMode: 'unknown',
+      }),
     )
     expect(loadDisplaySettings()).toEqual({
       birthDateGranularity: 'year',
@@ -63,13 +90,20 @@ describe('display-settings', () => {
   it('showMarriageDateOnLinkが未保存・不正な場合はデフォルト値(false)にフォールバックする', () => {
     localStorage.setItem(
       'family-tree-generator:display-settings',
-      JSON.stringify({ birthDateGranularity: 'full', deathDateGranularity: 'full', showMarriageDateOnLink: 'yes' }),
+      JSON.stringify({
+        birthDateGranularity: 'full',
+        deathDateGranularity: 'full',
+        showMarriageDateOnLink: 'yes',
+      }),
     )
     expect(loadDisplaySettings().showMarriageDateOnLink).toBe(false)
   })
 
   it('showMarriageDateOnLinkを保存すると復元できる', () => {
-    saveDisplaySettings({ ...DEFAULT_DISPLAY_SETTINGS, showMarriageDateOnLink: true })
+    saveDisplaySettings({
+      ...DEFAULT_DISPLAY_SETTINGS,
+      showMarriageDateOnLink: true,
+    })
     expect(loadDisplaySettings().showMarriageDateOnLink).toBe(true)
   })
 
@@ -79,7 +113,11 @@ describe('display-settings', () => {
       JSON.stringify({
         birthDateGranularity: 'full',
         deathDateGranularity: 'full',
-        visibleCardFields: { surname: false, given: 'not-a-boolean', furigana: true },
+        visibleCardFields: {
+          surname: false,
+          given: 'not-a-boolean',
+          furigana: true,
+        },
       }),
     )
     expect(loadDisplaySettings().visibleCardFields).toEqual({
@@ -114,7 +152,9 @@ describe('formatDateForDisplay', () => {
   })
 
   it('粒度が"full"でもデータが年月までしか無ければ年月を返す', () => {
-    expect(formatDateForDisplay({ year: 1900, month: 3 }, 'full')).toBe('1900-03')
+    expect(formatDateForDisplay({ year: 1900, month: 3 }, 'full')).toBe(
+      '1900-03',
+    )
   })
 
   it('calendarModeを指定しない場合は西暦のまま(既存呼び出しとの後方互換)', () => {
@@ -122,14 +162,28 @@ describe('formatDateForDisplay', () => {
   })
 
   it('和暦モードでは和暦表記に変換する', () => {
-    expect(formatDateForDisplay({ year: 1964, month: 10, day: 10 }, 'full', 'wareki')).toBe('昭和39年10月10日')
+    expect(
+      formatDateForDisplay(
+        { year: 1964, month: 10, day: 10 },
+        'full',
+        'wareki',
+      ),
+    ).toBe('昭和39年10月10日')
   })
 
   it('和暦モード+粒度"year"では和暦の年のみを返す(粒度丸め→和暦変換の順、design.md D4)', () => {
-    expect(formatDateForDisplay({ year: 1964, month: 10, day: 10 }, 'year', 'wareki')).toBe('昭和39年')
+    expect(
+      formatDateForDisplay(
+        { year: 1964, month: 10, day: 10 },
+        'year',
+        'wareki',
+      ),
+    ).toBe('昭和39年')
   })
 
   it('和暦モードでも元号テーブルの範囲外(明治より前)は西暦表記にフォールバックする(design.md D5)', () => {
-    expect(formatDateForDisplay({ year: 1800, month: 1, day: 1 }, 'full', 'wareki')).toBe('1800-01-01')
+    expect(
+      formatDateForDisplay({ year: 1800, month: 1, day: 1 }, 'full', 'wareki'),
+    ).toBe('1800-01-01')
   })
 })
