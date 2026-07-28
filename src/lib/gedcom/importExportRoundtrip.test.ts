@@ -214,12 +214,69 @@ describe('GEDCOM 7.0の完全ラウンドトリップ', () => {
     )
   })
 
-  it('続柄unknownが7.0経由の往復で保たれる(OTHER+PHRASE)', () => {
+  it('続柄step/unknownが7.0経由の往復でPHRASEにより判別され、共に保たれる', () => {
+    let document = createTreeDocument()
+    const parent = addPerson(document, { name: { given: '親' } })
+    document = parent.doc
+    const stepChild = addChild(document, parent.personId, {
+      name: { given: '継子側' },
+    })
+    document = stepChild.doc
+    const unknownChild = addChild(document, parent.personId, {
+      name: { given: '不明側' },
+    })
+    document = unknownChild.doc
+    // 同一家族の子2名へ step / unknown をそれぞれ設定する
+    document = {
+      ...document,
+      families: Object.fromEntries(
+        Object.entries(document.families).map(([id, family]) => [
+          id,
+          {
+            ...family,
+            children: family.children.map((link) => ({
+              ...link,
+              pedigree:
+                link.childId === stepChild.childId
+                  ? ('step' as const)
+                  : ('unknown' as const),
+            })),
+          },
+        ]),
+      ),
+    }
+
+    const { text } = exportGedcom(document, '7.0')
+    // どちらも規格内のOTHERへ丸められ、PHRASEで判別される
+    expect(text).toContain('2 PEDI OTHER')
+    expect(text).toContain('3 PHRASE 継子')
+    expect(text).toContain('3 PHRASE 続柄不明')
+
+    const reimported = importGedcom(bytesOf(text))
+
+    expect(reimported.success).toBe(true)
+    if (!reimported.success) return
+    const family = Object.values(reimported.document.families)[0]
+    const pedigreeByName = new Map(
+      family.children.map((link) => [
+        reimported.document.persons[link.childId]?.name.given,
+        link.pedigree,
+      ]),
+    )
+    expect(pedigreeByName.get('継子側')).toBe('step')
+    expect(pedigreeByName.get('不明側')).toBe('unknown')
+    // PHRASEで判別できているためOTHERに関する警告は出ない
+    expect(reimported.warnings.some((w) => w.message.includes('OTHER'))).toBe(
+      false,
+    )
+  })
+
+  it('続柄stepは5.5.1経由の往復ではunknown+警告へ劣化する(許容済みの劣化)', () => {
     let document = createTreeDocument()
     const parent = addPerson(document, { name: { given: '親' } })
     document = parent.doc
     const child = addChild(document, parent.personId, {
-      name: { given: '子' },
+      name: { given: '継子' },
     })
     document = child.doc
     document = {
@@ -231,20 +288,30 @@ describe('GEDCOM 7.0の完全ラウンドトリップ', () => {
             ...family,
             children: family.children.map((link) => ({
               ...link,
-              pedigree: 'unknown' as const,
+              pedigree: 'step' as const,
             })),
           },
         ]),
       ),
     }
 
-    const { text } = exportGedcom(document, '7.0')
+    const { text } = exportGedcom(document, '5.5.1')
+    // 5.5.1は従来どおり独自値otherを出力する(後方互換。PHRASEは5.5.1に無い)
+    expect(text).toContain('2 PEDI other')
+    expect(text).not.toContain('PHRASE')
+
     const reimported = importGedcom(bytesOf(text))
 
     expect(reimported.success).toBe(true)
     if (!reimported.success) return
     const family = Object.values(reimported.document.families)[0]
+    // PHRASEによる判別ができないため step は unknown へ劣化する(警告で通知)
     expect(family.children[0].pedigree).toBe('unknown')
+    expect(
+      reimported.warnings.some((w) =>
+        w.message.includes('続柄 OTHER は『不明』として取り込みました'),
+      ),
+    ).toBe(true)
   })
 })
 

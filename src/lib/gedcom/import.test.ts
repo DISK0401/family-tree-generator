@@ -151,6 +151,72 @@ describe('importGedcom 養子縁組を含むファイルのインポート', () 
       true,
     )
   })
+
+  it('PEDI OTHERはPHRASEで判別する(継子→step / 続柄不明→unknown)', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 NAME StepChild /Test/',
+      '1 FAMC @F1@',
+      '2 PEDI OTHER',
+      '3 PHRASE 継子',
+      '0 @I2@ INDI',
+      '1 NAME UnknownChild /Test/',
+      '1 FAMC @F1@',
+      '2 PEDI OTHER',
+      '3 PHRASE 続柄不明',
+      '0 @I3@ INDI',
+      '1 NAME Parent /Test/',
+      '0 @F1@ FAM',
+      '1 HUSB @I3@',
+      '1 CHIL @I1@',
+      '1 CHIL @I2@',
+      '0 TRLR',
+    ].join('\n')
+
+    const result = importGedcom(bytesOf(text))
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+
+    const family = Object.values(result.document.families)[0]
+    expect(family.children.map((c) => c.pedigree)).toEqual(['step', 'unknown'])
+    // PHRASEで判別できているため警告は出ない
+    expect(result.warnings.some((w) => w.message.includes('OTHER'))).toBe(false)
+  })
+
+  it('PHRASEのないPEDI OTHERは「不明」として取り込み警告を出す', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 NAME Child /Test/',
+      '1 FAMC @F1@',
+      '2 PEDI OTHER',
+      '0 @I2@ INDI',
+      '1 NAME Parent /Test/',
+      '0 @F1@ FAM',
+      '1 HUSB @I2@',
+      '1 CHIL @I1@',
+      '0 TRLR',
+    ].join('\n')
+
+    const result = importGedcom(bytesOf(text))
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+
+    const family = Object.values(result.document.families)[0]
+    expect(family.children[0].pedigree).toBe('unknown')
+    expect(
+      result.warnings.some((w) =>
+        w.message.includes('続柄 OTHER は『不明』として取り込みました'),
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('importGedcom ANUL(婚姻取消)の取り込み', () => {

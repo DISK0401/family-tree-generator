@@ -233,7 +233,20 @@ function extractFamcPedigrees(
         message: `続柄 SEALING は『不明』として取り込みました(@${indi.xref ?? '?'}@)`,
       })
     }
-    map.set(famXref, pediToPedigree(pediNode?.value))
+    const { pedigree, unrecognizedOther } = pediToPedigree(
+      pediNode?.value,
+      pediNode ? findChild(pediNode, 'PHRASE')?.value : undefined,
+    )
+    if (unrecognizedOther) {
+      // OTHERはPHRASE(継子/続柄不明)で判別できる場合のみstep/unknownへ確定できる。
+      // 判別できないOTHER(他ツール由来・5.5.1のother等)はunknownへ丸めた旨を知らせる
+      warnings.push({
+        lineNumber: pediNode?.lineNumber,
+        tag: 'PEDI',
+        message: `続柄 OTHER は『不明』として取り込みました(@${indi.xref ?? '?'}@)`,
+      })
+    }
+    map.set(famXref, pedigree)
   }
   return map
 }
