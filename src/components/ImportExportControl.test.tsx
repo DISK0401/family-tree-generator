@@ -14,6 +14,9 @@ beforeEach(() => {
   createObjectURLSpy.mockClear()
   URL.createObjectURL = createObjectURLSpy
   URL.revokeObjectURL = vi.fn()
+  // エクスポートはアンカーの click() でblobダウンロードを起動するが、jsdomはダウンロードを
+  // 実装しておらず「Not implemented: navigation to another Document」警告を出すためスタブする
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 })
 
 function openDialog() {
