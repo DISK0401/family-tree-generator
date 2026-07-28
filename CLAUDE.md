@@ -7,6 +7,7 @@
 | `npm run dev`                                                 | 開発サーバ(`/` ランディング、`/app` エディタ)            |
 | `npm run test`                                                | Vitest(全テスト)。スコープ実行は `npx vitest run <path>` |
 | `npm run lint` / `npm run format:check` / `npm run typecheck` | 品質チェック(CI と同じ)                                  |
+| `npm run test:e2e`                                            | Playwright スモーク(外部送信ゼロ検証。要 chromium)       |
 | `npm run build`                                               | `tsc -b && vite build`                                   |
 
 Node は `.nvmrc`(22)を使う。PR の必須チェック名はジョブID `quality`(quality-gate.yml のジョブに `name:` を付けるとチェック名が変わり必須チェックが外れるので付けない)。

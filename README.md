@@ -107,8 +107,10 @@ Windows・macOS・Linuxいずれの環境でも、追加のコマンド実行な
 | `npm run lint` | ESLint によるコードチェック |
 | `npm run format` | Prettier でコードを整形する |
 | `npm run format:check` | Prettier のフォーマットチェック(整形なし) |
-| `npm run typecheck` | TypeScript の型チェック(`tsc -b`) |
+| `npm run typecheck` | TypeScript の型チェック(`tsc -b`、strict) |
 | `npm run test` | Vitest によるテスト実行 |
+| `npm run test:coverage` | カバレッジ計測付きテスト(`coverage/` にレポート出力) |
+| `npm run test:e2e` | Playwright による実ブラウザのスモークテスト(外部送信ゼロの検証・IndexedDB復元。初回は `npx playwright install chromium` が必要) |
 
 ## 開発者向け情報
 
@@ -135,7 +137,11 @@ Windows・macOS・Linuxいずれの環境でも、追加のコマンド実行な
 
 ### 外部送信ゼロの検証方法
 
-無料版の「サーバへ一切送信しない」制約は、ブラウザの開発者ツールでネットワークタブを開いた状態で家系図を操作し、自オリジン(`http://localhost:5173` 等)以外へのリクエストが発生しないことで確認できる。ランディングページ・サンプル読み込みも同様に外部リクエストゼロである。
+無料版の「サーバへ一切送信しない」制約は、三層で守られている。
+
+1. **E2Eテスト(CI)**: `npm run test:e2e` が実ブラウザでランディング・エディタ操作・サンプル読み込みの全リクエストを監視し、自オリジン以外へのリクエストが0件であることをアサートする(`e2e/no-external-requests.spec.ts`)。
+2. **CSP(本番)**: `worker/index.ts` が全レスポンスへ `connect-src 'self'` 等の Content-Security-Policy を付与し、仮に外部リクエストが混入してもブラウザが遮断する。
+3. **手動確認**: ブラウザの開発者ツールのネットワークタブでも同様に確認できる。
 
 ### OGP画像の運用
 
