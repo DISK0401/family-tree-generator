@@ -1,0 +1,24 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _KANA_SURN https://github.com/DISK0401/family-tree-generator#_kana_surn
+2 TAG _KANA_GIVN https://github.com/DISK0401/family-tree-generator#_kana_givn
+2 TAG _TREE_TITLE https://github.com/DISK0401/family-tree-generator#_tree_title
+1 DATE 20 JUL 2026
+1 _TREE_TITLE 渡邊家の系譜
+0 @I1@ INDI
+1 NAME 榮太郎 /渡邊/
+2 GIVN 榮太郎
+2 SURN 渡邊
+2 TRAN えいたろう /わたなべ/
+3 LANG ja-Kana
+2 _KANA_SURN わたなべ
+2 _KANA_GIVN えいたろう
+1 SEX M
+1 BIRT
+2 DATE ABT 1877
+3 PHRASE 明治10年頃
+2 PLAC 東京府豊多摩郡
+1 NOTE 榮太郎は明治十年頃に東京府豊多摩郡で生まれたと伝えられている。生家は代々農業を営み、屋号を「角屋」と称した。若い頃に上京して商家へ奉公に出て、後に日本橋の呉服問屋で番頭を務めた。大正十二年の関東大震災では店舗を焼失したが、一家で郊外へ移り住み、昭和の初めに小さな呉服店を再興した。晩年は孫たちに囲まれて過ごし、地域の世話役としても慕われたという。この長文の来歴メモはGEDCOM 7.0では1行のまま出力されることを検証するためのものである。
+0 TRLR

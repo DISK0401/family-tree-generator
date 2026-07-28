@@ -26,6 +26,8 @@
   padding: var(--header-padding-y) var(--header-padding-x);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);
+  /* iOS Safari / 旧WebKit向け(監査 低7) */
+  -webkit-backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);
 }
 
@@ -178,9 +180,7 @@
 
 .feature-card:hover {
   translate: 0 -2px;
-  box-shadow:
-    0 2px 4px rgb(33 29 22 / 0.08),
-    0 8px 20px rgb(33 29 22 / 0.12);
+  box-shadow: var(--shadow-hover);
 }
 
 .feature-card-head {

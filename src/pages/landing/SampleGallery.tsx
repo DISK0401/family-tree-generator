@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { SAMPLE_METAS, type SampleId } from '../../samples/sample-meta'
 import { SAMPLE_FIGURES } from './figures'
 import { TreeFigure } from './TreeFigure'
@@ -7,12 +7,38 @@ import { TreeFigure } from './TreeFigure'
  * 偉人家系図サンプルのギャラリー(specs/sample-tree-gallery)。
  * タブでサンプルを切り替え、静的SVG図版・パターン説明・注記・
  * 「このサンプルをエディタで開く」導線(/app?sample=<id>)を表示する。
+ *
+ * a11y(監査 低10): tablistの標準操作に合わせ、タブ間は矢印キーで移動する
+ * roving tabindex(選択中のタブだけTab順に入る)を実装する。
  */
 export function SampleGallery() {
   const [selectedId, setSelectedId] = useState<SampleId>('tokugawa-ieyasu')
   const baseId = useId()
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const selected =
     SAMPLE_METAS.find((m) => m.id === selectedId) ?? SAMPLE_METAS[0]
+
+  function moveTo(index: number) {
+    const meta = SAMPLE_METAS[index]
+    if (!meta) return
+    setSelectedId(meta.id)
+    tabRefs.current[index]?.focus()
+  }
+
+  function handleTabKeyDown(
+    e: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    const last = SAMPLE_METAS.length - 1
+    let next: number | null = null
+    if (e.key === 'ArrowRight') next = index === last ? 0 : index + 1
+    else if (e.key === 'ArrowLeft') next = index === 0 ? last : index - 1
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = last
+    if (next === null) return
+    e.preventDefault()
+    moveTo(next)
+  }
 
   return (
     <div className="sample-gallery">
@@ -21,16 +47,21 @@ export function SampleGallery() {
         role="tablist"
         aria-label="サンプルの選択"
       >
-        {SAMPLE_METAS.map((meta) => (
+        {SAMPLE_METAS.map((meta, index) => (
           <button
             key={meta.id}
             type="button"
             role="tab"
             id={`${baseId}-tab-${meta.id}`}
+            ref={(el) => {
+              tabRefs.current[index] = el
+            }}
             aria-selected={meta.id === selected.id}
             aria-controls={`${baseId}-panel`}
+            tabIndex={meta.id === selected.id ? 0 : -1}
             className="sample-gallery-tab"
             onClick={() => setSelectedId(meta.id)}
+            onKeyDown={(e) => handleTabKeyDown(e, index)}
           >
             {meta.tabLabel}
             <span className="sample-gallery-tab-pattern">{meta.pattern}</span>

@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { createTreeDocument } from '../../domain/helpers'
 import { addPerson } from '../../domain/commands'
 import { exportFamilyTreeJsonText } from './export'
+import type { TreeDocument } from '../../domain/types'
 
 describe('exportFamilyTreeJsonText', () => {
   it('schemaVersionを含むJSONを出力する', () => {
     const document = createTreeDocument()
     const text = exportFamilyTreeJsonText(document)
-    const parsed = JSON.parse(text)
+    const parsed = JSON.parse(text) as TreeDocument
 
     expect(parsed.schemaVersion).toBe(document.schemaVersion)
     expect(typeof parsed.updatedAt).toBe('string')
@@ -22,7 +23,7 @@ describe('exportFamilyTreeJsonText', () => {
     document = result.doc
 
     const text = exportFamilyTreeJsonText(document)
-    const parsed = JSON.parse(text)
+    const parsed = JSON.parse(text) as TreeDocument
     const person = parsed.persons[result.personId]
 
     expect(person.name.surname).toBe('渡邊')

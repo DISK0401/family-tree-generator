@@ -10,13 +10,29 @@
  *
  * コンポーネントは必ずこのトークン経由で色・書体を参照すること。
  * テーマはトークンの再定義のみで切り替わる(ライト=昼の帳簿 / ダーク=夜の帳簿)。
+ *
+ * テーマ定義の構造(重複圧縮):
+ *   - ライト一式は `:root, :root[data-theme='light']` の1箇所のみに書く。
+ *     `:root[data-theme='light']`(詳細度0,2,0)が同居することで、OSがダークでも
+ *     明示ライト指定が @media 内の `:root:not(...)`(同じく0,2,0だが後述の除外で不一致)に
+ *     依存せず必ず勝つ。
+ *   - ダーク一式は「OS設定由来(@media)」と「明示指定([data-theme='dark'])」の2箇所。
+ *     メディアクエリとセレクタはCSSでOR結合できないため、この2箇所は圧縮できない
+ *     (旧構造の4回書きから3回書きへの圧縮)。
+ *   - 実効値は旧構造と同一:
+ *     OSライト+指定なし → ライト / OSダーク+指定なし → @mediaダーク /
+ *     data-theme='light' → @media内の :not([data-theme='light']) が不一致になりライト /
+ *     data-theme='dark' → 詳細度(0,2,0)の明示ダークが勝つ。
  */
 
-:root {
+:root,
+:root[data-theme='light'] {
   /* 墨 — テキスト */
   --ink: #2b2a27;
   --ink-soft: #625b4e;
-  --ink-faint: #8f8672;
+  /* 補助テキスト。墨+茶の方向性を保ちつつ WCAG AA(4.5:1)以上を確保する(監査 中8)。
+     実効コントラスト: vs --paper 5.10 / vs --paper-raised 5.57 / vs --paper-sunken 4.57 */
+  --ink-faint: #6b634f;
 
   /* 楮紙 — 地と面 */
   --paper: #f2ede1;
@@ -97,16 +113,25 @@
     0 1px 2px rgb(33 29 22 / 0.08), 0 4px 12px rgb(33 29 22 / 0.07);
   --shadow-floating:
     0 2px 4px rgb(33 29 22 / 0.08), 0 12px 32px rgb(33 29 22 / 0.16);
+  /* ホバーで浮き上がるカード用(raisedとfloatingの中間)。各所のハードコード影を統合(監査 低5) */
+  --shadow-hover:
+    0 2px 4px rgb(33 29 22 / 0.08), 0 8px 20px rgb(33 29 22 / 0.12);
+  /* 編集パネルの左縁の接地影 */
+  --shadow-panel: -4px 0 16px rgb(33 29 22 / 0.05);
+  /* モーダルの背景オーバーレイ。無彩色グレーではなく墨のアルファで紙の世界観と馴染ませる */
+  --overlay: rgb(43 42 39 / 0.5);
 
   color-scheme: light;
 }
 
-/* 夜の帳簿 — 墨黒の地に生成りの文字。青系ではなく暖色系で「紙」の質感を保つ(単純反転にしない) */
+/* 夜の帳簿 — 墨黒の地に生成りの文字。青系ではなく暖色系で「紙」の質感を保つ(単純反転にしない)。
+   :not([data-theme='light']) により「明示ライト指定はOSダークより優先」を維持する */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --ink: #e9e4d8;
     --ink-soft: #b3ab97;
-    --ink-faint: #847c69;
+    /* 実効コントラスト: vs --paper 5.29 / vs --paper-raised 4.86(監査 中8) */
+    --ink-faint: #948b76;
 
     --paper: #191714;
     --paper-raised: #221f1b;
@@ -131,43 +156,21 @@
 
     --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 14px rgb(0 0 0 / 0.35);
     --shadow-floating: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 36px rgb(0 0 0 / 0.5);
+    --shadow-hover: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 22px rgb(0 0 0 / 0.4);
+    --shadow-panel: -4px 0 16px rgb(0 0 0 / 0.35);
+    --overlay: rgb(0 0 0 / 0.6);
 
     color-scheme: dark;
   }
 }
 
-/* 明示的なテーマ指定はOS設定より優先(双方向) */
-:root[data-theme='light'] {
-  --ink: #2b2a27;
-  --ink-soft: #625b4e;
-  --ink-faint: #8f8672;
-  --paper: #f2ede1;
-  --paper-raised: #fbf7ec;
-  --paper-sunken: #e8e1d0;
-  --line: #d8d2c4;
-  --line-strong: #a89f8a;
-  --ai: #274a78;
-  --ai-strong: #17324f;
-  --ai-wash: #e1e7ef;
-  --shu: #c73e3a;
-  --shu-wash: #f5e1dc;
-  --danger: #a8382c;
-  --danger-wash: #f0ddd6;
-  --warn: #8a5a12;
-  --warn-wash: #f1e6cd;
-  --gender-male: #3e6b5c;
-  --gender-female: #7a4a68;
-  --shadow-raised:
-    0 1px 2px rgb(33 29 22 / 0.08), 0 4px 12px rgb(33 29 22 / 0.07);
-  --shadow-floating:
-    0 2px 4px rgb(33 29 22 / 0.08), 0 12px 32px rgb(33 29 22 / 0.16);
-  color-scheme: light;
-}
-
+/* 明示的なダーク指定はOS設定より優先。値は上の@mediaダークと同一に保つこと
+   (メディアクエリとセレクタはOR結合できないため、ダーク一式のみ2箇所定義が残る) */
 :root[data-theme='dark'] {
   --ink: #e9e4d8;
   --ink-soft: #b3ab97;
-  --ink-faint: #847c69;
+  /* 実効コントラスト: vs --paper 5.29 / vs --paper-raised 4.86(監査 中8) */
+  --ink-faint: #948b76;
   --paper: #191714;
   --paper-raised: #221f1b;
   --paper-sunken: #121110;
@@ -186,5 +189,8 @@
   --gender-female: #c98fb3;
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5), 0 4px 14px rgb(0 0 0 / 0.35);
   --shadow-floating: 0 2px 4px rgb(0 0 0 / 0.5), 0 12px 36px rgb(0 0 0 / 0.5);
+  --shadow-hover: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 22px rgb(0 0 0 / 0.4);
+  --shadow-panel: -4px 0 16px rgb(0 0 0 / 0.35);
+  --overlay: rgb(0 0 0 / 0.6);
   color-scheme: dark;
 }

@@ -14,26 +14,40 @@ export function newId(): string {
   return crypto.randomUUID()
 }
 
-/** 名前以外は不明のままでも人物として成立させる */
-export function createPerson(init: { name: PersonName } & Partial<Omit<Person, 'id' | 'name'>>): Person {
+/**
+ * 名前以外は不明のままでも人物として成立させる。
+ * 必須フィールドの既定値は`??`で補う。`{ gender: undefined }`のように呼び出し側が
+ * 明示的にundefinedを渡した場合(スプレッドで組んだinitに生じがち)でも、
+ * スプレッドの後勝ちで既定値が潰れて不正なPersonができないようにするため
+ */
+export function createPerson(
+  init: { name: PersonName } & Partial<Omit<Person, 'id' | 'name'>>,
+): Person {
   return {
     id: newId(),
-    gender: 'unknown',
     ...init,
+    gender: init.gender ?? 'unknown',
   }
 }
 
-export function createFamily(init: { spouseIds: Family['spouseIds'] } & Partial<Omit<Family, 'id' | 'spouseIds'>>): Family {
+/** 必須フィールドを`??`で補う理由は`createPerson`と同じ(明示undefinedへの防御) */
+export function createFamily(
+  init: { spouseIds: Family['spouseIds'] } & Partial<
+    Omit<Family, 'id' | 'spouseIds'>
+  >,
+): Family {
   return {
     id: newId(),
-    kind: 'unknown',
-    events: [],
-    children: [],
     ...init,
+    kind: init.kind ?? 'unknown',
+    events: init.events ?? [],
+    children: init.children ?? [],
   }
 }
 
-export function createTreeDocument(init?: Partial<Pick<TreeDocument, 'id' | 'title'>>): TreeDocument {
+export function createTreeDocument(
+  init?: Partial<Pick<TreeDocument, 'id' | 'title'>>,
+): TreeDocument {
   return {
     schemaVersion: SCHEMA_VERSION,
     id: init?.id ?? newId(),
@@ -55,11 +69,25 @@ function dateSortKey(d: CalendarDate | undefined): number {
   return d.year * 10000 + (d.month ?? 0) * 100 + (d.day ?? 0)
 }
 
-export function compareFuzzyDate(a: FuzzyDate | undefined, b: FuzzyDate | undefined): number {
-  return dateSortKey(a?.date) - dateSortKey(b?.date)
+/**
+ * 日付なしは末尾へ、同順位は0を返す比較器。
+ * キーの引き算では両方日付なしのときにInfinity−Infinity=NaNとなり、
+ * Array.prototype.sortの比較器として一貫しない(挙動が処理系任せになる)ため、
+ * 比較で-1/0/1を返す
+ */
+export function compareFuzzyDate(
+  a: FuzzyDate | undefined,
+  b: FuzzyDate | undefined,
+): number {
+  const keyA = dateSortKey(a?.date)
+  const keyB = dateSortKey(b?.date)
+  if (keyA === keyB) return 0
+  return keyA < keyB ? -1 : 1
 }
 
 /** 家族のイベントを日付順(日付なしは末尾、同順位は登録順)で返す */
-export function familyEventsInOrder(family: Family): LifeEvent<FamilyEventType>[] {
+export function familyEventsInOrder(
+  family: Family,
+): LifeEvent<FamilyEventType>[] {
   return [...family.events].sort((a, b) => compareFuzzyDate(a.date, b.date))
 }

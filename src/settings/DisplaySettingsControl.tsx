@@ -1,6 +1,10 @@
 import { useId } from 'react'
 import { useDisplaySettingsStore } from './display-settings-store'
-import type { CalendarMode, CardFieldVisibility, DateGranularity } from './display-settings'
+import type {
+  CalendarMode,
+  CardFieldVisibility,
+  DateGranularity,
+} from './display-settings'
 import './DisplaySettingsControl.css'
 
 const GRANULARITY_LABEL: Record<DateGranularity, string> = {
@@ -25,23 +29,39 @@ const CARD_FIELD_LABEL: Record<keyof CardFieldVisibility, string> = {
   age: '年齢',
   genderIcon: '性別アイコン',
 }
-const CARD_FIELD_KEYS = Object.keys(CARD_FIELD_LABEL) as (keyof CardFieldVisibility)[]
+const CARD_FIELD_KEYS = Object.keys(
+  CARD_FIELD_LABEL,
+) as (keyof CardFieldVisibility)[]
 
 /**
  * 生年月日・没年月日をカードに表示する粒度を選ぶ設定(design.md D9)。
  * 家系図データではなく端末ローカルのUI設定のため、設定メニュー内に置く。
  */
 export function DisplaySettingsControl() {
-  const birthDateGranularity = useDisplaySettingsStore((s) => s.birthDateGranularity)
-  const deathDateGranularity = useDisplaySettingsStore((s) => s.deathDateGranularity)
+  const birthDateGranularity = useDisplaySettingsStore(
+    (s) => s.birthDateGranularity,
+  )
+  const deathDateGranularity = useDisplaySettingsStore(
+    (s) => s.deathDateGranularity,
+  )
   const calendarMode = useDisplaySettingsStore((s) => s.calendarMode)
   const visibleCardFields = useDisplaySettingsStore((s) => s.visibleCardFields)
-  const showMarriageDateOnLink = useDisplaySettingsStore((s) => s.showMarriageDateOnLink)
-  const setBirthDateGranularity = useDisplaySettingsStore((s) => s.setBirthDateGranularity)
-  const setDeathDateGranularity = useDisplaySettingsStore((s) => s.setDeathDateGranularity)
+  const showMarriageDateOnLink = useDisplaySettingsStore(
+    (s) => s.showMarriageDateOnLink,
+  )
+  const setBirthDateGranularity = useDisplaySettingsStore(
+    (s) => s.setBirthDateGranularity,
+  )
+  const setDeathDateGranularity = useDisplaySettingsStore(
+    (s) => s.setDeathDateGranularity,
+  )
   const setCalendarMode = useDisplaySettingsStore((s) => s.setCalendarMode)
-  const setVisibleCardField = useDisplaySettingsStore((s) => s.setVisibleCardField)
-  const setShowMarriageDateOnLink = useDisplaySettingsStore((s) => s.setShowMarriageDateOnLink)
+  const setVisibleCardField = useDisplaySettingsStore(
+    (s) => s.setVisibleCardField,
+  )
+  const setShowMarriageDateOnLink = useDisplaySettingsStore(
+    (s) => s.setShowMarriageDateOnLink,
+  )
   const birthId = useId()
   const deathId = useId()
   const calendarModeId = useId()
@@ -50,7 +70,10 @@ export function DisplaySettingsControl() {
   return (
     <div className="display-settings-control">
       <p className="display-settings-control-heading">カードの表示</p>
-      <label htmlFor={calendarModeId} className="display-settings-control-field">
+      <label
+        htmlFor={calendarModeId}
+        className="display-settings-control-field"
+      >
         表示形式
         <select
           id={calendarModeId}
@@ -69,7 +92,9 @@ export function DisplaySettingsControl() {
         <select
           id={birthId}
           value={birthDateGranularity}
-          onChange={(e) => setBirthDateGranularity(e.target.value as DateGranularity)}
+          onChange={(e) =>
+            setBirthDateGranularity(e.target.value as DateGranularity)
+          }
         >
           {(Object.keys(GRANULARITY_LABEL) as DateGranularity[]).map((g) => (
             <option key={g} value={g}>
@@ -83,7 +108,9 @@ export function DisplaySettingsControl() {
         <select
           id={deathId}
           value={deathDateGranularity}
-          onChange={(e) => setDeathDateGranularity(e.target.value as DateGranularity)}
+          onChange={(e) =>
+            setDeathDateGranularity(e.target.value as DateGranularity)
+          }
         >
           {(Object.keys(GRANULARITY_LABEL) as DateGranularity[]).map((g) => (
             <option key={g} value={g}>

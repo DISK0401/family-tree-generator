@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "family-tree-generator",
+  // トップレベルの name は本番と別名にする。`--env` を付け忘れた素の `wrangler deploy` が
+  // 本番 Worker(family-tree-generator)を直接上書きする事故を防ぐため、
+  // 素のデプロイは無害な別 Worker に落ちるようにしておく
+  "name": "family-tree-generator-local",
   "compatibility_date": "2026-07-15",
   "main": "./worker/index.ts",
   "assets": {
@@ -8,6 +11,12 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": true,
+  },
+  // ENVIRONMENT が "production" のときだけ検索エンジンのインデックスを許可する
+  // (worker/index.ts がフェイルクローズドで判定する)。トップレベルにも定義して
+  // 「env 指定なし = 非本番」に倒す
+  "vars": {
+    "ENVIRONMENT": "local",
   },
   "env": {
     "dev": {

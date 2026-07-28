@@ -34,9 +34,12 @@
 ## ④ `develop` ブランチの作成とブランチ保護
 
 1. GitHub リポジトリで `main` から `develop` ブランチを作成する。
-2. `Settings` → `Branches` → `Branch protection rules` で `main` と `develop` の両方に以下を設定する。
+2. `Settings` → `Rules` → `Rulesets`(または `Branches` → `Branch protection rules`)で `main` と `develop` の両方に以下を設定する。
    - Pull Request を必須にする(直接 push を禁止)
-   - マージ前に `Quality Gate` ワークフローのステータスチェックを必須にする
+   - マージ前に必須ステータスチェックとして **`quality`** を指定する
+     (チェック名はワークフロー名「Quality Gate」ではなく、`quality-gate.yml` の **ジョブID** である点に注意。「Quality Gate」で探しても候補に出ない)
+   - 「Require branches to be up to date before merging」(strict)を有効にする
+     (古い base で緑になった PR をそのままマージすると、マージ結果が未検証のままデプロイされるため)
 
 ---
 

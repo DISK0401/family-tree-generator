@@ -1,3 +1,4 @@
+import { isValidCalendarDate } from './calendar-date'
 import type { CalendarDate } from './types'
 
 /**
@@ -17,10 +18,26 @@ export interface Era {
 /** 新しい元号ほど先頭。江戸期以前へ拡張する場合は末尾に行を追加する */
 export const ERA_TABLE: Era[] = [
   { name: '令和', start: { year: 2019, month: 5, day: 1 } },
-  { name: '平成', start: { year: 1989, month: 1, day: 8 }, end: { year: 2019, month: 4, day: 30 } },
-  { name: '昭和', start: { year: 1926, month: 12, day: 25 }, end: { year: 1989, month: 1, day: 7 } },
-  { name: '大正', start: { year: 1912, month: 7, day: 30 }, end: { year: 1926, month: 12, day: 24 } },
-  { name: '明治', start: { year: 1868, month: 10, day: 23 }, end: { year: 1912, month: 7, day: 29 } },
+  {
+    name: '平成',
+    start: { year: 1989, month: 1, day: 8 },
+    end: { year: 2019, month: 4, day: 30 },
+  },
+  {
+    name: '昭和',
+    start: { year: 1926, month: 12, day: 25 },
+    end: { year: 1989, month: 1, day: 7 },
+  },
+  {
+    name: '大正',
+    start: { year: 1912, month: 7, day: 30 },
+    end: { year: 1926, month: 12, day: 24 },
+  },
+  {
+    name: '明治',
+    start: { year: 1868, month: 10, day: 23 },
+    end: { year: 1912, month: 7, day: 29 },
+  },
 ]
 
 export interface WarekiDate {
@@ -31,22 +48,16 @@ export interface WarekiDate {
   day?: number
 }
 
-export type WarekiResult<T> = { ok: true; value: T } | { ok: false; message: string }
+export type WarekiResult<T> =
+  { ok: true; value: T } | { ok: false; message: string }
 
 function toOrdinal(d: { year: number; month: number; day: number }): number {
   return d.year * 10000 + d.month * 100 + d.day
 }
 
-function maxEraYear(era: Era): number {
-  return era.end ? era.end.year - era.start.year + 1 : new Date().getFullYear() - era.start.year + 1
-}
-
-function isValidCalendarDate(year: number, month?: number, day?: number): boolean {
-  if (month === undefined) return true
-  if (month < 1 || month > 12) return false
-  if (day === undefined) return true
-  const daysInMonth = new Date(year, month, 0).getDate()
-  return day >= 1 && day <= daysInMonth
+/** 西暦年を元号内の年へ(元年 = 1) */
+function eraYearOf(era: Era, gregorianYear: number): number {
+  return gregorianYear - era.start.year + 1
 }
 
 export function findEra(name: string): Era | undefined {
@@ -54,19 +65,36 @@ export function findEra(name: string): Era | undefined {
 }
 
 /** 和暦→西暦。部分日付(年のみ・年月のみ)を許容し、範囲外・存在しない日付はエラーで報告する */
-export function warekiToGregorian(wareki: WarekiDate): WarekiResult<CalendarDate> {
+export function warekiToGregorian(
+  wareki: WarekiDate,
+): WarekiResult<CalendarDate> {
   const era = findEra(wareki.era)
-  if (!era) return { ok: false, message: `元号「${wareki.era}」には対応していません` }
+  if (!era)
+    return { ok: false, message: `元号「${wareki.era}」には対応していません` }
   if (!Number.isInteger(wareki.year) || wareki.year < 1) {
-    return { ok: false, message: `${era.name}の年は元年(1年)以降で入力してください` }
+    return {
+      ok: false,
+      message: `${era.name}の年は元年(1年)以降で入力してください`,
+    }
   }
-  const max = maxEraYear(era)
-  if (wareki.year > max) {
-    return { ok: false, message: `${era.name}は${max}年までです(${era.name}${wareki.year}年は存在しません)` }
+  // end のない現行元号には年の上限を設けない。西暦入力は未来年(例: 2033)を拒否しない
+  // ため、同じ未来の日付が和暦表記(令和15年)でだけ「存在しません」になる非対称を避ける。
+  // 実行時刻(new Date())に依存した判定もなくなり、結果が入力だけで決まる
+  if (era.end) {
+    const max = eraYearOf(era, era.end.year)
+    if (wareki.year > max) {
+      return {
+        ok: false,
+        message: `${era.name}は${max}年までです(${era.name}${wareki.year}年は存在しません)`,
+      }
+    }
   }
   const year = era.start.year + wareki.year - 1
   if (!isValidCalendarDate(year, wareki.month, wareki.day)) {
-    return { ok: false, message: `存在しない日付です(${year}年${wareki.month}月${wareki.day}日)` }
+    return {
+      ok: false,
+      message: `存在しない日付です(${year}年${wareki.month}月${wareki.day}日)`,
+    }
   }
   if (wareki.month !== undefined && wareki.day !== undefined) {
     const ord = toOrdinal({ year, month: wareki.month, day: wareki.day })
@@ -81,11 +109,40 @@ export function warekiToGregorian(wareki: WarekiDate): WarekiResult<CalendarDate
       const e = era.end
       return {
         ok: false,
-        message: `${era.name}は${era.name}${max}年${e.month}月${e.day}日までです`,
+        message: `${era.name}は${era.name}${eraYearOf(era, e.year)}年${e.month}月${e.day}日までです`,
+      }
+    }
+  } else if (wareki.month !== undefined) {
+    // 年月のみの入力も月単位で改元境界を検査する。境界月そのもの(例: 昭和64年1月)は
+    // その月内に元号の有効な日が残っているため許容し、完全に範囲外の月だけを拒否する。
+    // 開始側は開始月より前のみ拒否するため、「明治元年5月」のような立年改元
+    // (改元をその年の年初へ遡らせる慣行)に基づく表記は受理できない。日付まで入力した
+    // 「明治元年5月1日」が従来から拒否されることとの一貫性を優先したトレードオフで、
+    // 立年改元の表記を扱いたい場合は原文のまま保持する運用(FuzzyDate.original)に頼る
+    const monthOrd = year * 100 + wareki.month
+    if (monthOrd < era.start.year * 100 + era.start.month) {
+      const s = era.start
+      return {
+        ok: false,
+        message: `${era.name}は${era.name}元年${s.month}月${s.day}日からです`,
+      }
+    }
+    if (era.end && monthOrd > era.end.year * 100 + era.end.month) {
+      const e = era.end
+      return {
+        ok: false,
+        message: `${era.name}は${era.name}${eraYearOf(era, e.year)}年${e.month}月${e.day}日までです`,
       }
     }
   }
-  return { ok: true, value: { year, ...(wareki.month !== undefined && { month: wareki.month }), ...(wareki.day !== undefined && { day: wareki.day }) } }
+  return {
+    ok: true,
+    value: {
+      year,
+      ...(wareki.month !== undefined && { month: wareki.month }),
+      ...(wareki.day !== undefined && { day: wareki.day }),
+    },
+  }
 }
 
 /**
@@ -93,7 +150,11 @@ export function warekiToGregorian(wareki: WarekiDate): WarekiResult<CalendarDate
  * 年のみの入力で改元年(例: 1989)にあたる場合は、その年の12月31日時点の元号で表す。
  */
 export function gregorianToWareki(date: CalendarDate): WarekiDate | null {
-  const ord = toOrdinal({ year: date.year, month: date.month ?? 12, day: date.day ?? 31 })
+  const ord = toOrdinal({
+    year: date.year,
+    month: date.month ?? 12,
+    day: date.day ?? 31,
+  })
   for (const era of ERA_TABLE) {
     if (ord < toOrdinal(era.start)) continue
     if (era.end && ord > toOrdinal(era.end)) continue

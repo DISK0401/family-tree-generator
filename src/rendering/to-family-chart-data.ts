@@ -1,5 +1,11 @@
 import { displayName } from '../domain/helpers'
-import type { CalendarDate, Family, Pedigree, PersonId, TreeDocument } from '../domain/types'
+import type {
+  CalendarDate,
+  Family,
+  Pedigree,
+  PersonId,
+  TreeDocument,
+} from '../domain/types'
 import { personToCardInput } from './person-card'
 
 /**
@@ -61,13 +67,20 @@ export interface FamilyChartDatum {
  * `parentsByChild`(カードの`rels.parents`用)と`findRootAncestor`(祖先へのmain_id追従用)の
  * 両方が同じ優先順位で祖先方向をたどれるよう、判定ロジックをここに集約する。
  */
-export function findPrimaryParentFamily(doc: TreeDocument, childId: PersonId): Family | undefined {
+export function findPrimaryParentFamily(
+  doc: TreeDocument,
+  childId: PersonId,
+): Family | undefined {
   let candidate: Family | undefined
   let candidatePedigree: Pedigree | undefined
   for (const family of Object.values(doc.families)) {
     const childLink = family.children.find((c) => c.childId === childId)
     if (!childLink) continue
-    if (candidate === undefined || (candidatePedigree === 'biological' && childLink.pedigree !== 'biological')) {
+    if (
+      candidate === undefined ||
+      (candidatePedigree === 'biological' &&
+        childLink.pedigree !== 'biological')
+    ) {
       candidate = family
       candidatePedigree = childLink.pedigree
     }
@@ -112,7 +125,8 @@ function buildAdjacency(doc: TreeDocument): Map<PersonId, Set<PersonId>> {
   }
   for (const family of Object.values(doc.families)) {
     for (let i = 0; i < family.spouseIds.length; i++) {
-      for (let j = i + 1; j < family.spouseIds.length; j++) link(family.spouseIds[i], family.spouseIds[j])
+      for (let j = i + 1; j < family.spouseIds.length; j++)
+        link(family.spouseIds[i], family.spouseIds[j])
     }
     for (const child of family.children) {
       for (const spouseId of family.spouseIds) link(spouseId, child.childId)
@@ -146,7 +160,10 @@ function buildSpousePairs(doc: TreeDocument): Set<string> {
  * 婚入した側をその配偶者として添えるのが家系図の通例のため。双方の続柄が同種の場合は
  * 家族内の登録順で先の子を残す(描画結果を決定的にするため)。
  */
-function spouseSiblingsToSkip(family: Family, spousePairs: ReadonlySet<string>): Set<PersonId> {
+function spouseSiblingsToSkip(
+  family: Family,
+  spousePairs: ReadonlySet<string>,
+): Set<PersonId> {
   const skip = new Set<PersonId>()
   const links = family.children
   for (let i = 0; i < links.length; i++) {
@@ -166,9 +183,10 @@ function spouseSiblingsToSkip(family: Family, spousePairs: ReadonlySet<string>):
  * 全体表示モード(design.md D5)の根の計算専用に、各人物の「主たる子」(family-chartの
  * 子孫方向の走査が実際にたどる相手)と「配偶者」の一覧を構築する。
  */
-function buildPrimaryChildrenAndSpouses(
-  doc: TreeDocument,
-): { primaryChildrenOf: Map<PersonId, PersonId[]>; spousesOf: Map<PersonId, PersonId[]> } {
+function buildPrimaryChildrenAndSpouses(doc: TreeDocument): {
+  primaryChildrenOf: Map<PersonId, PersonId[]>
+  spousesOf: Map<PersonId, PersonId[]>
+} {
   const primaryChildrenOf = new Map<PersonId, PersonId[]>()
   const spousesOf = new Map<PersonId, PersonId[]>()
   const spousePairs = buildSpousePairs(doc)
@@ -182,9 +200,13 @@ function buildPrimaryChildrenAndSpouses(
     const skip = spouseSiblingsToSkip(family, spousePairs)
     for (const child of family.children) {
       if (skip.has(child.childId)) continue
-      if (findPrimaryParentFamily(doc, child.childId)?.id !== family.id) continue // 主たる家族のみ
+      if (findPrimaryParentFamily(doc, child.childId)?.id !== family.id)
+        continue // 主たる家族のみ
       for (const spouseId of family.spouseIds) {
-        primaryChildrenOf.set(spouseId, [...(primaryChildrenOf.get(spouseId) ?? []), child.childId])
+        primaryChildrenOf.set(spouseId, [
+          ...(primaryChildrenOf.get(spouseId) ?? []),
+          child.childId,
+        ])
       }
     }
   }
@@ -220,7 +242,9 @@ function buildPrimaryChildrenAndSpouses(
  */
 export function computeFullViewRoots(doc: TreeDocument): PersonId[] {
   const personIds = Object.keys(doc.persons)
-  const hasPrimaryParent = new Set(personIds.filter((id) => findPrimaryParentFamily(doc, id) !== undefined))
+  const hasPrimaryParent = new Set(
+    personIds.filter((id) => findPrimaryParentFamily(doc, id) !== undefined),
+  )
   const { primaryChildrenOf, spousesOf } = buildPrimaryChildrenAndSpouses(doc)
 
   /** 根候補から実際に血縁でたどれる子孫と、その配偶者(1階層のみ)の集合。family-chartの実描画範囲に対応する */
@@ -231,7 +255,8 @@ export function computeFullViewRoots(doc: TreeDocument): PersonId[] {
       const current = queue.shift()
       if (current === undefined || reach.has(current)) continue
       reach.add(current)
-      for (const child of primaryChildrenOf.get(current) ?? []) queue.push(child)
+      for (const child of primaryChildrenOf.get(current) ?? [])
+        queue.push(child)
     }
     for (const id of [...reach]) {
       for (const spouseId of spousesOf.get(id) ?? []) reach.add(spouseId)
@@ -322,7 +347,8 @@ export function computeHiddenPartition(
       }
       hiddenTotal += cluster.length
     }
-    if (hiddenTotal > 0 && revealId !== undefined) result.set(personId, { count: hiddenTotal, revealId })
+    if (hiddenTotal > 0 && revealId !== undefined)
+      result.set(personId, { count: hiddenTotal, revealId })
   }
   // 上の走査で可視人物の隣から到達できなかった非表示人物が「図に現れていない人物」。
   // バッジ側(countedHidden)と一覧側は同じ走査結果から分割されるため、
@@ -353,7 +379,10 @@ export function computeHiddenCounts(
  * 描画済みの全員を与えた場合と同じ結果になる。これにより、family-chart内部の描画結果を
  * 読み出さずに(=Reactのレンダー中に純粋な導出として)一覧を求められる。
  */
-export function computeOffChartPersonIds(doc: TreeDocument, viewpointId: PersonId): PersonId[] {
+export function computeOffChartPersonIds(
+  doc: TreeDocument,
+  viewpointId: PersonId,
+): PersonId[] {
   if (!doc.persons[viewpointId]) return Object.keys(doc.persons)
   return computeHiddenPartition(doc, new Set([viewpointId])).offChartIds
 }
@@ -377,7 +406,10 @@ export function buildPedigreeByEdge(doc: TreeDocument): Map<string, Pedigree> {
   return map
 }
 
-function ensureSet(map: Map<PersonId, Set<PersonId>>, id: PersonId): Set<PersonId> {
+function ensureSet(
+  map: Map<PersonId, Set<PersonId>>,
+  id: PersonId,
+): Set<PersonId> {
   let set = map.get(id)
   if (!set) {
     set = new Set()
@@ -395,7 +427,10 @@ function ensureSet(map: Map<PersonId, Set<PersonId>>, id: PersonId): Set<PersonI
  * parentsByChild/pedigreeByChildのいずれにも反映しない(全体表示モードでは非主たる家族の子は
  * `toFullViewFamilyChartData`が別途生成するスタブカードとして表現するため)。
  */
-function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean }): FamilyChartDatum[] {
+function buildPersonDatums(
+  doc: TreeDocument,
+  options: { primaryOnly: boolean },
+): FamilyChartDatum[] {
   const spouseSets = new Map<PersonId, Set<PersonId>>()
   const childrenSets = new Map<PersonId, Set<PersonId>>()
   const parentsByChild = new Map<PersonId, PersonId[]>()
@@ -417,11 +452,13 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
     const skip = spouseSiblingsToSkip(family, spousePairs)
 
     for (const child of family.children) {
-      const isPrimary = findPrimaryParentFamily(doc, child.childId)?.id === family.id
+      const isPrimary =
+        findPrimaryParentFamily(doc, child.childId)?.id === family.id
       if (options.primaryOnly) {
         if (!isPrimary) continue
         if (!skip.has(child.childId)) {
-          for (const spouseId of family.spouseIds) ensureSet(childrenSets, spouseId).add(child.childId)
+          for (const spouseId of family.spouseIds)
+            ensureSet(childrenSets, spouseId).add(child.childId)
         }
         parentsByChild.set(child.childId, family.spouseIds)
         pedigreeByChild.set(child.childId, child.pedigree)
@@ -437,7 +474,10 @@ function buildPersonDatums(doc: TreeDocument, options: { primaryOnly: boolean })
       // 養子等は家系図上で明示的に伝えたい情報のため。同一人物が複数の非実子関係を持つ
       // (通常想定しない)場合は、出現順(Object.values(doc.families)の順)にフォールバックする
       const currentPedigree = pedigreeByChild.get(child.childId)
-      if (currentPedigree === undefined || (currentPedigree === 'biological' && child.pedigree !== 'biological')) {
+      if (
+        currentPedigree === undefined ||
+        (currentPedigree === 'biological' && child.pedigree !== 'biological')
+      ) {
         parentsByChild.set(child.childId, family.spouseIds)
         pedigreeByChild.set(child.childId, child.pedigree)
       }
@@ -508,7 +548,9 @@ function stubId(childId: PersonId, tag: string): PersonId {
  * 単一のmain_idからは同時に到達できない複数の家系を1つの図にまとめて描画できる。仮想ルート
  * 自身のカード・系線は`FamilyTreeCanvas`側で非表示にする。
  */
-export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[] {
+export function toFullViewFamilyChartData(
+  doc: TreeDocument,
+): FamilyChartDatum[] {
   const persons = buildPersonDatums(doc, { primaryOnly: true })
   const byId = new Map(persons.map((d) => [d.id, d]))
   const roots = computeFullViewRoots(doc)
@@ -555,7 +597,8 @@ export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[]
   // 非主たる家族(D2)の重複(上記2)
   for (const family of Object.values(doc.families)) {
     for (const child of family.children) {
-      if (findPrimaryParentFamily(doc, child.childId)?.id === family.id) continue // 主たる家族は上で反映済み
+      if (findPrimaryParentFamily(doc, child.childId)?.id === family.id)
+        continue // 主たる家族は上で反映済み
       const id = makeStub(child.childId, family.id)
       if (!id) continue
       for (const spouseId of family.spouseIds) {
@@ -568,7 +611,12 @@ export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[]
 
   const virtualRoot: FamilyChartDatum = {
     id: FULL_VIEW_ROOT_ID,
-    data: { personId: FULL_VIEW_ROOT_ID, gender: 'U', displayName: '', deceased: false },
+    data: {
+      personId: FULL_VIEW_ROOT_ID,
+      gender: 'U',
+      displayName: '',
+      deceased: false,
+    },
     rels: { children: roots },
   }
   return [...persons, ...stubs, virtualRoot]
@@ -583,7 +631,10 @@ export function toFullViewFamilyChartData(doc: TreeDocument): FamilyChartDatum[]
  * いない)の子リストでは比較キーが全員同値になり安定ソートでこの並び順が維持されるが、
  * 複数婚で半きょうだいが混在する場合は婚姻単位の再グルーピングが優先される(design.md D1参照)。
  */
-export function compareChildrenByBirthThenName(a: FamilyChartDatum, b: FamilyChartDatum): number {
+export function compareChildrenByBirthThenName(
+  a: FamilyChartDatum,
+  b: FamilyChartDatum,
+): number {
   const yearA = a.data.birthYear
   const yearB = b.data.birthYear
   if (yearA !== undefined && yearB !== undefined) return yearA - yearB
@@ -596,7 +647,11 @@ export function compareChildrenByBirthThenName(a: FamilyChartDatum, b: FamilyCha
  * personIdとspouseIdの間で最初に成立した婚姻イベントの日付を返す(復縁がある場合は最初の婚姻日)。
  * 該当する家族がない、または婚姻イベントに日付が記録されていない場合はundefined(design.md D9、婚姻線ラベル用)
  */
-export function marriageDate(doc: TreeDocument, personId: PersonId, spouseId: PersonId): CalendarDate | undefined {
+export function marriageDate(
+  doc: TreeDocument,
+  personId: PersonId,
+  spouseId: PersonId,
+): CalendarDate | undefined {
   const family = Object.values(doc.families).find(
     (f) => f.spouseIds.includes(personId) && f.spouseIds.includes(spouseId),
   )
@@ -605,7 +660,11 @@ export function marriageDate(doc: TreeDocument, personId: PersonId, spouseId: Pe
 }
 
 /** personIdとspouseIdの間で最初に成立した婚姻イベントの年を返す(復縁がある場合は最初の婚姻年) */
-function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId): number | undefined {
+function marriageYear(
+  doc: TreeDocument,
+  personId: PersonId,
+  spouseId: PersonId,
+): number | undefined {
   return marriageDate(doc, personId, spouseId)?.year
 }
 
@@ -614,7 +673,10 @@ function marriageYear(doc: TreeDocument, personId: PersonId, spouseId: PersonId)
  * 婚姻イベント日付が判明している婚姻を日付昇順に、不明な婚姻は元の登録順を維持したまま並べる。
  * family-chartの仕様上、この関数は`datum.rels.spouses`を破壊的に(in-place で)並べ替える。
  */
-export function sortSpousesByMarriageDate(doc: TreeDocument, datum: FamilyChartDatum): void {
+export function sortSpousesByMarriageDate(
+  doc: TreeDocument,
+  datum: FamilyChartDatum,
+): void {
   const spouses = datum.rels.spouses
   if (!spouses) return
   spouses.sort((a, b) => {

@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import type { Pedigree, PersonId } from '../domain/types'
 import { layoutPedigree } from '../layout'
 import type { PedigreeLayout } from '../layout/types'
 import { useTreeStore } from '../store/tree-store'
 import { useDisplaySettingsStore } from '../settings/display-settings-store'
-import { derivePersonCardView, personCardInnerHtml, personToCardInput } from './person-card'
+import { ZoomControls } from '../components/ZoomControls'
+import {
+  derivePersonCardView,
+  personCardInnerHtml,
+  personToCardInput,
+} from './person-card'
 import './PedigreeCanvas.css'
 
 export interface PedigreeCanvasProps {
@@ -55,10 +66,17 @@ function pathD(points: ReadonlyArray<{ x: number; y: number }>): string {
  * family-chartの折りたたみ表示とは描画の仕組みが全く別(SVG+Reactの手組み)だが、カードの
  * 見た目は6群の`person-card.ts`を共有することで一致させる(design.md D3)。
  */
-export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCanvasProps) {
+export function PedigreeCanvas({
+  selectedPersonId,
+  onSelectPerson,
+}: PedigreeCanvasProps) {
   const document = useTreeStore((s) => s.document)
-  const birthDateGranularity = useDisplaySettingsStore((s) => s.birthDateGranularity)
-  const deathDateGranularity = useDisplaySettingsStore((s) => s.deathDateGranularity)
+  const birthDateGranularity = useDisplaySettingsStore(
+    (s) => s.birthDateGranularity,
+  )
+  const deathDateGranularity = useDisplaySettingsStore(
+    (s) => s.deathDateGranularity,
+  )
   const calendarMode = useDisplaySettingsStore((s) => s.calendarMode)
   const visibleCardFields = useDisplaySettingsStore((s) => s.visibleCardFields)
 
@@ -70,8 +88,14 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
   // refではなくstateで前回値を持つ(レンダー中にrefを書き換えるのはReactのルール違反のため。
   // 「レンダー中に前回の値と比較してstateを調整する」公式パターンに従う)
   const [camera, setCamera] = useState<Camera>(() => fitCamera(layout))
-  const [prevLayoutSize, setPrevLayoutSize] = useState({ width: layout.width, height: layout.height })
-  if (prevLayoutSize.width !== layout.width || prevLayoutSize.height !== layout.height) {
+  const [prevLayoutSize, setPrevLayoutSize] = useState({
+    width: layout.width,
+    height: layout.height,
+  })
+  if (
+    prevLayoutSize.width !== layout.width ||
+    prevLayoutSize.height !== layout.height
+  ) {
     setPrevLayoutSize({ width: layout.width, height: layout.height })
     setCamera(fitCamera(layout))
   }
@@ -97,6 +121,38 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
   /** クリックとドラッグを分ける移動量(px)。手ぶれで選択が効かなくならない程度に小さく取る */
   const DRAG_THRESHOLD = 3
 
+  /**
+   * パン中のsetCameraを1フレーム1回に間引くためのrAFスロットル(監査 中5)。
+   * pointermoveはフレームレートを超える頻度で発火し得るため、そのままsetCameraすると
+   * 図が大きいときに再レンダリングが積み上がってパンがもたつく。
+   * requestAnimationFrameが無い環境(テスト等)では即時反映にフォールバックする
+   */
+  const pendingCameraRef = useRef<Camera | null>(null)
+  const rafIdRef = useRef<number | null>(null)
+  function scheduleCamera(next: Camera) {
+    if (typeof requestAnimationFrame !== 'function') {
+      setCamera(next)
+      return
+    }
+    pendingCameraRef.current = next
+    if (rafIdRef.current !== null) return
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null
+      if (pendingCameraRef.current) setCamera(pendingCameraRef.current)
+      pendingCameraRef.current = null
+    })
+  }
+  useEffect(() => {
+    return () => {
+      if (
+        rafIdRef.current !== null &&
+        typeof cancelAnimationFrame === 'function'
+      ) {
+        cancelAnimationFrame(rafIdRef.current)
+      }
+    }
+  }, [])
+
   function clientToSvgScale(): { x: number; y: number } {
     const rect = svgRef.current?.getBoundingClientRect()
     if (!rect || rect.width === 0 || rect.height === 0) return { x: 1, y: 1 }
@@ -104,7 +160,9 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
   }
 
   function handlePointerDown(e: ReactPointerEvent<SVGSVGElement>) {
-    const card = (e.target as Element).closest<SVGForeignObjectElement>('.pedigree-card')
+    const card = (e.target as Element).closest<SVGForeignObjectElement>(
+      '.pedigree-card',
+    )
     dragRef.current = {
       pointerId: e.pointerId,
       startClientX: e.clientX,
@@ -123,10 +181,11 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
     if (!drag || drag.pointerId !== e.pointerId) return
     const dx = e.clientX - drag.startClientX
     const dy = e.clientY - drag.startClientY
-    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) drag.moved = true
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)
+      drag.moved = true
     if (!drag.moved) return
     const scale = clientToSvgScale()
-    setCamera({
+    scheduleCamera({
       ...drag.camera,
       x: drag.camera.x - dx * scale.x,
       y: drag.camera.y - dy * scale.y,
@@ -139,7 +198,17 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
     svgRef.current?.releasePointerCapture?.(e.pointerId)
     dragRef.current = null
     if (drag.moved || drag.cardPersonId === null) return
-    onSelectPerson(drag.cardPersonId === selectedPersonId ? null : drag.cardPersonId)
+    onSelectPerson(
+      drag.cardPersonId === selectedPersonId ? null : drag.cardPersonId,
+    )
+  }
+
+  /** pointercancel(OSのジェスチャ奪取等)はタップの完了ではないため、選択を発火しない(監査 低3) */
+  function handlePointerCancel(e: ReactPointerEvent<SVGSVGElement>) {
+    const drag = dragRef.current
+    if (drag?.pointerId !== e.pointerId) return
+    svgRef.current?.releasePointerCapture?.(e.pointerId)
+    dragRef.current = null
   }
 
   /** カーソル位置を中心に据えたままscaleFactor倍する(ホイール・+/-ボタン共通) */
@@ -192,7 +261,81 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
     zoomAround(cx, cy, scaleFactor)
   }
 
-  const cardSettings = { birthDateGranularity, deathDateGranularity, calendarMode, visibleCardFields }
+  /*
+   * 図の中身(系線群+カード群)はカメラ(viewBox)に依存しないため、useMemoで固定し
+   * パン・ズーム中はviewBox属性の更新だけで済ませる(監査 中5)。これが無いと
+   * pointermoveのたびに全カードのHTML組み立て(personCardInnerHtml)まで再実行され、
+   * 人数の多い図でパンが目に見えて重くなる
+   */
+  const linksContent = useMemo(
+    () => (
+      <g className="pedigree-links">
+        {layout.links.map((link) =>
+          link.kind === 'marriage' ? (
+            <path
+              key={`marriage-${link.familyId}`}
+              className="pedigree-link spouse-link"
+              d={pathD(link.points)}
+            />
+          ) : (
+            <path
+              key={`parent-child-${link.familyId}-${link.childId}`}
+              className={`pedigree-link${isNonBiological(link.pedigree) ? ' adopted-link' : ''}`}
+              d={pathD(link.points)}
+            />
+          ),
+        )}
+      </g>
+    ),
+    [layout],
+  )
+
+  const cardsContent = useMemo(
+    () => (
+      <g className="pedigree-cards">
+        {layout.persons.map((position) => {
+          const person = document.persons[position.personId]
+          if (!person) return null
+          const view = derivePersonCardView(personToCardInput(person), {
+            birthDateGranularity,
+            deathDateGranularity,
+            calendarMode,
+            visibleCardFields,
+          })
+          // personCardInnerHtmlの戻り値は氏名等の利用者入力をescapeHtml済みのHTML文字列のため、
+          // dangerouslySetInnerHTMLへそのまま渡してよい(person-card.ts参照)。
+          // 折りたたみ表示と同じマークアップ・クラス名(.tree-card系)を使うことで、
+          // カードの見た目をCSSごと共有する(design.md D3)
+          const html = personCardInnerHtml(view, {
+            selected: position.personId === selectedPersonId,
+          })
+          return (
+            <foreignObject
+              key={position.personId}
+              className="pedigree-card"
+              x={position.x}
+              y={position.y}
+              width={layout.cardSize.width}
+              height={layout.cardSize.height}
+              data-person-id={position.personId}
+            >
+              {/* ReactはforeignObjectの子をHTML名前空間で生成するため、xmlns属性は不要 */}
+              <div dangerouslySetInnerHTML={{ __html: html }} />
+            </foreignObject>
+          )
+        })}
+      </g>
+    ),
+    [
+      layout,
+      document,
+      selectedPersonId,
+      birthDateGranularity,
+      deathDateGranularity,
+      calendarMode,
+      visibleCardFields,
+    ],
+  )
 
   return (
     // カードの実寸はCSSカスタムプロパティで渡す(FamilyTreeCanvasと同じ方式)。
@@ -212,66 +355,19 @@ export function PedigreeCanvas({ selectedPersonId, onSelectPerson }: PedigreeCan
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         role="group"
         aria-label="つながった全体表示"
       >
-        <g className="pedigree-links">
-          {layout.links.map((link) =>
-            link.kind === 'marriage' ? (
-              <path
-                key={`marriage-${link.familyId}`}
-                className="pedigree-link spouse-link"
-                d={pathD(link.points)}
-              />
-            ) : (
-              <path
-                key={`parent-child-${link.familyId}-${link.childId}`}
-                className={`pedigree-link${isNonBiological(link.pedigree) ? ' adopted-link' : ''}`}
-                d={pathD(link.points)}
-              />
-            ),
-          )}
-        </g>
-        <g className="pedigree-cards">
-          {layout.persons.map((position) => {
-            const person = document.persons[position.personId]
-            if (!person) return null
-            const view = derivePersonCardView(personToCardInput(person), cardSettings)
-            // personCardInnerHtmlの戻り値は氏名等の利用者入力をescapeHtml済みのHTML文字列のため、
-            // dangerouslySetInnerHTMLへそのまま渡してよい(person-card.ts参照)。
-            // 折りたたみ表示と同じマークアップ・クラス名(.tree-card系)を使うことで、
-            // カードの見た目をCSSごと共有する(design.md D3)
-            const html = personCardInnerHtml(view, { selected: position.personId === selectedPersonId })
-            return (
-              <foreignObject
-                key={position.personId}
-                className="pedigree-card"
-                x={position.x}
-                y={position.y}
-                width={layout.cardSize.width}
-                height={layout.cardSize.height}
-                data-person-id={position.personId}
-              >
-                {/* ReactはforeignObjectの子をHTML名前空間で生成するため、xmlns属性は不要 */}
-                <div dangerouslySetInnerHTML={{ __html: html }} />
-              </foreignObject>
-            )
-          })}
-        </g>
+        {linksContent}
+        {cardsContent}
       </svg>
-      <div className="pedigree-zoom-controls" role="group" aria-label="表示倍率">
-        <button type="button" onClick={() => zoomButton(1 / 1.3)} aria-label="拡大">
-          +
-        </button>
-        <button type="button" onClick={() => zoomButton(1.3)} aria-label="縮小">
-          −
-        </button>
-        {/* scaleFactorが小さいほどviewBoxが縮み、内容は拡大して見える(zoomAround参照) */}
-        <button type="button" onClick={() => setCamera(fitCamera(layout))} aria-label="画面に合わせる">
-          ⊡
-        </button>
-      </div>
+      {/* scaleFactorが小さいほどviewBoxが縮み、内容は拡大して見える(zoomAround参照) */}
+      <ZoomControls
+        onZoomIn={() => zoomButton(1 / 1.3)}
+        onZoomOut={() => zoomButton(1.3)}
+        onFit={() => setCamera(fitCamera(layout))}
+      />
     </div>
   )
 }

@@ -1,4 +1,9 @@
-import type { FamilyId, Pedigree, PersonId, TreeDocument } from '../domain/types'
+import type {
+  FamilyId,
+  Pedigree,
+  PersonId,
+  TreeDocument,
+} from '../domain/types'
 
 /**
  * 「家族(婚姻単位)を結合点とするグラフ」(design.md D1)。
@@ -47,15 +52,26 @@ export function buildGraph(doc: TreeDocument): PedigreeGraph {
   const families = new Map<FamilyId, FamilyNode>()
   for (const familyId of Object.keys(doc.families).sort()) {
     const family = doc.families[familyId]
-    const spouseIds = family.spouseIds.filter((id) => persons.has(id))
-    const children = family.children
-      .filter((c) => persons.has(c.childId))
-      .map((c) => ({ childId: c.childId, pedigree: c.pedigree }))
+    // 同一人物への重複参照(spouseIdsに同じIDが2回、childrenに同じ子が2件等)は最初の1件だけを
+    // 採用する。欠損参照の握りつぶしと同じ「レイアウタ側の頑健性」であり、重複を残すと
+    // 同一人物が2枚のカードとして配置され、spec「同一人物を複製しない配置」に反する
+    const spouseIds = [...new Set(family.spouseIds)].filter((id) =>
+      persons.has(id),
+    )
+    const seenChildIds = new Set<PersonId>()
+    const children: FamilyNode['children'] = []
+    for (const c of family.children) {
+      if (!persons.has(c.childId) || seenChildIds.has(c.childId)) continue
+      seenChildIds.add(c.childId)
+      children.push({ childId: c.childId, pedigree: c.pedigree })
+    }
     if (spouseIds.length === 0 && children.length === 0) continue
 
     families.set(familyId, { id: familyId, spouseIds, children })
-    for (const spouseId of spouseIds) persons.get(spouseId)?.spouseFamilyIds.push(familyId)
-    for (const child of children) persons.get(child.childId)?.parentFamilyIds.push(familyId)
+    for (const spouseId of spouseIds)
+      persons.get(spouseId)?.spouseFamilyIds.push(familyId)
+    for (const child of children)
+      persons.get(child.childId)?.parentFamilyIds.push(familyId)
   }
 
   return { persons, families }
@@ -71,7 +87,10 @@ export function buildGraph(doc: TreeDocument): PedigreeGraph {
  */
 export function splitIntoComponents(graph: PedigreeGraph): PedigreeGraph[] {
   const visited = new Set<PersonId>()
-  const rawComponents: { personIds: Set<PersonId>; familyIds: Set<FamilyId> }[] = []
+  const rawComponents: {
+    personIds: Set<PersonId>
+    familyIds: Set<FamilyId>
+  }[] = []
 
   for (const startId of [...graph.persons.keys()].sort()) {
     if (visited.has(startId)) continue
@@ -80,18 +99,25 @@ export function splitIntoComponents(graph: PedigreeGraph): PedigreeGraph[] {
     const queue: PersonId[] = [startId]
     visited.add(startId)
 
-    while (queue.length > 0) {
-      const current = queue.shift()
-      if (current === undefined) continue
+    // shift()は先頭削除のたびに残り全要素を詰め直すため、大きな成分でO(n^2)になる。
+    // 読み取り位置を前進させるだけにして、配列は伸びる一方で使う
+    for (let head = 0; head < queue.length; head++) {
+      const current = queue[head]
       personIds.add(current)
       const node = graph.persons.get(current)
       if (!node) continue
-      for (const familyId of [...node.spouseFamilyIds, ...node.parentFamilyIds]) {
+      for (const familyId of [
+        ...node.spouseFamilyIds,
+        ...node.parentFamilyIds,
+      ]) {
         if (familyIds.has(familyId)) continue
         familyIds.add(familyId)
         const family = graph.families.get(familyId)
         if (!family) continue
-        const relatedIds = [...family.spouseIds, ...family.children.map((c) => c.childId)]
+        const relatedIds = [
+          ...family.spouseIds,
+          ...family.children.map((c) => c.childId),
+        ]
         for (const relatedId of relatedIds) {
           if (visited.has(relatedId)) continue
           visited.add(relatedId)
@@ -103,7 +129,9 @@ export function splitIntoComponents(graph: PedigreeGraph): PedigreeGraph[] {
     rawComponents.push({ personIds, familyIds })
   }
 
-  rawComponents.sort((a, b) => minId(a.personIds).localeCompare(minId(b.personIds)))
+  rawComponents.sort((a, b) =>
+    minId(a.personIds).localeCompare(minId(b.personIds)),
+  )
 
   return rawComponents.map(({ personIds, familyIds }) => {
     const persons = new Map<PersonId, PersonNode>()

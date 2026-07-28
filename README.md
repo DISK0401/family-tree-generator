@@ -52,13 +52,15 @@ PDF/巻物出力、戸籍スキャンからの自動生成(有償版)などは�
 
 ## プライバシー方針(無料版)
 
-**無料版は家系図データ・個人情報を一切サーバーへ送信しない。** すべてのデータはブラウザのIndexedDBに保存され、この端末の外に出ることはない(検証方法は[開発者向け情報](#開発者向け情報)を参照)。
+**無料版は家系図データ・個人情報を一切サーバーへ送信しない。** すべてのデータはブラウザのIndexedDBに保存され、この端末の外に出ることはない(検証方法は[開発者向け情報](#開発者向け情報)を参照)。この約束は Content-Security-Policy(`connect-src 'self'` ほか。`worker/index.ts` が全レスポンスへ付与)によりブラウザレベルでも強制されており、仮に将来のコード変更で外部リクエストが紛れ込んでもブラウザが遮断する。
 
 - 保存先は常に画面ヘッダーに明示される(「この端末にのみ保存されます」)。
 - ブラウザを再訪すると、直前の編集内容が自動的に復元される。
 - 「すべてのデータを削除」から、端末内のデータをいつでも完全に消去できる。
 
 ## セットアップ
+
+Node.js **22 以上**を使用する(`.nvmrc` / `package.json` の `engines` を参照。CI も同じ値を読む)。
 
 ```bash
 npm install
@@ -105,8 +107,10 @@ Windows・macOS・Linuxいずれの環境でも、追加のコマンド実行な
 | `npm run lint` | ESLint によるコードチェック |
 | `npm run format` | Prettier でコードを整形する |
 | `npm run format:check` | Prettier のフォーマットチェック(整形なし) |
-| `npm run typecheck` | TypeScript の型チェック(`tsc -b`) |
+| `npm run typecheck` | TypeScript の型チェック(`tsc -b`、strict) |
 | `npm run test` | Vitest によるテスト実行 |
+| `npm run test:coverage` | カバレッジ計測付きテスト(`coverage/` にレポート出力) |
+| `npm run test:e2e` | Playwright による実ブラウザのスモークテスト(外部送信ゼロの検証・IndexedDB復元。初回は `npx playwright install chromium` が必要) |
 
 ## 開発者向け情報
 
@@ -115,20 +119,29 @@ Windows・macOS・Linuxいずれの環境でも、追加のコマンド実行な
 - `src/domain/`: 家系図のドメインモデル(Person・Family・和暦変換等)。フレームワーク非依存の純関数群。
 - `src/store/`: Zustandによる状態管理。コマンド適用+undo/redo。
 - `src/persistence/`: IndexedDB(`idb`)への自動保存・復元・スキーマバージョンガード。
+- `src/layout/`: 「つながった全体表示」用の自前レイアウトエンジン(世代割当・層内順序・座標・系線)。フレームワーク非依存の純関数群。
 - `src/rendering/`: family-chartによる家系図描画。ドメインモデルをfamily-chart形式へ射影するアダプタ層を介する(family-chart側のデータを保存・編集の正本にしない)。
 - `src/lib/gedcom/`: GEDCOM 7.0/5.5.1の構文層(パーサ/シリアライザ)・意味層(氏名/日付/続柄/家族関係種別マッピング、インポート/エクスポート)。
 - `src/lib/json/`: アプリ独自JSON形式(`TreeDocument`直列化)の入出力・zodスキーマ検証。
+- `src/features/import-export/`: ファイル入出力のユーティリティ(サイズ上限、エクスポートファイル名の生成等)。
+- `src/settings/`: 表示設定(日付粒度・和暦/西暦・カード表示項目)のストアとUI。端末ローカル(localStorage)保持。
 - `src/components/`: 編集UI(サイドパネル、日付入力、確認ダイアログ、インポート/エクスポート等)。
 - `src/pages/`: 製品紹介(ランディング)ページと図版(トークン準拠の軽量SVG。family-chart非依存)。
 - `src/samples/`: 偉人家系図サンプルのデータ(`TreeDocument`形式)と `/app?sample=<id>` 読み込み処理。データ本体はエディタ側チャンクから動的importされる。
 - `src/routes.ts` / `src/Root.tsx`: パス判定によるランディング/エディタの出し分けとルート単位のコード分割(ルータライブラリ不使用)。
+- `worker/`: Cloudflare Workers のエントリ。静的アセット配信に加え、セキュリティヘッダ(CSP等)の付与・ハッシュ付きアセットの immutable キャッシュ・非本番環境への noindex を担う。
+- `spike/`: family-chart の挙動検証スパイク(凍結・ビルド非含有)。詳細は `spike/README.md`。
 - `docs/gedcom-mapping.md`: 内部データモデルとGEDCOM 7.0タグの対応表(GEDCOM入出力の実装リファレンス)。
 
 設計判断の詳細は `openspec/changes/*/design.md` を参照。
 
 ### 外部送信ゼロの検証方法
 
-無料版の「サーバへ一切送信しない」制約は、ブラウザの開発者ツールでネットワークタブを開いた状態で家系図を操作し、自オリジン(`http://localhost:5173` 等)以外へのリクエストが発生しないことで確認できる。ランディングページ・サンプル読み込みも同様に外部リクエストゼロである。
+無料版の「サーバへ一切送信しない」制約は、三層で守られている。
+
+1. **E2Eテスト(CI)**: `npm run test:e2e` が実ブラウザでランディング・エディタ操作・サンプル読み込みの全リクエストを監視し、自オリジン以外へのリクエストが0件であることをアサートする(`e2e/no-external-requests.spec.ts`)。
+2. **CSP(本番)**: `worker/index.ts` が全レスポンスへ `connect-src 'self'` 等の Content-Security-Policy を付与し、仮に外部リクエストが混入してもブラウザが遮断する。
+3. **手動確認**: ブラウザの開発者ツールのネットワークタブでも同様に確認できる。
 
 ### OGP画像の運用
 
@@ -140,7 +153,7 @@ npm i --no-save playwright-core @fontsource/noto-serif-jp @fontsource/noto-sans-
 # (playwright-core の chromium.launch → page.goto(file://...) → page.screenshot)
 ```
 
-`index.html` の `og:image` は `/ogp.png`(自オリジン相対)を指す。カスタムドメイン確定後は絶対URLへの変更を検討する。
+`index.html` の `og:image` / `og:url` / `canonical` は workers.dev 本番URLの絶対URLを指す(主要SNSのスクレイパは相対パスを解決しないため)。カスタムドメイン確定時に張り替える。
 
 ## ブランチ運用とデプロイフロー
 
@@ -149,7 +162,9 @@ npm i --no-save playwright-core @fontsource/noto-serif-jp @fontsource/noto-sans-
 - `develop` へのマージ: Cloudflare Workers 上の **dev 環境** へ自動デプロイ
 - `main` へのマージ: Cloudflare Workers 上の **本番環境** へ自動デプロイ
 
-デプロイは `.github/workflows/deploy.yml` から `wrangler deploy` を実行して行われる。`develop` / `main` への Pull Request では `.github/workflows/quality-gate.yml` が lint・型チェック・テスト・ビルドを実行し、失敗時はマージをブロックする。
+デプロイは `.github/workflows/deploy.yml` から `wrangler deploy` を実行して行われる。`develop` / `main` への Pull Request では `.github/workflows/quality-gate.yml` が lint・フォーマット・型チェック・テスト・ビルドを実行し、失敗時はマージをブロックする(必須チェック名はジョブID `quality`)。deploy 側でもデプロイ前にテストを再実行する — Quality Gate はPRのマージ前コミットに対して走るため、個別には緑な2つのPRを続けてマージした際の「マージ結果」を検証する最後の防壁がこれにあたる。
+
+開発フローは OpenSpec change(`openspec/changes/<name>/`)を起点に proposal → design → tasks → 実装 → verify → archive の順で進める(`openspec/config.yaml` と `.claude/commands/opsx/` を参照)。ブランチ運用の詳細は `CLAUDE.md`。
 
 Cloudflare の設定は可能な限りコードで管理している。
 
@@ -163,3 +178,7 @@ Cloudflare の設定は可能な限りコードで管理している。
 
 - **本番デプロイの巻き戻し**: `wrangler rollback --env production` を実行するか、直前の正常なコミットを `main` に revert して再デプロイする。
 - **dev 環境**: `develop` へマージしなければ本番には影響しないため、問題が見つかった場合は `main` へのマージを見送る。
+
+## ライセンス
+
+本リポジトリのソースコードにはオープンソースライセンスを付与していない(**All rights reserved**)。コードの再利用・再配布は許諾していない。ただし `public/fonts/` のフォント(Shippori Mincho B1 / Zen Kaku Gothic New)は SIL OFL 1.1 によるもので、その条件に従って再配布している(`public/fonts/OFL.txt`)。

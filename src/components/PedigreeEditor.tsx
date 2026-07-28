@@ -18,7 +18,9 @@ interface PedigreeEditorProps {
 }
 
 function parentNames(doc: TreeDocument, spouseIds: PersonId[]): string {
-  const names = spouseIds.map((id) => (doc.persons[id] ? displayName(doc.persons[id]) : '(不明)'))
+  const names = spouseIds.map((id) =>
+    doc.persons[id] ? displayName(doc.persons[id]) : '(不明)',
+  )
   return names.length > 0 ? names.join('・') : '(親未登録)'
 }
 
@@ -53,7 +55,14 @@ export function PedigreeEditor({ personId }: PedigreeEditorProps) {
                 id={selectId}
                 value={link.pedigree}
                 onChange={(e) =>
-                  apply((doc) => setChildPedigree(doc, family.id, personId, e.target.value as Pedigree))
+                  apply((doc) =>
+                    setChildPedigree(
+                      doc,
+                      family.id,
+                      personId,
+                      e.target.value as Pedigree,
+                    ),
+                  )
                 }
               >
                 {(Object.keys(PEDIGREE_LABEL) as Pedigree[]).map((p) => (

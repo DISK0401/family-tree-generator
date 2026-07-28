@@ -1,5 +1,5 @@
-import { useCallback, useId, useRef, useState } from 'react'
-import type { ChangeEvent, DragEvent } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react'
 import { useTreeStore } from '../store/tree-store'
 import type { TreeDocument } from '../domain/types'
 import { importGedcom, type ImportWarning } from '../lib/gedcom/import'
@@ -16,8 +16,8 @@ import {
   formatExportTimestamp,
   readFileAsBytes,
 } from '../features/import-export/fileIO'
+import { ConfirmDialog } from './ConfirmDialog'
 import './ImportExportControl.css'
-import './confirm-dialog.css'
 
 interface ImportSummaryInfo {
   peopleCount: number
@@ -59,7 +59,14 @@ const ENCODING_LABEL: Record<string, string> = {
   shift_jis: 'Shift_JIS',
 }
 
-export function ImportExportControl() {
+interface ImportExportControlProps {
+  /** blocked / unavailable / stale 中: 読み込んでも保存されないため、インポート操作を無効化する */
+  importDisabled?: boolean
+}
+
+export function ImportExportControl({
+  importDisabled = false,
+}: ImportExportControlProps) {
   const document = useTreeStore((s) => s.document)
   const replace = useTreeStore((s) => s.replace)
 
@@ -73,7 +80,6 @@ export function ImportExportControl() {
   const [exportFormat, setExportFormat] = useState<ExportFormat>('gedcom-7')
   const [exportWarnings, setExportWarnings] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const titleId = useId()
 
   const personCount = Object.keys(document.persons).length
 
@@ -86,6 +92,9 @@ export function ImportExportControl() {
   }
 
   function closeDialog() {
+    // 置き換え確認(pendingImport)を残したまま親を閉じる操作は、無言破棄ではなく
+    // 明示的なキャンセル扱いにする(監査 高3: 保留インポートの無言破棄の解消)
+    if (pendingImport) cancelOverwrite()
     setOpen(false)
   }
 
@@ -108,25 +117,54 @@ export function ImportExportControl() {
       setImportSummary(undefined)
       setPendingImport(undefined)
 
-      if (file.size > MAX_IMPORT_FILE_SIZE) {
-        setImportError(
-          `ファイルサイズが上限(20MB)を超えています(${(file.size / (1024 * 1024)).toFixed(1)}MB)。ファイルを分割するか縮小してからお試しください。`,
-        )
-        return
-      }
+      // ファイル読み取り(arrayBuffer)やデコードの失敗は例外で届くため、
+      // 全体をtry/catchで受けて必ず画面のエラー表示へ落とす(監査 中9)
+      try {
+        if (file.size > MAX_IMPORT_FILE_SIZE) {
+          setImportError(
+            `ファイルサイズが上限(20MB)を超えています(${(file.size / (1024 * 1024)).toFixed(1)}MB)。ファイルを分割するか縮小してからお試しください。`,
+          )
+          return
+        }
 
-      const format = detectFileFormat(file.name)
-      if (format === 'unknown') {
-        setImportError(
-          '対応していないファイル形式です。GEDCOMファイル(.ged)またはJSONファイル(.json)を選択してください。',
-        )
-        return
-      }
+        const format = detectFileFormat(file.name)
+        if (format === 'unknown') {
+          setImportError(
+            '対応していないファイル形式です。GEDCOMファイル(.ged)またはJSONファイル(.json)を選択してください。',
+          )
+          return
+        }
 
-      const bytes = await readFileAsBytes(file)
+        const bytes = await readFileAsBytes(file)
 
-      if (format === 'gedcom') {
-        const result = importGedcom(bytes)
+        if (format === 'gedcom') {
+          const result = importGedcom(bytes)
+          if (!result.success) {
+            setImportError(result.reason)
+            return
+          }
+          applyImportedDocument(result.document, {
+            peopleCount: Object.keys(result.document.persons).length,
+            familiesCount: Object.keys(result.document.families).length,
+            encoding: result.encoding,
+            gedcomVersion: result.version,
+            warnings: result.warnings,
+          })
+          return
+        }
+
+        // JSONはUTF-8限定のため fatal: true で検証する(不正バイトを黙って
+        // U+FFFDへ置換したまま取り込まない)。GEDCOM側は既存の自動判定に任せる
+        let text: string
+        try {
+          text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+        } catch {
+          setImportError(
+            'ファイルをUTF-8として読み取れませんでした。UTF-8で保存し直してください。',
+          )
+          return
+        }
+        const result = importFamilyTreeJson(text)
         if (!result.success) {
           setImportError(result.reason)
           return
@@ -134,31 +172,22 @@ export function ImportExportControl() {
         applyImportedDocument(result.document, {
           peopleCount: Object.keys(result.document.persons).length,
           familiesCount: Object.keys(result.document.families).length,
-          encoding: result.encoding,
-          gedcomVersion: result.version,
-          warnings: result.warnings,
+          // JSON側の修復警告(参照切れ除去・between日付の降格等)もGEDCOMと同様に表示する
+          warnings: result.warnings.map((message) => ({ message })),
         })
-        return
+      } catch (error) {
+        console.error('ファイルの読み込みに失敗しました', error)
+        setImportError(
+          'ファイルの読み込みに失敗しました。ファイルが開けることを確認して、もう一度お試しください。',
+        )
       }
-
-      const text = new TextDecoder('utf-8').decode(bytes)
-      const result = importFamilyTreeJson(text)
-      if (!result.success) {
-        setImportError(result.reason)
-        return
-      }
-      applyImportedDocument(result.document, {
-        peopleCount: Object.keys(result.document.persons).length,
-        familiesCount: Object.keys(result.document.families).length,
-        warnings: [],
-      })
     },
     [applyImportedDocument],
   )
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-    if (file) {
+    if (file && !importDisabled) {
       void handleFile(file)
     }
     event.target.value = ''
@@ -167,9 +196,18 @@ export function ImportExportControl() {
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     setIsDragging(false)
+    if (importDisabled) return
     const file = event.dataTransfer.files?.[0]
     if (file) {
       void handleFile(file)
+    }
+  }
+
+  function handleDropzoneKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      // Spaceキーの既定動作(ページスクロール)を止める(監査 低9)
+      event.preventDefault()
+      if (!importDisabled) inputRef.current?.click()
     }
   }
 
@@ -201,7 +239,9 @@ export function ImportExportControl() {
     const { text, warnings } = exportGedcom(document, version)
     downloadBytes(
       encodeGedcomTextToBytes(text),
-      version === '7.0' ? `family-tree-${timestamp}.ged` : `family-tree-${timestamp}-5.5.1.ged`,
+      version === '7.0'
+        ? `family-tree-${timestamp}.ged`
+        : `family-tree-${timestamp}-5.5.1.ged`,
       'text/vnd.familysearch.gedcom',
     )
     setExportWarnings(warnings)
@@ -217,175 +257,163 @@ export function ImportExportControl() {
         GEDCOM/JSONの読み込み・書き出し
       </button>
       {open && (
-        <div className="confirm-dialog-overlay">
-          <div
-            className="confirm-dialog import-export-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-          >
-            <h2 id={titleId}>GEDCOM/JSONの読み込み・書き出し</h2>
+        <ConfirmDialog
+          title="GEDCOM/JSONの読み込み・書き出し"
+          className="import-export-dialog"
+          cancelLabel="閉じる"
+          onCancel={closeDialog}
+        >
+          <section className="import-export-section">
+            <h3>読み込む</h3>
+            {importDisabled && (
+              <p className="import-export-disabled-note" role="status">
+                この状態では読み込んでも保存されません。保存の問題を解消してから読み込んでください。
+              </p>
+            )}
+            <div
+              className={[
+                'import-dropzone',
+                isDragging ? 'import-dropzone--active' : '',
+                importDisabled ? 'import-dropzone--disabled' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onDragOver={(event) => {
+                event.preventDefault()
+                if (!importDisabled) setIsDragging(true)
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => {
+                if (!importDisabled) inputRef.current?.click()
+              }}
+              role="button"
+              tabIndex={importDisabled ? -1 : 0}
+              aria-disabled={importDisabled || undefined}
+              onKeyDown={handleDropzoneKeyDown}
+            >
+              <p>
+                GEDCOM(.ged)またはJSON(.json)ファイルをドラッグ&ドロップ、
+                またはクリックして選択してください。
+              </p>
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".ged,.gedcom,.json"
+                aria-label="家系図ファイルを選択"
+                disabled={importDisabled}
+                onChange={handleInputChange}
+                className="import-dropzone__input"
+              />
+            </div>
 
-            <section className="import-export-section">
-              <h3>読み込む</h3>
-              <div
-                className={
-                  isDragging
-                    ? 'import-dropzone import-dropzone--active'
-                    : 'import-dropzone'
-                }
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setIsDragging(true)
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => inputRef.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    inputRef.current?.click()
-                  }
-                }}
+            {importError && (
+              <p role="alert" className="import-export-error">
+                {importError}
+              </p>
+            )}
+
+            {pendingImport && importSummary && (
+              <ConfirmDialog
+                title="読み込んだデータで置き換えますか?"
+                alertdialog
+                confirmLabel="置き換える"
+                confirmDanger
+                onConfirm={confirmOverwrite}
+                onCancel={cancelOverwrite}
               >
                 <p>
-                  GEDCOM(.ged)またはJSON(.json)ファイルをドラッグ&ドロップ、
-                  またはクリックして選択してください。
+                  現在の家系図(人物 {personCount}名)を、読み込んだデータ(人物{' '}
+                  {importSummary.peopleCount}名・家族{' '}
+                  {importSummary.familiesCount}件)で
+                  置き換えます。この操作は取り消せません。続行しますか?
                 </p>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".ged,.gedcom,.json"
-                  aria-label="家系図ファイルを選択"
-                  onChange={handleInputChange}
-                  className="import-dropzone__input"
-                />
-              </div>
+              </ConfirmDialog>
+            )}
 
-              {importError && (
-                <p role="alert" className="import-export-error">
-                  {importError}
-                </p>
-              )}
-
-              {pendingImport && importSummary && (
-                <div
-                  className="import-export-confirm"
-                  role="alertdialog"
-                  aria-modal="true"
-                >
-                  <p>
-                    現在の家系図(人物 {personCount}名)を、読み込んだデータ(人物{' '}
-                    {importSummary.peopleCount}名・家族{' '}
-                    {importSummary.familiesCount}件)で
-                    置き換えます。この操作は取り消せません。続行しますか?
-                  </p>
-                  <div className="confirm-dialog-actions">
-                    <button type="button" onClick={cancelOverwrite}>
-                      キャンセル
-                    </button>
-                    <button
-                      type="button"
-                      className="confirm-dialog-danger-button"
-                      onClick={confirmOverwrite}
-                    >
-                      置き換える
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {importSummary && !pendingImport && (
-                <div className="import-export-summary" aria-live="polite">
-                  <p>
-                    人物 {importSummary.peopleCount}名・家族{' '}
-                    {importSummary.familiesCount}
-                    件を読み込みました。
-                    {importSummary.gedcomVersion && (
-                      <>
-                        {' '}
-                        (GEDCOM {importSummary.gedcomVersion}
-                        {importSummary.encoding &&
-                          `、文字コード: ${ENCODING_LABEL[importSummary.encoding] ?? importSummary.encoding}として読み込み`}
-                        )
-                      </>
-                    )}
-                  </p>
-                  {importSummary.warnings.length > 0 ? (
-                    <div className="import-export-warnings">
-                      <p>{importSummary.warnings.length}件の警告があります:</p>
-                      <ul>
-                        {importSummary.warnings.map((warning, index) => (
-                          <li key={index}>
-                            {warning.lineNumber !== undefined &&
-                              `${warning.lineNumber}行目: `}
-                            {warning.tag && `[${warning.tag}] `}
-                            {warning.message}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p>警告はありません。</p>
+            {importSummary && !pendingImport && (
+              <div className="import-export-summary" aria-live="polite">
+                <p>
+                  人物 {importSummary.peopleCount}名・家族{' '}
+                  {importSummary.familiesCount}
+                  件を読み込みました。
+                  {importSummary.gedcomVersion && (
+                    <>
+                      {' '}
+                      (GEDCOM {importSummary.gedcomVersion}
+                      {importSummary.encoding &&
+                        `、文字コード: ${ENCODING_LABEL[importSummary.encoding] ?? importSummary.encoding}として読み込み`}
+                      )
+                    </>
                   )}
-                </div>
-              )}
-            </section>
+                </p>
+                {importSummary.warnings.length > 0 ? (
+                  <div className="import-export-warnings">
+                    <p>{importSummary.warnings.length}件の警告があります:</p>
+                    <ul>
+                      {importSummary.warnings.map((warning, index) => (
+                        <li key={index}>
+                          {warning.lineNumber !== undefined &&
+                            `${warning.lineNumber}行目: `}
+                          {warning.tag && `[${warning.tag}] `}
+                          {warning.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p>警告はありません。</p>
+                )}
+              </div>
+            )}
+          </section>
 
-            <section className="import-export-section">
-              <h3>書き出す</h3>
-              <fieldset className="import-export-format-fieldset">
-                <legend>形式を選択</legend>
-                {FORMAT_OPTIONS.map((option) => (
-                  <label
-                    key={option.value}
-                    className="import-export-format-option"
-                  >
-                    <input
-                      type="radio"
-                      name="export-format"
-                      value={option.value}
-                      checked={exportFormat === option.value}
-                      onChange={() => setExportFormat(option.value)}
-                    />
-                    <span>
-                      <strong>{option.label}</strong>
-                      <br />
-                      {option.description}
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              <p className="import-export-notice">
-                書き出したファイルには家族・親族の氏名や生年月日などの個人情報が含まれます。取り扱いにはご注意ください。
-              </p>
-              <button
-                type="button"
-                onClick={handleExport}
-                disabled={personCount === 0}
-              >
-                エクスポート
-              </button>
-              {exportWarnings.length > 0 && (
-                <div className="import-export-warnings" role="alert">
-                  <p>{exportWarnings.length}件の警告があります:</p>
-                  <ul>
-                    {exportWarnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </section>
-
-            <div className="confirm-dialog-actions">
-              <button type="button" onClick={closeDialog}>
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
+          <section className="import-export-section">
+            <h3>書き出す</h3>
+            <fieldset className="import-export-format-fieldset">
+              <legend>形式を選択</legend>
+              {FORMAT_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className="import-export-format-option"
+                >
+                  <input
+                    type="radio"
+                    name="export-format"
+                    value={option.value}
+                    checked={exportFormat === option.value}
+                    onChange={() => setExportFormat(option.value)}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <br />
+                    {option.description}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <p className="import-export-notice">
+              書き出したファイルには家族・親族の氏名や生年月日などの個人情報が含まれます。取り扱いにはご注意ください。
+            </p>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={personCount === 0}
+            >
+              エクスポート
+            </button>
+            {exportWarnings.length > 0 && (
+              <div className="import-export-warnings" role="alert">
+                <p>{exportWarnings.length}件の警告があります:</p>
+                <ul>
+                  {exportWarnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        </ConfirmDialog>
       )}
     </>
   )

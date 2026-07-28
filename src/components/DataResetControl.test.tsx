@@ -19,16 +19,22 @@ describe('DataResetControl', () => {
     const onReset = vi.fn().mockResolvedValue(undefined)
     render(<DataResetControl onReset={onReset} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'すべてのデータを削除' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'すべてのデータを削除' }),
+    )
     expect(screen.getByText(/人物 2 件・家族 1 件/)).toBeInTheDocument()
 
     const confirmButton = screen.getByRole('button', { name: '削除する' })
     expect(confirmButton).toBeDisabled()
 
-    fireEvent.change(screen.getByLabelText(/続行するには/), { target: { value: '違う' } })
+    fireEvent.change(screen.getByLabelText(/続行するには/), {
+      target: { value: '違う' },
+    })
     expect(confirmButton).toBeDisabled()
 
-    fireEvent.change(screen.getByLabelText(/続行するには/), { target: { value: '削除' } })
+    fireEvent.change(screen.getByLabelText(/続行するには/), {
+      target: { value: '削除' },
+    })
     expect(confirmButton).toBeEnabled()
 
     expect(onReset).not.toHaveBeenCalled()
@@ -38,8 +44,12 @@ describe('DataResetControl', () => {
     const onReset = vi.fn().mockResolvedValue(undefined)
     render(<DataResetControl onReset={onReset} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'すべてのデータを削除' }))
-    fireEvent.change(screen.getByLabelText(/続行するには/), { target: { value: '削除' } })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'すべてのデータを削除' }),
+    )
+    fireEvent.change(screen.getByLabelText(/続行するには/), {
+      target: { value: '削除' },
+    })
     fireEvent.click(screen.getByRole('button', { name: '削除する' }))
 
     await vi.waitFor(() => {
@@ -54,11 +64,46 @@ describe('DataResetControl', () => {
     const onReset = vi.fn().mockResolvedValue(undefined)
     render(<DataResetControl onReset={onReset} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'すべてのデータを削除' }))
-    fireEvent.change(screen.getByLabelText(/続行するには/), { target: { value: '削除' } })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'すべてのデータを削除' }),
+    )
+    fireEvent.change(screen.getByLabelText(/続行するには/), {
+      target: { value: '削除' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(onReset).not.toHaveBeenCalled()
+  })
+
+  it('onResetが失敗してもダイアログは操作可能なまま残り、エラーが表示され、再試行できる(監査 中10)', async () => {
+    const onReset = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('IndexedDBの削除に失敗'))
+      .mockResolvedValueOnce(undefined)
+    render(<DataResetControl onReset={onReset} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'すべてのデータを削除' }),
+    )
+    fireEvent.change(screen.getByLabelText(/続行するには/), {
+      target: { value: '削除' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '削除する' }))
+
+    // 失敗: ダイアログは開いたままエラーを表示し、ボタンは無効化されたままにならない
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '削除に失敗しました',
+    )
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '削除する' })).toBeEnabled()
+
+    // 再試行: 2回目は成功してダイアログが閉じる
+    fireEvent.click(screen.getByRole('button', { name: '削除する' }))
+    await vi.waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(onReset).toHaveBeenCalledTimes(2)
   })
 })

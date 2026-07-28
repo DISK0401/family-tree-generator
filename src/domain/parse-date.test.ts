@@ -18,7 +18,11 @@ describe('parseDateInput: 和暦', () => {
   })
 
   it('令和元年5月1日(元年表記)', () => {
-    expect(expectOk('令和元年5月1日').date).toEqual({ year: 2019, month: 5, day: 1 })
+    expect(expectOk('令和元年5月1日').date).toEqual({
+      year: 2019,
+      month: 5,
+      day: 1,
+    })
   })
 
   it('平成5年(年のみ)・全角数字', () => {
@@ -88,5 +92,57 @@ describe('parseDateInput: エラー', () => {
     expect(parseDateInput('2000年2月30日').ok).toBe(false)
     expect(parseDateInput('生年不詳').ok).toBe(false)
     expect(parseDateInput('  ').ok).toBe(false)
+  })
+})
+
+describe('parseDateInput: 年月のみのセパレータ形式', () => {
+  it('1964-10 / 1964/10', () => {
+    expect(expectOk('1964-10').date).toEqual({ year: 1964, month: 10 })
+    expect(expectOk('1964/10').date).toEqual({ year: 1964, month: 10 })
+  })
+})
+
+describe('parseDateInput: 範囲の正規化と区切り', () => {
+  it('逆順の範囲(1970〜1960)は開始・終了を入れ替えて受理する', () => {
+    const v = expectOk('1970〜1960')
+    expect(v.qualifier).toBe('between')
+    expect(v.date).toEqual({ year: 1960 })
+    expect(v.date2).toEqual({ year: 1970 })
+    // 入力原文はそのまま保持される
+    expect(v.original).toBe('1970〜1960')
+  })
+
+  it('半角チルダ(~)も範囲区切りとして受け付ける', () => {
+    const v = expectOk('1960~1965')
+    expect(v.qualifier).toBe('between')
+    expect(v.date).toEqual({ year: 1960 })
+    expect(v.date2).toEqual({ year: 1965 })
+  })
+
+  it('修飾子と範囲を併用しても各端の日付を読み取れる', () => {
+    const v = expectOk('1960年頃〜1965年以前')
+    expect(v.qualifier).toBe('between')
+    expect(v.date).toEqual({ year: 1960 })
+    expect(v.date2).toEqual({ year: 1965 })
+  })
+})
+
+describe('parseDateInput: 年は4桁のみ', () => {
+  it('3桁の年(196年 等)は打ち損じとみなして拒否する', () => {
+    expect(parseDateInput('196年').ok).toBe(false)
+    expect(parseDateInput('196').ok).toBe(false)
+    expect(parseDateInput('196-10-10').ok).toBe(false)
+  })
+})
+
+describe('parseDateInput: 8桁数字のうるう日', () => {
+  it('平年の2月29日(19000229)は拒否する', () => {
+    const r = parseDateInput('19000229')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.message).toContain('存在しない日付です')
+  })
+
+  it('うるう年の2月29日(20000229)は受理する', () => {
+    expect(expectOk('20000229').date).toEqual({ year: 2000, month: 2, day: 29 })
   })
 })

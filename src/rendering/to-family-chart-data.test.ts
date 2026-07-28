@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { addChild, addChildLink, addFamilyEvent, addParent, addPerson, addSpouse, addSpouseLink, linkSpouse } from '../domain/commands'
+import {
+  addChild,
+  addChildLink,
+  addFamilyEvent,
+  addParent,
+  addPerson,
+  addSpouse,
+  addSpouseLink,
+  linkSpouse,
+} from '../domain/commands'
 import { createTreeDocument } from '../domain/helpers'
 import type { FamilyChartDatum } from './to-family-chart-data'
 import {
@@ -18,10 +27,19 @@ import {
   toFullViewFamilyChartData,
 } from './to-family-chart-data'
 
-function makeDatum(id: string, overrides: Partial<FamilyChartDatum['data']> = {}): FamilyChartDatum {
+function makeDatum(
+  id: string,
+  overrides: Partial<FamilyChartDatum['data']> = {},
+): FamilyChartDatum {
   return {
     id,
-    data: { personId: id, gender: 'U', displayName: id, deceased: false, ...overrides },
+    data: {
+      personId: id,
+      gender: 'U',
+      displayName: id,
+      deceased: false,
+      ...overrides,
+    },
     rels: {},
   }
 }
@@ -36,7 +54,12 @@ describe('toFamilyChartData: ふりがな・生没地の射影', () => {
   it('ふりがな・出生地・没地がカードデータに反映される', () => {
     let doc = createTreeDocument()
     const a = addPerson(doc, {
-      name: { surname: '山田', given: '太郎', surnameKana: 'やまだ', givenKana: 'たろう' },
+      name: {
+        surname: '山田',
+        given: '太郎',
+        surnameKana: 'やまだ',
+        givenKana: 'たろう',
+      },
       birth: { type: 'birth', place: '東京都' },
       death: { type: 'death', place: '大阪府' },
     })
@@ -72,12 +95,24 @@ describe('marriageDate(design.md D9: 婚姻線ラベル用)', () => {
     doc = s.doc
     doc = addFamilyEvent(doc, s.familyId, {
       type: 'marriage',
-      date: { original: '1990-04-01', qualifier: 'exact', date: { year: 1990, month: 4, day: 1 } },
+      date: {
+        original: '1990-04-01',
+        qualifier: 'exact',
+        date: { year: 1990, month: 4, day: 1 },
+      },
     })
 
-    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({ year: 1990, month: 4, day: 1 })
+    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({
+      year: 1990,
+      month: 4,
+      day: 1,
+    })
     // 配偶者側から見ても同じ結果になる(対称)
-    expect(marriageDate(doc, s.spouseId, a.personId)).toEqual({ year: 1990, month: 4, day: 1 })
+    expect(marriageDate(doc, s.spouseId, a.personId)).toEqual({
+      year: 1990,
+      month: 4,
+      day: 1,
+    })
   })
 
   it('復縁がある場合は最初の婚姻日を返す', () => {
@@ -88,15 +123,27 @@ describe('marriageDate(design.md D9: 婚姻線ラベル用)', () => {
     doc = s.doc
     doc = addFamilyEvent(doc, s.familyId, {
       type: 'marriage',
-      date: { original: '1980-01-01', qualifier: 'exact', date: { year: 1980, month: 1, day: 1 } },
+      date: {
+        original: '1980-01-01',
+        qualifier: 'exact',
+        date: { year: 1980, month: 1, day: 1 },
+      },
     })
     doc = addFamilyEvent(doc, s.familyId, { type: 'divorce' })
     doc = addFamilyEvent(doc, s.familyId, {
       type: 'marriage',
-      date: { original: '1990-04-01', qualifier: 'exact', date: { year: 1990, month: 4, day: 1 } },
+      date: {
+        original: '1990-04-01',
+        qualifier: 'exact',
+        date: { year: 1990, month: 4, day: 1 },
+      },
     })
 
-    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({ year: 1980, month: 1, day: 1 })
+    expect(marriageDate(doc, a.personId, s.spouseId)).toEqual({
+      year: 1980,
+      month: 1,
+      day: 1,
+    })
   })
 
   it('該当する家族がない場合はundefinedを返す', () => {
@@ -133,7 +180,9 @@ describe('toFamilyChartData: 再婚', () => {
 
     const data = toFamilyChartData(doc)
     const aDatum = byId(data, a.personId)
-    expect(new Set(aDatum.rels.spouses)).toEqual(new Set([s1.spouseId, s2.spouseId]))
+    expect(new Set(aDatum.rels.spouses)).toEqual(
+      new Set([s1.spouseId, s2.spouseId]),
+    )
   })
 })
 
@@ -147,7 +196,9 @@ describe('toFamilyChartData: 養子', () => {
 
     const adoptiveParent = addPerson(doc, { name: { given: '養親' } })
     doc = adoptiveParent.doc
-    const adoptiveFamily = addChild(doc, adoptiveParent.personId, { name: { given: 'dummy' } })
+    const adoptiveFamily = addChild(doc, adoptiveParent.personId, {
+      name: { given: 'dummy' },
+    })
     doc = {
       ...adoptiveFamily.doc,
       families: {
@@ -158,24 +209,38 @@ describe('toFamilyChartData: 養子', () => {
         },
       },
     }
-    doc = addChildLink(doc, adoptiveFamily.familyId, bioChild.childId, 'adopted')
+    doc = addChildLink(
+      doc,
+      adoptiveFamily.familyId,
+      bioChild.childId,
+      'adopted',
+    )
 
     const data = toFamilyChartData(doc)
     // 実親家族が先に登録されていても、養子縁組(非実子)側が優先して採用される(design.md D2)
     expect(byId(data, bioChild.childId).data.pedigree).toBe('adopted')
-    expect(byId(data, bioChild.childId).rels.parents).toEqual([adoptiveParent.personId])
+    expect(byId(data, bioChild.childId).rels.parents).toEqual([
+      adoptiveParent.personId,
+    ])
   })
 
   it('実親情報を持たず養親のみに記録された人物は、従来どおり養子として射影される', () => {
     let doc = createTreeDocument()
     const adoptiveParent = addPerson(doc, { name: { given: '養親' } })
     doc = adoptiveParent.doc
-    const child = addChild(doc, adoptiveParent.personId, { name: { given: '子' } }, { pedigree: 'adopted' })
+    const child = addChild(
+      doc,
+      adoptiveParent.personId,
+      { name: { given: '子' } },
+      { pedigree: 'adopted' },
+    )
     doc = child.doc
 
     const data = toFamilyChartData(doc)
     expect(byId(data, child.childId).data.pedigree).toBe('adopted')
-    expect(byId(data, child.childId).rels.parents).toEqual([adoptiveParent.personId])
+    expect(byId(data, child.childId).rels.parents).toEqual([
+      adoptiveParent.personId,
+    ])
   })
 })
 
@@ -214,12 +279,19 @@ describe('toFamilyChartData: 復縁', () => {
     doc = addFamilyEvent(doc, s.familyId, { type: 'marriage' })
     doc = addFamilyEvent(doc, s.familyId, { type: 'divorce' })
     doc = addFamilyEvent(doc, s.familyId, { type: 'marriage' })
-    const child = addChild(doc, a.personId, { name: { given: '子' } }, { otherParentId: s.spouseId })
+    const child = addChild(
+      doc,
+      a.personId,
+      { name: { given: '子' } },
+      { otherParentId: s.spouseId },
+    )
     doc = child.doc
 
     const data = toFamilyChartData(doc)
     expect(byId(data, a.personId).rels.spouses).toEqual([s.spouseId])
-    expect(new Set(byId(data, a.personId).rels.children)).toEqual(new Set([child.childId]))
+    expect(new Set(byId(data, a.personId).rels.children)).toEqual(
+      new Set([child.childId]),
+    )
   })
 })
 
@@ -229,7 +301,14 @@ describe('toFamilyChartData: 基本フィールド', () => {
     const p = addPerson(doc, {
       name: { surname: '髙橋', given: '廣' },
       gender: 'male',
-      birth: { type: 'birth', date: { original: '昭和10年', qualifier: 'exact', date: { year: 1935 } } },
+      birth: {
+        type: 'birth',
+        date: {
+          original: '昭和10年',
+          qualifier: 'exact',
+          date: { year: 1935 },
+        },
+      },
     })
     doc = p.doc
 
@@ -248,7 +327,14 @@ describe('toFamilyChartData: 基本フィールド', () => {
     let doc = createTreeDocument()
     const p = addPerson(doc, {
       name: { given: '存命' },
-      birth: { type: 'birth', date: { original: '1990-05-01', qualifier: 'exact', date: { year: 1990, month: 5, day: 1 } } },
+      birth: {
+        type: 'birth',
+        date: {
+          original: '1990-05-01',
+          qualifier: 'exact',
+          date: { year: 1990, month: 5, day: 1 },
+        },
+      },
     })
     doc = p.doc
 
@@ -310,7 +396,9 @@ describe('findRootAncestor', () => {
     let doc = createTreeDocument()
     const naokatsu = addPerson(doc, { name: { given: '直克' } })
     doc = naokatsu.doc
-    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    const soseki = addChild(doc, naokatsu.personId, {
+      name: { given: '金之助' },
+    })
     doc = soseki.doc
     const shiobara = addPerson(doc, { name: { given: '昌之助' } })
     doc = shiobara.doc
@@ -340,7 +428,9 @@ describe('findPrimaryParentFamily', () => {
     const child = addChild(doc, parent.personId, { name: { given: '子' } })
     doc = child.doc
 
-    expect(findPrimaryParentFamily(doc, child.childId)?.spouseIds).toEqual([parent.personId])
+    expect(findPrimaryParentFamily(doc, child.childId)?.spouseIds).toEqual([
+      parent.personId,
+    ])
   })
 
   it('実親・養親の両方がある場合は養親側の家族を優先して返す', () => {
@@ -365,7 +455,9 @@ describe('findPrimaryParentFamily', () => {
       },
     }
 
-    expect(findPrimaryParentFamily(doc, child.childId)?.spouseIds).toEqual([adoptiveParent.personId])
+    expect(findPrimaryParentFamily(doc, child.childId)?.spouseIds).toEqual([
+      adoptiveParent.personId,
+    ])
   })
 
   it('親を持たない人物にはundefinedを返す', () => {
@@ -401,8 +493,12 @@ describe('buildPedigreeByEdge', () => {
 
     const edges = buildPedigreeByEdge(doc)
     // 主たる親子線はadoptedを優先するが、実親側の辺そのものはbiologicalのまま保持される
-    expect(edges.get(`${bioParent.personId}|${child.childId}`)).toBe('biological')
-    expect(edges.get(`${adoptiveParent.personId}|${child.childId}`)).toBe('adopted')
+    expect(edges.get(`${bioParent.personId}|${child.childId}`)).toBe(
+      'biological',
+    )
+    expect(edges.get(`${adoptiveParent.personId}|${child.childId}`)).toBe(
+      'adopted',
+    )
   })
 })
 
@@ -449,7 +545,12 @@ describe('sortSpousesByMarriageDate', () => {
 
     const datum: FamilyChartDatum = {
       id: eiichi.personId,
-      data: { personId: eiichi.personId, gender: 'M', displayName: '栄一', deceased: false },
+      data: {
+        personId: eiichi.personId,
+        gender: 'M',
+        displayName: '栄一',
+        deceased: false,
+      },
       rels: { spouses: [kaneko.spouseId, chiyo.spouseId] },
     }
     sortSpousesByMarriageDate(doc, datum)
@@ -467,7 +568,12 @@ describe('sortSpousesByMarriageDate', () => {
 
     const datum: FamilyChartDatum = {
       id: a.personId,
-      data: { personId: a.personId, gender: 'M', displayName: 'A', deceased: false },
+      data: {
+        personId: a.personId,
+        gender: 'M',
+        displayName: 'A',
+        deceased: false,
+      },
       rels: { spouses: [s1.spouseId, s2.spouseId] },
     }
     sortSpousesByMarriageDate(doc, datum)
@@ -502,14 +608,18 @@ describe('computeFullViewRoots', () => {
     const stranger = addPerson(doc, { name: { given: '無関係の人' } })
     doc = stranger.doc
 
-    expect(computeFullViewRoots(doc).sort()).toEqual([gp.personId, stranger.personId].sort())
+    expect(computeFullViewRoots(doc).sort()).toEqual(
+      [gp.personId, stranger.personId].sort(),
+    )
   })
 
   it('実親・養親の両方を持つ人物がいる場合、両方の家系の根を返す(夏目漱石サンプル相当)', () => {
     let doc = createTreeDocument()
     const naokatsu = addPerson(doc, { name: { given: '直克' } })
     doc = naokatsu.doc
-    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    const soseki = addChild(doc, naokatsu.personId, {
+      name: { given: '金之助' },
+    })
     doc = soseki.doc
     const shiobara = addPerson(doc, { name: { given: '昌之助' } })
     doc = shiobara.doc
@@ -527,7 +637,9 @@ describe('computeFullViewRoots', () => {
       },
     }
 
-    expect(computeFullViewRoots(doc).sort()).toEqual([naokatsu.personId, shiobara.personId].sort())
+    expect(computeFullViewRoots(doc).sort()).toEqual(
+      [naokatsu.personId, shiobara.personId].sort(),
+    )
   })
 
   it('子のいない配偶者だけの家族も、配偶者どちらか一方のみを根として扱う(重複を避ける)', () => {
@@ -551,14 +663,24 @@ describe('computeFullViewRoots', () => {
     doc = noriyuki.doc
     const kazue = addSpouse(doc, noriyuki.personId, { name: { given: '和枝' } })
     doc = kazue.doc
-    const yoshihiko = addChild(doc, noriyuki.personId, { name: { given: '佳彦' } }, { otherParentId: kazue.spouseId })
+    const yoshihiko = addChild(
+      doc,
+      noriyuki.personId,
+      { name: { given: '佳彦' } },
+      { otherParentId: kazue.spouseId },
+    )
     doc = yoshihiko.doc
 
     const itsuko = addPerson(doc, { name: { given: 'イツ子' } })
     doc = itsuko.doc
     const sadao = addSpouse(doc, itsuko.personId, { name: { given: '定夫' } })
     doc = sadao.doc
-    const miwa = addChild(doc, itsuko.personId, { name: { given: '美和' } }, { otherParentId: sadao.spouseId })
+    const miwa = addChild(
+      doc,
+      itsuko.personId,
+      { name: { given: '美和' } },
+      { otherParentId: sadao.spouseId },
+    )
     doc = miwa.doc
 
     // 既存の佳彦・美和を婚姻でつなぐ(addSpouseは新規人物しか作れないため、直接familyを追加する)
@@ -575,9 +697,16 @@ describe('computeFullViewRoots', () => {
         },
       },
     }
-    const airina = addChild(doc, yoshihiko.childId, { name: { given: '愛梨奈' } }, { otherParentId: miwa.childId })
+    const airina = addChild(
+      doc,
+      yoshihiko.childId,
+      { name: { given: '愛梨奈' } },
+      { otherParentId: miwa.childId },
+    )
     doc = airina.doc
-    const okunishi = addSpouse(doc, airina.childId, { name: { given: '奥西亮太' } })
+    const okunishi = addSpouse(doc, airina.childId, {
+      name: { given: '奥西亮太' },
+    })
     doc = okunishi.doc
 
     const roots = computeFullViewRoots(doc)
@@ -601,7 +730,9 @@ describe('toFullViewFamilyChartData', () => {
     let doc = createTreeDocument()
     const naokatsu = addPerson(doc, { name: { given: '直克' } })
     doc = naokatsu.doc
-    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    const soseki = addChild(doc, naokatsu.personId, {
+      name: { given: '金之助' },
+    })
     doc = soseki.doc
     const shiobara = addPerson(doc, { name: { given: '昌之助' } })
     doc = shiobara.doc
@@ -637,14 +768,18 @@ describe('toFullViewFamilyChartData', () => {
     expect(naokatsuDatum?.rels.children).toEqual([stubCard?.id])
 
     const virtual = data.find((d) => d.id === FULL_VIEW_ROOT_ID)
-    expect(virtual?.rels.children?.sort()).toEqual([naokatsu.personId, shiobara.personId].sort())
+    expect(virtual?.rels.children?.sort()).toEqual(
+      [naokatsu.personId, shiobara.personId].sort(),
+    )
   })
 
   it('非主たる家族の子(スタブ)の、さらにその子孫は連鎖的に重複しない', () => {
     let doc = createTreeDocument()
     const naokatsu = addPerson(doc, { name: { given: '直克' } })
     doc = naokatsu.doc
-    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    const soseki = addChild(doc, naokatsu.personId, {
+      name: { given: '金之助' },
+    })
     doc = soseki.doc
     const shiobara = addPerson(doc, { name: { given: '昌之助' } })
     doc = shiobara.doc
@@ -697,11 +832,23 @@ describe('computeHiddenCounts', () => {
     const spouse = addSpouse(doc, a.personId, { name: { given: 'B' } })
     doc = spouse.doc
     // Bの別の婚姻家族に子2人(Aからは非表示になりうる傍系)
-    const otherSpouse = addSpouse(doc, spouse.spouseId, { name: { given: 'C' } })
+    const otherSpouse = addSpouse(doc, spouse.spouseId, {
+      name: { given: 'C' },
+    })
     doc = otherSpouse.doc
-    const child1 = addChild(doc, spouse.spouseId, { name: { given: 'D' } }, { otherParentId: otherSpouse.spouseId })
+    const child1 = addChild(
+      doc,
+      spouse.spouseId,
+      { name: { given: 'D' } },
+      { otherParentId: otherSpouse.spouseId },
+    )
     doc = child1.doc
-    const child2 = addChild(doc, spouse.spouseId, { name: { given: 'E' } }, { otherParentId: otherSpouse.spouseId })
+    const child2 = addChild(
+      doc,
+      spouse.spouseId,
+      { name: { given: 'E' } },
+      { otherParentId: otherSpouse.spouseId },
+    )
     doc = child2.doc
 
     // AとBのみが可視(C・D・Eは非表示)と仮定する
@@ -725,13 +872,22 @@ describe('computeHiddenCounts', () => {
       ...doc,
       families: {
         ...doc.families,
-        'f-x-b': { id: 'f-x-b', spouseIds: [x.childId, b.personId], kind: 'married', events: [], children: [] },
+        'f-x-b': {
+          id: 'f-x-b',
+          spouseIds: [x.childId, b.personId],
+          kind: 'married',
+          events: [],
+          children: [],
+        },
       },
     }
 
     const visibleIds = new Set([a.personId, b.personId])
     const hidden = computeHiddenCounts(doc, visibleIds)
-    const total = [...hidden.values()].reduce((sum, info) => sum + info.count, 0)
+    const total = [...hidden.values()].reduce(
+      (sum, info) => sum + info.count,
+      0,
+    )
     // 非表示人物はXの1人のみであり、AかBどちらか一方にのみ計上される(合計1)
     expect(total).toBe(1)
   })
@@ -740,7 +896,9 @@ describe('computeHiddenCounts', () => {
     let doc = createTreeDocument()
     const naokatsu = addPerson(doc, { name: { given: '直克' } })
     doc = naokatsu.doc
-    const soseki = addChild(doc, naokatsu.personId, { name: { given: '金之助' } })
+    const soseki = addChild(doc, naokatsu.personId, {
+      name: { given: '金之助' },
+    })
     doc = soseki.doc
     const shiobara = addPerson(doc, { name: { given: '昌之助' } })
     doc = shiobara.doc
@@ -761,7 +919,10 @@ describe('computeHiddenCounts', () => {
     // 実親側(直克)が可視、養親側(昌之助)が非表示の状態を想定する
     const visibleIds = new Set([naokatsu.personId, soseki.childId])
     const hidden = computeHiddenCounts(doc, visibleIds)
-    expect(hidden.get(soseki.childId)).toEqual({ count: 1, revealId: shiobara.personId })
+    expect(hidden.get(soseki.childId)).toEqual({
+      count: 1,
+      revealId: shiobara.personId,
+    })
   })
 })
 
@@ -781,7 +942,9 @@ describe('配偶者の紐づけ後の親子線', () => {
     doc = addSpouseLink(doc, parent.familyId, other.personId)
 
     const after = byId(toFamilyChartData(doc), child.personId)
-    expect(after.rels.parents?.slice().sort()).toEqual([parent.parentId, other.personId].sort())
+    expect(after.rels.parents?.slice().sort()).toEqual(
+      [parent.parentId, other.personId].sort(),
+    )
   })
 })
 
@@ -796,12 +959,22 @@ describe('computeHiddenPartition: バッジと一覧の分担', () => {
     doc = a.doc
     const b = addSpouse(doc, a.personId, { name: { given: 'B' } })
     doc = b.doc
-    const d = addChild(doc, a.personId, { name: { given: 'D' } }, { otherParentId: b.spouseId })
+    const d = addChild(
+      doc,
+      a.personId,
+      { name: { given: 'D' } },
+      { otherParentId: b.spouseId },
+    )
     doc = d.doc
     // Bの別の婚姻家族の子E(Aの視点からは折りたたみで隠れうる傍系)
     const b2 = addSpouse(doc, b.spouseId, { name: { given: 'B2' } })
     doc = b2.doc
-    const e = addChild(doc, b.spouseId, { name: { given: 'E' } }, { otherParentId: b2.spouseId })
+    const e = addChild(
+      doc,
+      b.spouseId,
+      { name: { given: 'E' } },
+      { otherParentId: b2.spouseId },
+    )
     doc = e.doc
 
     const x = addPerson(doc, { name: { given: 'X' } })
@@ -846,7 +1019,10 @@ describe('computeHiddenPartition: バッジと一覧の分担', () => {
     const { counts, offChartIds } = computeHiddenPartition(doc, visibleIds)
 
     // バッジに計上された人物を、境界からの幅優先で復元して重複を検査する
-    const badgeCounted = [...counts.values()].reduce((sum, info) => sum + info.count, 0)
+    const badgeCounted = [...counts.values()].reduce(
+      (sum, info) => sum + info.count,
+      0,
+    )
     const hiddenTotal = Object.keys(doc.persons).length - visibleIds.size
     // 非表示人物はバッジ側と一覧側で漏れなく・重複なく分割される
     expect(badgeCounted + offChartIds.length).toBe(hiddenTotal)
@@ -874,7 +1050,12 @@ describe('computeOffChartPersonIds: 視点1人からの導出', () => {
     doc = a.doc
     const b = addSpouse(doc, a.personId, { name: { given: 'B' } })
     doc = b.doc
-    const d = addChild(doc, a.personId, { name: { given: 'D' } }, { otherParentId: b.spouseId })
+    const d = addChild(
+      doc,
+      a.personId,
+      { name: { given: 'D' } },
+      { otherParentId: b.spouseId },
+    )
     doc = d.doc
     const x = addPerson(doc, { name: { given: 'X' } })
     doc = x.doc
@@ -907,7 +1088,9 @@ describe('computeOffChartPersonIds: 視点1人からの導出', () => {
     let doc = createTreeDocument()
     const a = addPerson(doc, { name: { given: 'A' } })
     doc = a.doc
-    expect(computeOffChartPersonIds(doc, 'missing-person')).toEqual([a.personId])
+    expect(computeOffChartPersonIds(doc, 'missing-person')).toEqual([
+      a.personId,
+    ])
   })
 })
 
@@ -922,26 +1105,41 @@ describe('婿養子: 同じ家族の子どうしが夫婦の場合の重複回�
     doc = tokuo.doc
     const gin = addSpouse(doc, tokuo.personId, { name: { given: 'ぎん' } })
     doc = gin.doc
-    const sakae = addChild(doc, tokuo.personId, { name: { given: '榮' } }, {
-      otherParentId: gin.spouseId,
-    })
+    const sakae = addChild(
+      doc,
+      tokuo.personId,
+      { name: { given: '榮' } },
+      {
+        otherParentId: gin.spouseId,
+      },
+    )
     doc = sakae.doc
 
     const kihachiro = addPerson(doc, { name: { given: '喜八郎' } })
     doc = kihachiro.doc
     const kiyo = addSpouse(doc, kihachiro.personId, { name: { given: 'きよ' } })
     doc = kiyo.doc
-    const taichi = addChild(doc, kihachiro.personId, { name: { given: '兎一' } }, {
-      otherParentId: kiyo.spouseId,
-    })
+    const taichi = addChild(
+      doc,
+      kihachiro.personId,
+      { name: { given: '兎一' } },
+      {
+        otherParentId: kiyo.spouseId,
+      },
+    )
     doc = taichi.doc
     doc = linkSpouse(doc, taichi.childId, sakae.childId).doc
     // 兎一 を徳雄・ぎんの養子として加える
     doc = addChildLink(doc, gin.familyId, taichi.childId, 'adopted')
     // 榮・兎一 夫婦の子
-    const child = addChild(doc, sakae.childId, { name: { given: '紀佳' } }, {
-      otherParentId: taichi.childId,
-    })
+    const child = addChild(
+      doc,
+      sakae.childId,
+      { name: { given: '紀佳' } },
+      {
+        otherParentId: taichi.childId,
+      },
+    )
     doc = child.doc
 
     return {
@@ -977,7 +1175,9 @@ describe('婿養子: 同じ家族の子どうしが夫婦の場合の重複回�
     expect(asChildOfTokuo).toHaveLength(1)
     // 孫は榮・兎一夫婦の子として1度だけ現れる
     expect(data.find((d) => d.id === sakaeId)?.rels.children).toEqual([childId])
-    expect(data.find((d) => d.id === taichiId)?.rels.children).toEqual([childId])
+    expect(data.find((d) => d.id === taichiId)?.rels.children).toEqual([
+      childId,
+    ])
   })
 
   it('養子側を選ぶと養親(徳雄)側の家系が視点になる', () => {
@@ -1003,12 +1203,23 @@ describe('婿養子: 同じ家族の子どうしが夫婦の場合の重複回�
     doc = a.doc
     const b = addSpouse(doc, a.personId, { name: { given: 'B' } })
     doc = b.doc
-    const c1 = addChild(doc, a.personId, { name: { given: 'C1' } }, { otherParentId: b.spouseId })
+    const c1 = addChild(
+      doc,
+      a.personId,
+      { name: { given: 'C1' } },
+      { otherParentId: b.spouseId },
+    )
     doc = c1.doc
-    const c2 = addChild(doc, a.personId, { name: { given: 'C2' } }, { otherParentId: b.spouseId })
+    const c2 = addChild(
+      doc,
+      a.personId,
+      { name: { given: 'C2' } },
+      { otherParentId: b.spouseId },
+    )
     doc = c2.doc
 
-    const children = toFamilyChartData(doc).find((d) => d.id === a.personId)?.rels.children
+    const children = toFamilyChartData(doc).find((d) => d.id === a.personId)
+      ?.rels.children
     expect(children?.sort()).toEqual([c1.childId, c2.childId].sort())
   })
 })

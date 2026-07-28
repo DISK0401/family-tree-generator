@@ -2,8 +2,10 @@
   display: grid;
   grid-template-areas:
     'header header'
+    'notice notice'
     'canvas panel';
-  grid-template-rows: auto 1fr;
+  /* noticeの行は要素が無ければ高さ0に潰れる(永続化の注意書きがあるときだけ現れる) */
+  grid-template-rows: auto auto 1fr;
   grid-template-columns: 1fr auto;
   height: 100svh;
   background: var(--paper);
@@ -44,6 +46,37 @@
   border-radius: 999px;
 }
 
+/* 保存失敗時の再試行導線。ステータスピルの隣で控えめに、しかし見落とされないように */
+.app-save-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.app-save-error button {
+  font: inherit;
+  font-size: var(--text-xs);
+  padding: 2px var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  background: var(--danger-wash);
+  color: var(--danger);
+  cursor: pointer;
+}
+
+/* 永続ストレージが保証されない環境向けの控えめな注意(監査: persistenceAtRisk) */
+.app-persistence-note {
+  grid-area: notice;
+  margin: 0;
+  padding: var(--space-1) var(--header-padding-x);
+  font-size: var(--text-xs);
+  color: var(--warn);
+  background: var(--warn-wash);
+  border-bottom: 1px solid var(--line);
+}
+
 .app-blocked-message {
   max-width: 32em;
   margin: var(--space-6) auto;
@@ -53,6 +86,30 @@
   color: var(--ink);
   border-radius: var(--radius);
   font-size: var(--text-md);
+}
+
+.app-blocked-message .app-blocked-reload {
+  margin-top: var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* サンプル読み込み失敗のインライン通知(use-sample-loaderのsampleError) */
+.app-sample-error {
+  max-width: 32em;
+  margin: var(--space-4) auto 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--warn);
+  background: var(--warn-wash);
+  color: var(--ink);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
 }
 
 .app-canvas {
@@ -74,7 +131,7 @@
   width: min(360px, 90vw);
   border-left: 1px solid var(--line);
   background: var(--paper-raised);
-  box-shadow: -4px 0 16px rgb(33 29 22 / 0.05);
+  box-shadow: var(--shadow-panel);
   overflow-y: auto;
 }
 
@@ -89,6 +146,7 @@
   .app-frame {
     grid-template-areas:
       'header'
+      'notice'
       'canvas';
     grid-template-columns: 1fr;
   }

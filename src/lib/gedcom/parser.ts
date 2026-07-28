@@ -21,6 +21,27 @@ interface RawLine {
 const LINE_PATTERN = /^(\d+)\s+(?:(@[^@\s]+@)\s+)?([A-Za-z0-9_.]+)(?:\s(.*))?$/
 const LEADING_BOM_PATTERN = /^\uFEFF/
 
+/** 警告メッセージへ埋め込む行内容の上限文字数(長大な行での警告の肥大を防ぐ) */
+const WARNING_SNIPPET_LIMIT = 60
+
+/** 警告メッセージへ埋め込む行内容を上限文字数で切り詰める */
+function truncateForWarning(text: string): string {
+  return text.length <= WARNING_SNIPPET_LIMIT
+    ? text
+    : `${text.slice(0, WARNING_SNIPPET_LIMIT)}…`
+}
+
+/**
+ * 行値の先頭にあるエスケープ済み `@@` を `@` へ復号する。
+ * ポインタ値(@X@)のxref内に `@` は現れないため `@@` 始まりと衝突しない。
+ */
+function decodeLeadingAt(value: string | undefined): string | undefined {
+  if (value !== undefined && value.startsWith('@@')) {
+    return value.slice(1)
+  }
+  return value
+}
+
 function parseLine(text: string, lineNumber: number): RawLine | undefined {
   const match = LINE_PATTERN.exec(text)
   if (!match) {
@@ -58,13 +79,13 @@ export function parseGedcomText(text: string): GedcomParseResult {
     if (!parsed) {
       warnings.push({
         lineNumber,
-        message: `解釈できない行のため読み飛ばしました: ${line}`,
+        message: `解釈できない行のため読み飛ばしました: ${truncateForWarning(line)}`,
       })
       return
     }
 
     if (parsed.tag === 'CONT' || parsed.tag === 'CONC') {
-      const parent = stack[stack.length - 1]?.node
+      const parent = stack[stack.length - 1]
       if (!parent) {
         warnings.push({
           lineNumber,
@@ -72,17 +93,27 @@ export function parseGedcomText(text: string): GedcomParseResult {
         })
         return
       }
-      const addition = parsed.value ?? ''
-      parent.value =
+      // CONT/CONCは直前の行(親レベル+1)にのみ従属できる。レベルが合わない
+      // CONT/CONCをそのまま結合すると無関係なノードの値を書き換えてしまうため、
+      // 警告を出して読み飛ばす。
+      if (parsed.level !== parent.level + 1) {
+        warnings.push({
+          lineNumber,
+          message: `${parsed.tag} タグの階層レベルが不正なため読み飛ばしました(期待: ${parent.level + 1}、実際: ${parsed.level})`,
+        })
+        return
+      }
+      const addition = decodeLeadingAt(parsed.value) ?? ''
+      parent.node.value =
         parsed.tag === 'CONT'
-          ? `${parent.value ?? ''}\n${addition}`
-          : `${parent.value ?? ''}${addition}`
+          ? `${parent.node.value ?? ''}\n${addition}`
+          : `${parent.node.value ?? ''}${addition}`
       return
     }
 
     const node: GedcomNode = {
       tag: parsed.tag,
-      value: parsed.value,
+      value: decodeLeadingAt(parsed.value),
       xref: parsed.xref,
       lineNumber: parsed.lineNumber,
       children: [],
@@ -101,7 +132,16 @@ export function parseGedcomText(text: string): GedcomParseResult {
       }
       roots.push(node)
     } else {
-      stack[stack.length - 1].node.children.push(node)
+      const parent = stack[stack.length - 1]
+      // レベルの飛び(親+1超)は構造の乱れの兆候だが、従来どおり最も近い親の
+      // 子として取り込み、警告のみ出す。
+      if (parsed.level > parent.level + 1) {
+        warnings.push({
+          lineNumber,
+          message: `階層レベルが飛んでいます(親レベル${parent.level}の直下にレベル${parsed.level})。最も近い親の子として取り込みました`,
+        })
+      }
+      parent.node.children.push(node)
     }
 
     stack.push({ level: parsed.level, node })

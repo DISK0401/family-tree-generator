@@ -31,23 +31,21 @@
   box-shadow: var(--shadow-floating);
 }
 
-.person-picker-list button {
+/* 選択肢はli自身(role="option")。内側ボタンは廃止した(監査 中7: listbox構造) */
+.person-picker-option {
   display: block;
-  width: 100%;
   box-sizing: border-box;
   font: inherit;
   font-size: var(--text-sm);
   text-align: left;
   padding: var(--space-1) var(--space-2);
-  border: none;
   border-radius: var(--radius);
-  background: none;
   color: var(--ink);
   cursor: pointer;
 }
 
-.person-picker-list button:hover,
-.person-picker-list button.active {
+.person-picker-option:hover,
+.person-picker-option.active {
   background: var(--ai-wash);
   color: var(--ai-strong);
 }
