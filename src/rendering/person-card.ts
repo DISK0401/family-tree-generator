@@ -1,7 +1,11 @@
 import { computeAge } from '../domain/age'
 import type { CalendarDate, Person, PersonId } from '../domain/types'
 import { formatDateForDisplay } from '../settings/display-settings'
-import type { CalendarMode, CardFieldVisibility, DateGranularity } from '../settings/display-settings'
+import type {
+  CalendarMode,
+  CardFieldVisibility,
+  DateGranularity,
+} from '../settings/display-settings'
 
 /**
  * 人物カードの「導出」と「HTML組み立て」の共有点(design.md D3, tasks.md 6群)。
@@ -75,27 +79,49 @@ export interface CardDisplaySettings {
  * (項目自体を非表示にした場合と、データが元々未入力の場合を区別する必要はここでは無い。
  * HTML組み立て側は値の有無だけを見ればよい)。
  */
-export function derivePersonCardView(person: PersonCardInput, settings: CardDisplaySettings): PersonCardView {
+export function derivePersonCardView(
+  person: PersonCardInput,
+  settings: CardDisplaySettings,
+): PersonCardView {
   const fields = settings.visibleCardFields
 
   const years = [
-    fields.birthDate ? formatDateForDisplay(person.birthDate, settings.birthDateGranularity, settings.calendarMode) : undefined,
-    fields.deathDate ? formatDateForDisplay(person.deathDate, settings.deathDateGranularity, settings.calendarMode) : undefined,
+    fields.birthDate
+      ? formatDateForDisplay(
+          person.birthDate,
+          settings.birthDateGranularity,
+          settings.calendarMode,
+        )
+      : undefined,
+    fields.deathDate
+      ? formatDateForDisplay(
+          person.deathDate,
+          settings.deathDateGranularity,
+          settings.calendarMode,
+        )
+      : undefined,
   ]
     .filter((y): y is string => y !== undefined)
     .join(' – ')
 
   const ageLabel =
-    fields.age && person.age !== undefined ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)` : undefined
+    fields.age && person.age !== undefined
+      ? `(${person.deathYear !== undefined ? '没' : ''}${person.age}歳)`
+      : undefined
 
   // 姓・名は表示対象かつデータが存在する方だけを対象にする(データはあるのに未入力と
   // 誤解させないため、未入力時のフォールバック文言は出さない。design.md D8)
   const surname = fields.surname ? person.surname : undefined
   const given = fields.given ? person.given : undefined
 
-  const kana = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : ''
+  const kana = fields.furigana
+    ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ')
+    : ''
 
-  const places = [fields.birthPlace ? person.birthPlace : undefined, fields.deathPlace ? person.deathPlace : undefined]
+  const places = [
+    fields.birthPlace ? person.birthPlace : undefined,
+    fields.deathPlace ? person.deathPlace : undefined,
+  ]
     .filter((p): p is string => !!p)
     .join(' / ')
 
@@ -124,7 +150,8 @@ export function derivePersonCardView(person: PersonCardInput, settings: CardDisp
 export function personToCardInput(person: Person): PersonCardInput {
   return {
     personId: person.id,
-    gender: person.gender === 'male' ? 'M' : person.gender === 'female' ? 'F' : 'U',
+    gender:
+      person.gender === 'male' ? 'M' : person.gender === 'female' ? 'F' : 'U',
     surname: person.name.surname,
     given: person.name.given,
     surnameKana: person.name.surnameKana,
@@ -147,6 +174,25 @@ export function escapeHtml(value: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
+}
+
+/**
+ * タグ1要素分のHTML文字列を組み立てる小さなヘルパ(監査 中11: 構造的防御)。
+ * 属性値・テキストは呼び出し側の判断を待たず**必ず**エスケープする。
+ * `personCardInnerHtml`配下で利用者入力(氏名・地名・日付原文等)を描く箇所は
+ * すべてこの関数を経由させることで、「新しいフィールドを足すときに個別の
+ * escapeHtml呼び出しを忘れる」形のXSS混入を構造的に防ぐ。
+ * 子要素を持つコンテナはこの関数の対象外(エスケープ済み断片の結合は呼び出し側で行う)。
+ */
+function htmlTag(
+  tag: string,
+  attrs: Record<string, string>,
+  text = '',
+): string {
+  const attrHtml = Object.entries(attrs)
+    .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
+    .join('')
+  return `<${tag}${attrHtml}>${escapeHtml(text)}</${tag}>`
 }
 
 /** 折りたたみ表示のみが持つ「非表示人数バッジ」(design.md D4)。PersonCardViewの一部にはしない(下記コメント参照) */
@@ -177,47 +223,87 @@ export interface PersonCardHtmlOptions {
  * 完全に一致させる(6.3の完了条件)。氏名等の利用者入力はすべて`escapeHtml`を経由済みのため、
  * 呼び出し側は追加のエスケープなしに`dangerouslySetInnerHTML`等へそのまま渡してよい
  */
-export function personCardInnerHtml(view: PersonCardView, options: PersonCardHtmlOptions = {}): string {
+export function personCardInnerHtml(
+  view: PersonCardView,
+  options: PersonCardHtmlOptions = {},
+): string {
   const selectedClass = options.selected ? ' selected' : ''
   const deceasedClass = view.deceased ? ' deceased' : ''
+
+  // 利用者入力を含む葉要素はすべてhtmlTag経由で組み立てる(監査 中11: エスケープの構造的防御)。
+  // クラス名等の内部定数も同じ経路を通るが、エスケープ対象文字を含まないため出力は変わらない
 
   // 故人は伝統的な系譜記法にならい「†」を付す。名前の縦書き列の中に文字として埋め込むと、
   // ふりがな・生没地等の追加項目で列の縦方向スペースが狭まった際に、†が意図しない別列へ
   // 折り返されて名前の前に浮いて見える不具合が起きるため、名前列とは独立した固定位置バッジとして描く
-  const deceasedMarkHtml = view.deceased ? '<div class="tree-card-deceased-mark" title="故人">†</div>' : ''
+  const deceasedMarkHtml = view.deceased
+    ? htmlTag('div', { class: 'tree-card-deceased-mark', title: '故人' }, '†')
+    : ''
 
   // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
   // 片方しかない場合も「tree-card-given」列として描く(既存カードの見た目を保つための踏襲)
   const nameHtml =
     view.surname && view.given
-      ? `<div class="tree-card-surname">${escapeHtml(view.surname)}</div><div class="tree-card-given">${escapeHtml(view.given)}</div>`
+      ? htmlTag('div', { class: 'tree-card-surname' }, view.surname) +
+        htmlTag('div', { class: 'tree-card-given' }, view.given)
       : view.surname
-        ? `<div class="tree-card-given">${escapeHtml(view.surname)}</div>`
+        ? htmlTag('div', { class: 'tree-card-given' }, view.surname)
         : view.given
-          ? `<div class="tree-card-given">${escapeHtml(view.given)}</div>`
+          ? htmlTag('div', { class: 'tree-card-given' }, view.given)
           : ''
 
-  const kanaHtml = view.kana ? `<div class="tree-card-kana">${escapeHtml(view.kana)}</div>` : ''
-  const placesHtml = view.places ? `<div class="tree-card-places">${escapeHtml(view.places)}</div>` : ''
+  const kanaHtml = view.kana
+    ? htmlTag('div', { class: 'tree-card-kana' }, view.kana)
+    : ''
+  const placesHtml = view.places
+    ? htmlTag('div', { class: 'tree-card-places' }, view.places)
+    : ''
 
   const badgeHtml =
     options.hiddenBadge !== undefined
-      ? `<div class="tree-card-hidden-badge" data-reveal-id="${escapeHtml(options.hiddenBadge.revealId)}" title="非表示の人物が${options.hiddenBadge.count}人います。クリックすると表示します">+${options.hiddenBadge.count}</div>`
+      ? htmlTag(
+          'div',
+          {
+            class: 'tree-card-hidden-badge',
+            'data-reveal-id': options.hiddenBadge.revealId,
+            title: `非表示の人物が${options.hiddenBadge.count}人います。クリックすると表示します`,
+          },
+          `+${options.hiddenBadge.count}`,
+        )
       : ''
 
   // 性別を色のみに依存せず形状(四角/丸/破線ひし形)でも判別できるようにする(design.md D7)
   const genderClass =
-    view.gender === 'M' ? 'tree-card-gender-male' : view.gender === 'F' ? 'tree-card-gender-female' : 'tree-card-gender-unknown'
-  const genderTitle = view.gender === 'M' ? '男' : view.gender === 'F' ? '女' : '性別不明'
-  const genderHtml = view.showGenderIcon ? `<div class="tree-card-gender ${genderClass}" title="${genderTitle}"></div>` : ''
+    view.gender === 'M'
+      ? 'tree-card-gender-male'
+      : view.gender === 'F'
+        ? 'tree-card-gender-female'
+        : 'tree-card-gender-unknown'
+  const genderTitle =
+    view.gender === 'M' ? '男' : view.gender === 'F' ? '女' : '性別不明'
+  const genderHtml = view.showGenderIcon
+    ? htmlTag('div', {
+        class: `tree-card-gender ${genderClass}`,
+        title: genderTitle,
+      })
+    : ''
 
+  const yearsText = view.years
+    ? `${view.years}${view.ageLabel ? ` ${view.ageLabel}` : ''}`
+    : undefined
+  const yearsHtml = yearsText
+    ? htmlTag('div', { class: 'tree-card-years' }, yearsText)
+    : ''
+
+  // ルートのdivだけは(エスケープ済みの)子断片を含むためhtmlTagを通さない。
+  // クラス名はすべて内部定数であり、利用者入力はここへは流れない
   return `<div class="tree-card${selectedClass}${deceasedClass}">
         ${genderHtml}
         ${deceasedMarkHtml}
         ${badgeHtml}
         ${kanaHtml}
         <div class="tree-card-name-row">${nameHtml}</div>
-        ${view.years ? `<div class="tree-card-years">${escapeHtml(view.years)}${view.ageLabel ? ` ${escapeHtml(view.ageLabel)}` : ''}</div>` : ''}
+        ${yearsHtml}
         ${placesHtml}
       </div>`
 }

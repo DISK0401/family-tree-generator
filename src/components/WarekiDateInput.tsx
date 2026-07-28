@@ -1,7 +1,12 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FuzzyDate } from '../domain/types'
 import { parseDateInput } from '../domain/parse-date'
-import { ERA_TABLE, formatGregorian, formatWareki, gregorianToWareki } from '../domain/wareki'
+import {
+  ERA_TABLE,
+  formatGregorian,
+  formatWareki,
+  gregorianToWareki,
+} from '../domain/wareki'
 import './WarekiDateInput.css'
 
 interface WarekiDateInputProps {
@@ -37,17 +42,38 @@ function counterpartLabel(date: FuzzyDate): string | null {
  * 和暦・西暦のどちらでも入力を受け付け、もう一方の表記を即時表示する日付入力。
  * 「頃・以前・以後・範囲」の修飾子にも対応する(spec tree-editor参照)。
  */
-export function WarekiDateInput({ label, value, onChange, hideLabel }: WarekiDateInputProps) {
+export function WarekiDateInput({
+  label,
+  value,
+  onChange,
+  hideLabel,
+}: WarekiDateInputProps) {
   const [text, setText] = useState(value?.original ?? '')
   const [parsed, setParsed] = useState<FuzzyDate | undefined>(value)
   const [error, setError] = useState<string | null>(null)
   const inputId = useId()
+  /**
+   * 最後にこの入力欄が扱った値(自分がonChangeで親へ渡した値、または最後に同期したvalue)。
+   * 外部由来のvalue変化(undo/redo・保存後の同期。監査 高2/中4)だけを入力欄へ反映し、
+   * 自分の入力が親のstateを往復して戻ってきただけの場合(参照が同一)はリセットしない
+   * (キー入力のたびに表示が巻き戻るのを防ぐ)
+   */
+  const lastValueRef = useRef(value)
+
+  useEffect(() => {
+    if (value === lastValueRef.current) return
+    lastValueRef.current = value
+    setText(value?.original ?? '')
+    setParsed(value)
+    setError(null)
+  }, [value])
 
   function handleChange(next: string) {
     setText(next)
     if (next.trim() === '') {
       setError(null)
       setParsed(undefined)
+      lastValueRef.current = undefined
       onChange(undefined)
       return
     }
@@ -55,6 +81,7 @@ export function WarekiDateInput({ label, value, onChange, hideLabel }: WarekiDat
     if (result.ok) {
       setError(null)
       setParsed(result.value)
+      lastValueRef.current = result.value
       onChange(result.value)
     } else {
       setError(result.message)
@@ -66,7 +93,10 @@ export function WarekiDateInput({ label, value, onChange, hideLabel }: WarekiDat
 
   return (
     <div className="wareki-date-input">
-      <label htmlFor={inputId} className={hideLabel ? 'visually-hidden' : undefined}>
+      <label
+        htmlFor={inputId}
+        className={hideLabel ? 'visually-hidden' : undefined}
+      >
         {label}
       </label>
       <input
@@ -76,7 +106,13 @@ export function WarekiDateInput({ label, value, onChange, hideLabel }: WarekiDat
         onChange={(e) => handleChange(e.target.value)}
         placeholder="昭和39年10月10日 / 1964-10-10"
         aria-invalid={error ? 'true' : undefined}
-        aria-describedby={error ? `${inputId}-error` : counterpart ? `${inputId}-hint` : undefined}
+        aria-describedby={
+          error
+            ? `${inputId}-error`
+            : counterpart
+              ? `${inputId}-hint`
+              : undefined
+        }
       />
       {counterpart && (
         <p id={`${inputId}-hint`} className="wareki-date-input-hint">
@@ -84,7 +120,11 @@ export function WarekiDateInput({ label, value, onChange, hideLabel }: WarekiDat
         </p>
       )}
       {error && (
-        <p id={`${inputId}-error`} className="wareki-date-input-error" role="alert">
+        <p
+          id={`${inputId}-error`}
+          className="wareki-date-input-error"
+          role="alert"
+        >
           {error}
         </p>
       )}

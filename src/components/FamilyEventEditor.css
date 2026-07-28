@@ -69,24 +69,14 @@
   color: var(--ink-faint);
 }
 
-/* 配偶者が登録されていない家族へ既存人物を紐づける選択欄。
-   PedigreeEditorの続柄セレクトと同じ「ラベル+行内select」の見た目に揃える */
+/* 配偶者が登録されていない家族へ既存人物を紐づける選択欄(PersonPicker)。
+   旧<select>向けのスタイルはPersonPickerへの置き換えに伴い削除した(監査 低4) */
 .family-event-editor-link {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   font-size: var(--text-xs);
   color: var(--ink-faint);
-}
-
-.family-event-editor-link select {
-  font: inherit;
-  font-size: var(--text-sm);
-  color: var(--ink);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
 }
 
 /* 破壊的操作なので日付入力欄とは明確に区別する。ただし人物削除より従属的な操作のため、

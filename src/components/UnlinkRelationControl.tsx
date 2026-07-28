@@ -1,9 +1,13 @@
-import { useId, useState } from 'react'
-import { computeUnlinkImpact, unlinkChild, unlinkSpouse } from '../domain/commands'
+import { useState } from 'react'
+import {
+  computeUnlinkImpact,
+  unlinkChild,
+  unlinkSpouse,
+} from '../domain/commands'
 import { displayName } from '../domain/helpers'
 import type { FamilyId, PersonId } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
-import './confirm-dialog.css'
+import { ConfirmDialog } from './ConfirmDialog'
 import './UnlinkRelationControl.css'
 
 interface UnlinkRelationControlProps {
@@ -36,66 +40,61 @@ export function UnlinkRelationControl({
   const document = useTreeStore((s) => s.document)
   const apply = useTreeStore((s) => s.apply)
   const [open, setOpen] = useState(false)
-  const titleId = useId()
 
   const person = document.persons[personId]
   if (!person || !document.families[familyId]) return null
 
   const impact = computeUnlinkImpact(document, familyId, { kind, personId })
   const lostParts = [
-    impact.removedFamilyEventCount > 0 && `婚姻・離婚の記録${impact.removedFamilyEventCount}件`,
-    impact.orphanedChildCount > 0 && `子${impact.orphanedChildCount}人の親としての帰属`,
+    impact.removedFamilyEventCount > 0 &&
+      `婚姻・離婚の記録${impact.removedFamilyEventCount}件`,
+    impact.orphanedChildCount > 0 &&
+      `子${impact.orphanedChildCount}人の親としての帰属`,
   ].filter(Boolean)
+
+  function handleConfirm() {
+    apply((doc) =>
+      kind === 'child'
+        ? unlinkChild(doc, familyId, personId)
+        : unlinkSpouse(doc, familyId, personId),
+    )
+    setOpen(false)
+  }
 
   return (
     <>
-      <button type="button" className="unlink-relation-trigger" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="unlink-relation-trigger"
+        onClick={() => setOpen(true)}
+      >
         {label}
       </button>
       {open && (
-        <div className="confirm-dialog-overlay">
-          <div
-            className="confirm-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-          >
-            <h2 id={titleId}>{title}</h2>
-            <p>
-              {/* 家族ごと消える場合は、その家族に記録された内容も失われる旨を必ず示す */}
-              {impact.familyRemoved && (
-                <>
-                  この関係を外すと家族(婚姻の単位)そのものが失われます。
-                  {lostParts.length > 0 && `${lostParts.join('・')}も失われます。`}
-                </>
-              )}
-              人物そのものは削除されません。
-              {/* 解除後に図から外れる場合、消えたのではなく一覧へ移ることを事前に伝える */}
-              {impact.becomesUnconnected &&
-                `${displayName(person)}さんは図から外れ、「図に現れていない人物」の一覧へ移ります。`}
-              解除後すぐであれば「元に戻す」で復元できます。
-            </p>
-            <div className="confirm-dialog-actions">
-              <button type="button" onClick={() => setOpen(false)}>
-                キャンセル
-              </button>
-              <button
-                type="button"
-                className="confirm-dialog-danger-button"
-                onClick={() => {
-                  apply((doc) =>
-                    kind === 'child'
-                      ? unlinkChild(doc, familyId, personId)
-                      : unlinkSpouse(doc, familyId, personId),
-                  )
-                  setOpen(false)
-                }}
-              >
-                解除する
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title={title}
+          alertdialog
+          confirmLabel="解除する"
+          confirmDanger
+          onConfirm={handleConfirm}
+          onCancel={() => setOpen(false)}
+        >
+          <p>
+            {/* 家族ごと消える場合は、その家族に記録された内容も失われる旨を必ず示す */}
+            {impact.familyRemoved && (
+              <>
+                この関係を外すと家族(婚姻の単位)そのものが失われます。
+                {lostParts.length > 0 &&
+                  `${lostParts.join('・')}も失われます。`}
+              </>
+            )}
+            人物そのものは削除されません。
+            {/* 解除後に図から外れる場合、消えたのではなく一覧へ移ることを事前に伝える */}
+            {impact.becomesUnconnected &&
+              `${displayName(person)}さんは図から外れ、「図に現れていない人物」の一覧へ移ります。`}
+            解除後すぐであれば「元に戻す」で復元できます。
+          </p>
+        </ConfirmDialog>
       )}
     </>
   )
