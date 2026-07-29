@@ -55,3 +55,18 @@
   font-size: var(--text-sm);
   color: var(--ink-soft);
 }
+
+/*
+ * ダイアログ内用のインライン変形(listLayout='inline')。
+ * 浮かせる(position:absolute)とダイアログの矩形から候補が溢れて「下に消える」+
+ * ダイアログ自体のスクロールが発生するため、文書フローに置いてリストだけを
+ * スクロールさせる。ダイアログの面(--paper-raised)に対しリストは一段沈めた
+ * --paper で「面の中の領域」として描く
+ */
+.person-picker--inline .person-picker-list {
+  position: static;
+  max-height: min(20rem, 50vh);
+  margin-top: var(--space-1);
+  box-shadow: none;
+  background: var(--paper);
+}

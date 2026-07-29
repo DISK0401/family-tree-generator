@@ -8,6 +8,11 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* OS既定の太いスクロールバーはパネル・ダイアログ内で悪目立ちするため、
+     細身+トークン色で紙の世界観に馴染ませる(scrollbar-colorは継承される)。
+     未対応ブラウザ(Safari等)ではOS既定のまま */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 body {

@@ -16,6 +16,13 @@ interface PersonPickerProps {
   placeholder?: string
   /** ConfirmDialog内に置く場合、初期フォーカスの対象(data-autofocus)にする */
   autoFocus?: boolean
+  /**
+   * 候補リストの置き方。
+   * - 'popover'(既定): 入力欄の下へ浮かせる(サイドパネルの省スペース用)
+   * - 'inline': 文書フローに置いて常時表示する。ダイアログ内では浮かせるとダイアログの
+   *   矩形から溢れて「候補が下に消えた」二重スクロールになるため、こちらを使う
+   */
+  listLayout?: 'popover' | 'inline'
 }
 
 function matches(person: Person, query: string): boolean {
@@ -46,12 +53,16 @@ export function PersonPicker({
   onSelect,
   placeholder,
   autoFocus,
+  listLayout = 'popover',
 }: PersonPickerProps) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
+  const inline = listLayout === 'inline'
+  // inlineでは候補は常時表示(フォーカスの有無で消えるとダイアログの主内容が消えてしまう)
+  const listVisible = inline || open
 
   const normalizedQuery = query.trim().toLowerCase()
   const filtered = normalizedQuery
@@ -87,8 +98,12 @@ export function PersonPicker({
         select(target)
       }
     } else if (e.key === 'Escape') {
-      setOpen(false)
-      setActiveIndex(-1)
+      // inlineではリストを閉じる操作が存在しないため何もしない
+      // (ダイアログ内ではEscはダイアログ側のcancelに届く)
+      if (!inline) {
+        setOpen(false)
+        setActiveIndex(-1)
+      }
     }
   }
 
@@ -102,17 +117,22 @@ export function PersonPicker({
   }
 
   const activeOptionId =
-    open && activeIndex >= 0 && activeIndex < filtered.length
+    listVisible && activeIndex >= 0 && activeIndex < filtered.length
       ? optionId(activeIndex)
       : undefined
 
   return (
-    <div className="person-picker" ref={rootRef}>
+    <div
+      className={
+        inline ? 'person-picker person-picker--inline' : 'person-picker'
+      }
+      ref={rootRef}
+    >
       <input
         id={id}
         type="text"
         role="combobox"
-        aria-expanded={open}
+        aria-expanded={listVisible}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={activeOptionId}
@@ -129,7 +149,7 @@ export function PersonPicker({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
-      {open && (
+      {listVisible && (
         <ul id={listId} role="listbox" className="person-picker-list">
           {filtered.length === 0 ? (
             <li className="person-picker-empty">該当する人物がいません</li>

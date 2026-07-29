@@ -697,7 +697,9 @@ export function FamilyTreeCanvas({
                 <span>不明</span>
               </div>
               <div className="tree-legend-item">
-                <span className="tree-legend-dot" />
+                <span className="tree-legend-deceased" aria-hidden="true">
+                  †
+                </span>
                 <span>故人(†)</span>
               </div>
               <p className="tree-legend-hint">カードを選ぶと編集できます</p>
@@ -727,6 +729,7 @@ export function FamilyTreeCanvas({
             candidates={Object.values(doc.persons)}
             onSelect={handleSearchSelect}
             placeholder="氏名・ふりがなで検索"
+            listLayout="inline"
           />
         </ConfirmDialog>
       ) : null}

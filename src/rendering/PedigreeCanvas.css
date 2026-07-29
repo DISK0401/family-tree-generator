@@ -42,8 +42,12 @@
 }
 
 /* 婚姻線は伝統的な系図記法にならい二重線にする。FamilyTreeCanvas.cssの.spouse-linkと同じ手法
-   (drop-shadowで並行線を「複製」する。0ブラーで縁取りがそのまま複製コピーとして描画される) */
+   (drop-shadowで並行線を「複製」する。0ブラーで縁取りがそのまま複製コピーとして描画される)。
+   再婚等でレーンに複数の婚姻線が並ぶと束になって圧が出るため、親子の系線より一段細く・
+   淡くして「主役は血統の線、婚姻は結び」という読み順を作る(デザイン検証の指摘6) */
 .pedigree-link.spouse-link {
+  stroke-width: 1.5px;
+  opacity: 0.72;
   filter: drop-shadow(0 3px 0 var(--line-strong));
 }
 
