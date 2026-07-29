@@ -159,10 +159,10 @@ export function PedigreeCanvas({
   const svgRef = useRef<SVGSVGElement>(null)
 
   // 選択中の人物カードの中心。モバイル最小倍率での切り出しの焦点にのみ使う。
-  // 選択の変化そのものでは再フィットしない(上記spec)ため、依存配列には入れず
-  // refで持ち、フィット実行時にだけ読む
-  const focusRef = useRef<{ x: number; y: number } | undefined>(undefined)
-  focusRef.current = (() => {
+  // 選択の変化そのものでは再フィットしない(上記spec)ため依存配列には入れず、
+  // フィットを実行する瞬間(エフェクト・ズームボタン)にだけ評価する関数として持つ
+  // (レンダー中にrefへ書き込む方式はreact-hooks/refsが禁じるため関数化した)
+  const currentFocusPoint = () => {
     if (!selectedPersonId) return undefined
     const pos = layout.persons.find((p) => p.personId === selectedPersonId)
     if (!pos) return undefined
@@ -170,13 +170,13 @@ export function PedigreeCanvas({
       x: pos.x + layout.cardSize.width / 2,
       y: pos.y + layout.cardSize.height / 2,
     }
-  })()
+  }
 
   // 図の寸法が変わった(=人物・家族の増減があった)ときだけフィットし直す。
   // svgの実寸を反映するため、描画後・ペイント前のuseLayoutEffectで行う(チラつかない)。
   // マウント直後の初回実行が「実寸込みの初期フィット」を兼ねる
   useLayoutEffect(() => {
-    setCamera(computeFitCamera(layout, svgRef.current, focusRef.current))
+    setCamera(computeFitCamera(layout, svgRef.current, currentFocusPoint()))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 寸法の変化のみで再フィットする(選択・内容編集では動かさない)
   }, [layout.width, layout.height])
   /**
@@ -445,7 +445,9 @@ export function PedigreeCanvas({
         onZoomIn={() => zoomButton(1 / 1.3)}
         onZoomOut={() => zoomButton(1.3)}
         onFit={() =>
-          setCamera(computeFitCamera(layout, svgRef.current, focusRef.current))
+          setCamera(
+            computeFitCamera(layout, svgRef.current, currentFocusPoint()),
+          )
         }
       />
     </div>

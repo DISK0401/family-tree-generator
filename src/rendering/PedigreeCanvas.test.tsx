@@ -270,7 +270,7 @@ describe('PedigreeCanvas: 初期フィット(デザイン検証の指摘1・7)',
       x: 0,
       y: 0,
       toJSON: () => ({}),
-    } as DOMRect)
+    })
   }
 
   /** '(max-width: 640px)' のみ一致する狭幅ビューポートをモックする

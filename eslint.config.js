@@ -6,8 +6,9 @@ import tseslint from 'typescript-eslint'
 import prettierConfig from 'eslint-config-prettier'
 
 export default tseslint.config(
-  // spike/ は検証済みスパイクとして凍結(型検査対象外・非保守。spike/README.md 参照)
-  { ignores: ['dist', 'spike'] },
+  // spike/ は検証済みスパイクとして凍結(型検査対象外・非保守。spike/README.md 参照)。
+  // coverage/ は `npm run test:coverage` の生成物(gitignore済みだがローカルのlintが拾ってしまう)
+  { ignores: ['dist', 'spike', 'coverage'] },
   {
     extends: [
       js.configs.recommended,
