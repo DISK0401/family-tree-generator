@@ -6,6 +6,9 @@ import { SCHEMA_VERSION } from '../../domain/types'
  * 幼少期に塩原家へ養子に出され、のちに夏目家へ復籍した経歴を、
  * 実父母(biological)と養父母(adopted)の2家族への帰属で表現する。
  * Wikipedia等の公知情報を基に主要人物のみへ簡略化している。登場人物は全員故人。
+ *
+ * 構造化日付(date)は、明治6年(1873年)のグレゴリオ暦採用以降の日付に限り
+ * originalの月日をそのまま写している。それより前は旧暦のため年のみとする。
  */
 export const natsumeSosekiSample: TreeDocument = {
   schemaVersion: SCHEMA_VERSION,
@@ -74,7 +77,7 @@ export const natsumeSosekiSample: TreeDocument = {
         date: {
           original: '大正5年12月9日',
           qualifier: 'exact',
-          date: { year: 1916 },
+          date: { year: 1916, month: 12, day: 9 },
         },
       },
       note: '筆名は漱石。幼少期に塩原家へ養子に出され、のちに夏目家へ復籍した',
@@ -93,7 +96,7 @@ export const natsumeSosekiSample: TreeDocument = {
         date: {
           original: '明治10年7月21日',
           qualifier: 'exact',
-          date: { year: 1877 },
+          date: { year: 1877, month: 7, day: 21 },
         },
       },
       death: {
@@ -101,7 +104,7 @@ export const natsumeSosekiSample: TreeDocument = {
         date: {
           original: '昭和38年4月18日',
           qualifier: 'exact',
-          date: { year: 1963 },
+          date: { year: 1963, month: 4, day: 18 },
         },
       },
     },
@@ -119,7 +122,7 @@ export const natsumeSosekiSample: TreeDocument = {
         date: {
           original: '明治32年5月31日',
           qualifier: 'exact',
-          date: { year: 1899 },
+          date: { year: 1899, month: 5, day: 31 },
         },
       },
       death: {
@@ -158,7 +161,7 @@ export const natsumeSosekiSample: TreeDocument = {
           date: {
             original: '明治29年6月9日',
             qualifier: 'exact',
-            date: { year: 1896 },
+            date: { year: 1896, month: 6, day: 9 },
           },
         },
       ],

@@ -3,7 +3,13 @@ import { assignCoordinates, CARD_SIZE } from './coordinates'
 import { assignGenerations } from './generations'
 import { buildGraph, splitIntoComponents } from './graph'
 import { orderWithinLayers } from './ordering'
-import type { FamilyPosition, LinkPoint, PedigreeLayout, PedigreeLink, PersonPosition } from './types'
+import type {
+  FamilyPosition,
+  LinkPoint,
+  PedigreeLayout,
+  PedigreeLink,
+  PersonPosition,
+} from './types'
 
 export type {
   CardSize,
@@ -32,9 +38,11 @@ function shiftLink(link: PedigreeLink, dx: number): PedigreeLink {
  * →成分を横に並べて結合、の順に行う純粋関数。
  *
  * 成分ごとに独立してレイアウトしてから結合するのは、無関係な人物・家族クラスタの追加や変更が、
- * 既存の連結成分の座標に影響しないようにするため(spec「レイアウトの決定性」の
- * 「無関係な編集で配置が跳ねない」)。成分の並び順は`splitIntoComponents`が返す順(各成分内の
- * 最小人物IDの昇順)に固定する
+ * 既存の連結成分の**成分内の相対配置**に影響しないようにするため(spec「レイアウトの決定性」の
+ * 「無関係な編集で配置が跳ねない」)。成分の並び順とxOffsetは変わりうる(成分が増えれば
+ * 後続の成分は右へずれるし、最小人物IDの順位が変われば並び自体も入れ替わる)ため、
+ * 絶対座標まで不変になるわけではない。成分の並び順は`splitIntoComponents`が返す順
+ * (各成分内の最小人物IDの昇順)に固定する
  */
 export function layoutPedigree(doc: TreeDocument): PedigreeLayout {
   const graph = buildGraph(doc)

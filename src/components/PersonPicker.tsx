@@ -1,4 +1,10 @@
-import { useId, useState, type KeyboardEvent } from 'react'
+import {
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react'
 import { displayName } from '../domain/helpers'
 import type { Person, PersonId } from '../domain/types'
 import './PersonPicker.css'
@@ -8,12 +14,23 @@ interface PersonPickerProps {
   candidates: Person[]
   onSelect: (personId: PersonId) => void
   placeholder?: string
+  /** ConfirmDialog内に置く場合、初期フォーカスの対象(data-autofocus)にする */
+  autoFocus?: boolean
+  /**
+   * 候補リストの置き方。
+   * - 'popover'(既定): 入力欄の下へ浮かせる(サイドパネルの省スペース用)
+   * - 'inline': 文書フローに置いて常時表示する。ダイアログ内では浮かせるとダイアログの
+   *   矩形から溢れて「候補が下に消えた」二重スクロールになるため、こちらを使う
+   */
+  listLayout?: 'popover' | 'inline'
 }
 
 function matches(person: Person, query: string): boolean {
   const name = displayName(person).toLowerCase()
   if (name.includes(query)) return true
-  const kana = [person.name.surnameKana, person.name.givenKana].filter(Boolean).join(' ')
+  const kana = [person.name.surnameKana, person.name.givenKana]
+    .filter(Boolean)
+    .join(' ')
   return kana.toLowerCase().includes(query)
 }
 
@@ -25,17 +42,36 @@ function matches(person: Person, query: string): boolean {
  * 選択(クリックまたはEnter)すると即座に`onSelect`を呼んで入力欄を空に戻す。呼び出し側は
  * `<select>`と同じ「選択したら即時反映」の使い方ができ、確定操作を挟まない
  * (PersonPanel/FamilyEventEditorの既存方針を踏襲)。
+ *
+ * a11y(監査 中7): listboxの選択肢は`li`自身に`role="option"`とidを持たせ
+ * (フォーカス可能な内側ボタンは置かない)、入力欄の`aria-activedescendant`で
+ * ハイライト中の候補を支援技術へ伝える(コンボボックスの標準パターン)。
  */
-export function PersonPicker({ id, candidates, onSelect, placeholder }: PersonPickerProps) {
+export function PersonPicker({
+  id,
+  candidates,
+  onSelect,
+  placeholder,
+  autoFocus,
+  listLayout = 'popover',
+}: PersonPickerProps) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const listId = useId()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const inline = listLayout === 'inline'
+  // inlineでは候補は常時表示(フォーカスの有無で消えるとダイアログの主内容が消えてしまう)
+  const listVisible = inline || open
 
   const normalizedQuery = query.trim().toLowerCase()
   const filtered = normalizedQuery
     ? candidates.filter((p) => matches(p, normalizedQuery))
     : candidates
+
+  function optionId(index: number): string {
+    return `${listId}-option-${index}`
+  }
 
   function select(person: Person) {
     onSelect(person.id)
@@ -54,27 +90,54 @@ export function PersonPicker({ id, candidates, onSelect, placeholder }: PersonPi
       setActiveIndex((i) => Math.max(i - 1, 0))
     } else if (e.key === 'Enter') {
       // 候補が1件に絞られていれば、ハイライト前でもEnterだけで選べるようにする
-      const target = filtered[activeIndex] ?? (filtered.length === 1 ? filtered[0] : undefined)
+      const target =
+        filtered[activeIndex] ??
+        (filtered.length === 1 ? filtered[0] : undefined)
       if (target) {
         e.preventDefault()
         select(target)
       }
     } else if (e.key === 'Escape') {
-      setOpen(false)
-      setActiveIndex(-1)
+      // inlineではリストを閉じる操作が存在しないため何もしない
+      // (ダイアログ内ではEscはダイアログ側のcancelに届く)
+      if (!inline) {
+        setOpen(false)
+        setActiveIndex(-1)
+      }
     }
   }
 
+  function handleBlur(e: FocusEvent<HTMLInputElement>) {
+    // フォーカスの移動先がピッカー内(候補リスト等)なら閉じない。
+    // 以前のsetTimeout(100)方式はタイマーの競合で「選択できたりできなかったり」する
+    // 揺らぎの温床だったため、relatedTargetによる判定へ置き換えた(監査 中7)
+    if (rootRef.current?.contains(e.relatedTarget)) return
+    setOpen(false)
+    setActiveIndex(-1)
+  }
+
+  const activeOptionId =
+    listVisible && activeIndex >= 0 && activeIndex < filtered.length
+      ? optionId(activeIndex)
+      : undefined
+
   return (
-    <div className="person-picker">
+    <div
+      className={
+        inline ? 'person-picker person-picker--inline' : 'person-picker'
+      }
+      ref={rootRef}
+    >
       <input
         id={id}
         type="text"
         role="combobox"
-        aria-expanded={open}
+        aria-expanded={listVisible}
         aria-controls={listId}
         aria-autocomplete="list"
+        aria-activedescendant={activeOptionId}
         autoComplete="off"
+        data-autofocus={autoFocus ? '' : undefined}
         placeholder={placeholder ?? '氏名で絞り込み'}
         value={query}
         onChange={(e) => {
@@ -83,29 +146,30 @@ export function PersonPicker({ id, candidates, onSelect, placeholder }: PersonPi
           setActiveIndex(-1)
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => {
-          // 候補クリック(onMouseDown)を先に処理させてから閉じる
-          window.setTimeout(() => setOpen(false), 100)
-        }}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
-      {open && (
+      {listVisible && (
         <ul id={listId} role="listbox" className="person-picker-list">
           {filtered.length === 0 ? (
             <li className="person-picker-empty">該当する人物がいません</li>
           ) : (
             filtered.map((p, index) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  className={index === activeIndex ? 'active' : undefined}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => select(p)}
-                >
-                  {displayName(p)}
-                </button>
+              <li
+                key={p.id}
+                id={optionId(index)}
+                role="option"
+                aria-selected={index === activeIndex}
+                className={
+                  index === activeIndex
+                    ? 'person-picker-option active'
+                    : 'person-picker-option'
+                }
+                // フォーカスを入力欄に残したまま選択できるようにする(blurで閉じない)
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => select(p)}
+              >
+                {displayName(p)}
               </li>
             ))
           )}

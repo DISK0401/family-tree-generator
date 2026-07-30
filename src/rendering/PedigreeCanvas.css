@@ -42,8 +42,12 @@
 }
 
 /* 婚姻線は伝統的な系図記法にならい二重線にする。FamilyTreeCanvas.cssの.spouse-linkと同じ手法
-   (drop-shadowで並行線を「複製」する。0ブラーで縁取りがそのまま複製コピーとして描画される) */
+   (drop-shadowで並行線を「複製」する。0ブラーで縁取りがそのまま複製コピーとして描画される)。
+   再婚等でレーンに複数の婚姻線が並ぶと束になって圧が出るため、親子の系線より一段細く・
+   淡くして「主役は血統の線、婚姻は結び」という読み順を作る(デザイン検証の指摘6) */
 .pedigree-link.spouse-link {
+  stroke-width: 1.5px;
+  opacity: 0.72;
   filter: drop-shadow(0 3px 0 var(--line-strong));
 }
 
@@ -57,42 +61,4 @@
   height: 100%;
 }
 
-.pedigree-zoom-controls {
-  z-index: 10;
-  position: absolute;
-  right: var(--space-3);
-  bottom: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: var(--shadow-raised);
-  overflow: hidden;
-}
-
-.pedigree-zoom-controls button {
-  width: 36px;
-  height: 36px;
-  font-size: var(--text-md);
-  line-height: 1;
-  border: none;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.pedigree-zoom-controls button:last-child {
-  border-bottom: none;
-}
-
-.pedigree-zoom-controls button:hover {
-  background: var(--ai-wash);
-  color: var(--ai-strong);
-}
+/* ズーム操作面は共有コンポーネント(components/ZoomControls)のCSSへ移動した(監査 低6) */

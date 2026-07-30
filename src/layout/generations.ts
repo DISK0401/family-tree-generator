@@ -56,7 +56,9 @@ export function assignGenerations(graph: PedigreeGraph): GenerationAssignment {
     for (const familyId of familyIds) {
       const family = graph.families.get(familyId)
       if (!family || family.spouseIds.length === 0) continue
-      const spouseMax = Math.max(...family.spouseIds.map((id) => generationOf.get(id) ?? 0))
+      const spouseMax = Math.max(
+        ...family.spouseIds.map((id) => generationOf.get(id) ?? 0),
+      )
       for (const child of family.children) {
         const required = spouseMax + 1
         const current = generationOf.get(child.childId) ?? 0
@@ -70,7 +72,9 @@ export function assignGenerations(graph: PedigreeGraph): GenerationAssignment {
     for (const familyId of familyIds) {
       const family = graph.families.get(familyId)
       if (!family || family.spouseIds.length < 2) continue
-      const max = Math.max(...family.spouseIds.map((id) => generationOf.get(id) ?? 0))
+      const max = Math.max(
+        ...family.spouseIds.map((id) => generationOf.get(id) ?? 0),
+      )
       for (const spouseId of family.spouseIds) {
         const current = generationOf.get(spouseId) ?? 0
         if (current < max) {

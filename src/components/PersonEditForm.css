@@ -43,7 +43,8 @@
 
 .person-edit-form-field select {
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
     linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
   background-position:
     calc(100% - 18px) center,

@@ -64,7 +64,9 @@ describe('関係を持たない人物のJSONラウンドトリップ', () => {
     let document = createTreeDocument()
     const a = addPerson(document, { name: { given: 'A' } })
     document = a.doc
-    const standalone = addPerson(document, { name: { surname: '富岡', given: '榮' } })
+    const standalone = addPerson(document, {
+      name: { surname: '富岡', given: '榮' },
+    })
     document = standalone.doc
 
     const text = exportFamilyTreeJsonText(document)

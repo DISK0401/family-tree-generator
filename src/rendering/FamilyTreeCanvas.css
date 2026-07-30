@@ -78,6 +78,15 @@
   cursor: pointer;
 }
 
+/* 視覚上の18pxはそのままに、クリック/タップのヒット領域を擬似要素で30px(24px以上)へ
+   広げる(監査 低8)。擬似要素上のイベントもe.targetはバッジ本体になるため、
+   クリックハンドラのclosest('.tree-card-hidden-badge')判定はそのまま働く */
+.tree-card-hidden-badge::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
 .tree-card-hidden-badge:hover {
   background: var(--ai-strong);
 }
@@ -85,25 +94,12 @@
 .tree-card:hover {
   border-color: var(--line-strong);
   translate: 0 -2px;
-  box-shadow:
-    0 2px 4px rgb(33 29 22 / 0.08),
-    0 8px 20px rgb(33 29 22 / 0.12);
+  box-shadow: var(--shadow-hover);
 }
 
-/* 故人マーカー: 左上の小さな輪(†と対応)。没の記録がある人物にのみ付け、
-   記録の無い人物を「存命」と断定する表示はしない。
-   ズームアウトして文字が潰れても、故人の分布が一目で読めるようにする */
-.tree-card.deceased::before {
-  content: '';
-  box-sizing: border-box;
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1.5px solid var(--line-strong);
-}
+/* 故人の印は右上の「†」(.tree-card-deceased-mark)に一本化する。
+   以前は左上に小さな輪(::before)も重ねていたが、同じ位置の性別インジケーターと
+   重なって「ずれた二重描画」に見えるだけで、†と情報が重複していたため廃止した */
 
 /* 故人カードは面を一段沈める(古びた頁の趣) */
 .tree-card.deceased {
@@ -283,11 +279,10 @@
   gap: var(--space-2);
 }
 
-/* 凡例・ズームは地図アプリの流儀で「図の上に浮かぶ操作面」として描く(半透明+ぼかし+浮遊影) */
+/* 凡例・ズームは地図アプリの流儀で「図の上に浮かぶ操作面」として描く(半透明+ぼかし+浮遊影)。
+   <details>として折りたためる(モバイルでは初期折りたたみ。監査 中12) */
 .tree-legend {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-self: stretch;
   padding: var(--space-2) var(--space-3);
   background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
   backdrop-filter: blur(8px);
@@ -297,6 +292,22 @@
   box-shadow: var(--shadow-raised);
   font-size: var(--text-xs);
   color: var(--ink-soft);
+}
+
+.tree-legend-summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--ink-soft);
+}
+
+.tree-legend[open] .tree-legend-summary {
+  margin-bottom: var(--space-1);
+}
+
+.tree-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .tree-legend-item {
@@ -325,15 +336,14 @@
   flex-shrink: 0;
 }
 
-/* カードの故人マーカーと同じ描画 */
-.tree-legend-dot {
-  box-sizing: border-box;
+/* カード右上の故人マーク(†)と同じ文字を凡例のスウォッチ位置に置く */
+.tree-legend-deceased {
   display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin: 0 calc((24px - 7px) / 2);
-  border-radius: 50%;
-  border: 1.5px solid var(--line-strong);
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 1;
+  color: var(--ink-soft);
 }
 
 .tree-legend-hint {
@@ -396,44 +406,40 @@
   color: var(--ai-strong);
 }
 
-.tree-zoom-controls {
-  /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
-     タップ/クリックを奪われるため、明示的なz-indexが必須 */
-  z-index: 10;
-  position: absolute;
-  right: var(--space-3);
-  bottom: var(--space-3);
-  display: flex;
-  flex-direction: column;
+/* ズーム操作面は共有コンポーネント(components/ZoomControls)のCSSへ移動した(監査 低6) */
+
+/* キーボードで人物を選択できる唯一の経路(監査 高4)。表示モード切替と同じ操作面の見た目 */
+.tree-person-search-trigger {
+  align-self: stretch;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  text-align: left;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--shadow-raised);
-  overflow: hidden;
-}
-
-.tree-zoom-controls button {
-  width: 36px;
-  height: 36px;
-  font-size: var(--text-md);
-  line-height: 1;
-  border: none;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
   color: var(--ink-soft);
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+  white-space: nowrap;
 }
 
-.tree-zoom-controls button:last-child {
-  border-bottom: none;
-}
-
-.tree-zoom-controls button:hover {
+.tree-person-search-trigger:hover {
   background: var(--ai-wash);
   color: var(--ai-strong);
+}
+
+.tree-person-search-hint {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+/* モバイルではコントロール群の占有を抑える(監査 中12)。凡例はJSX側で初期折りたたみ */
+@media (max-width: 640px) {
+  .tree-show-all-toggle,
+  .tree-person-search-trigger {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+  }
 }

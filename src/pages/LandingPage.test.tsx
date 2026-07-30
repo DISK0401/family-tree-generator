@@ -106,6 +106,36 @@ describe('LandingPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('サンプルギャラリーのタブは矢印キーで移動できる(roving tabindex。監査 低10)', () => {
+    render(<LandingPage />)
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs.length).toBeGreaterThanOrEqual(2)
+
+    // 選択中のタブだけがTab順に入る
+    expect(tabs[0]).toHaveAttribute('tabindex', '0')
+    expect(tabs[1]).toHaveAttribute('tabindex', '-1')
+
+    tabs[0].focus()
+    fireEvent.keyDown(tabs[0], { key: 'ArrowRight' })
+
+    expect(tabs[1]).toHaveFocus()
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
+    expect(tabs[1]).toHaveAttribute('tabindex', '0')
+    expect(tabs[0]).toHaveAttribute('tabindex', '-1')
+
+    fireEvent.keyDown(tabs[1], { key: 'ArrowLeft' })
+    expect(tabs[0]).toHaveFocus()
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+
+    // 先頭で左を押すと末尾へ回り込む
+    fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' })
+    expect(tabs[tabs.length - 1]).toHaveFocus()
+
+    // Home/Endにも対応する
+    fireEvent.keyDown(tabs[tabs.length - 1], { key: 'Home' })
+    expect(tabs[0]).toHaveFocus()
+  })
+
   it('旧字体を含むサンプル(澁澤榮一)が表示できる', () => {
     render(<LandingPage />)
     fireEvent.click(screen.getByRole('tab', { name: /渋沢栄一/ }))

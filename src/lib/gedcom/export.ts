@@ -9,7 +9,7 @@ import type { GedcomNode } from '../../domain/gedcomNode'
 import type { GedcomVersion } from './version'
 import { xrefToPointer } from './nodeHelpers'
 import { personNameToGedcomNode } from './nameMapping'
-import { fuzzyDateToGedcomNode } from './dateMapping'
+import { formatGedcomHeaderDate, fuzzyDateToGedcomNode } from './dateMapping'
 import { pedigreeToPedi } from './pedigree'
 import { serializeGedcomTree } from './serializer'
 
@@ -24,22 +24,104 @@ const GENDER_EXPORT: Record<Gender, string> = {
   unknown: 'U',
 }
 
+/**
+ * 本アプリが出力し得る独自拡張タグと、その意味を識別するURI(GEDCOM 7.0のSCHMA宣言用)。
+ * URIは「タグの定義を示す識別子」であればよいため、現状はリポジトリのREADMEを
+ * 仮の識別子とする(タグごとのフラグメントで区別)。
+ */
+const EXTENSION_TAG_URIS: [string, string][] = [
+  [
+    '_KANA_SURN',
+    'https://github.com/DISK0401/family-tree-generator#_kana_surn',
+  ],
+  [
+    '_KANA_GIVN',
+    'https://github.com/DISK0401/family-tree-generator#_kana_givn',
+  ],
+  ['_FAM_KIND', 'https://github.com/DISK0401/family-tree-generator#_fam_kind'],
+  [
+    '_TREE_TITLE',
+    'https://github.com/DISK0401/family-tree-generator#_tree_title',
+  ],
+  [
+    '_SPOUSE_ROLE_UNKNOWN',
+    'https://github.com/DISK0401/family-tree-generator#_spouse_role_unknown',
+  ],
+]
+
+/** 5.5.1エクスポートで出力する提出者レコードのxref(HEADのSUBM参照先) */
+const SUBMITTER_XREF = 'U1'
+
+/**
+ * HEADレコードを構築する。5.5.1では規格上の必須要素
+ * (SOUR / SUBM参照 / GEDC.FORM / CHAR)を出力し、7.0では使用する拡張タグを
+ * SCHMAで宣言する。DATEは両バージョンで出力する(値はドキュメントの更新日時)。
+ */
 function buildHeader(
   version: GedcomVersion,
   document: TreeDocument,
 ): GedcomNode {
-  const versionValue = version === '7.0' ? '7.0' : '5.5.1'
-  const children: GedcomNode[] = [
-    {
-      tag: 'GEDC',
-      children: [{ tag: 'VERS', value: versionValue, children: [] }],
-    },
-  ]
+  const updatedAt = new Date(document.updatedAt)
+  // updatedAtが不正な文字列でもエクスポートを止めない(エクスポート日で代替)
+  const headerDate = Number.isNaN(updatedAt.getTime()) ? new Date() : updatedAt
+
+  const children: GedcomNode[] = []
+
   if (version === '5.5.1') {
+    children.push({
+      tag: 'SOUR',
+      value: 'KAKEIZUCHO',
+      children: [{ tag: 'NAME', value: '家系図帖', children: [] }],
+    })
+    children.push({
+      tag: 'DATE',
+      value: formatGedcomHeaderDate(headerDate),
+      children: [],
+    })
+    children.push({
+      tag: 'SUBM',
+      value: xrefToPointer(SUBMITTER_XREF),
+      children: [],
+    })
+    children.push({
+      tag: 'GEDC',
+      children: [
+        { tag: 'VERS', value: '5.5.1', children: [] },
+        { tag: 'FORM', value: 'LINEAGE-LINKED', children: [] },
+      ],
+    })
     children.push({ tag: 'CHAR', value: 'UTF-8', children: [] })
+  } else {
+    children.push({
+      tag: 'GEDC',
+      children: [{ tag: 'VERS', value: '7.0', children: [] }],
+    })
+    children.push({
+      tag: 'SCHMA',
+      children: EXTENSION_TAG_URIS.map(([tag, uri]) => ({
+        tag: 'TAG',
+        value: `${tag} ${uri}`,
+        children: [],
+      })),
+    })
+    children.push({
+      tag: 'DATE',
+      value: formatGedcomHeaderDate(headerDate),
+      children: [],
+    })
   }
+
   children.push({ tag: '_TREE_TITLE', value: document.title, children: [] })
   return { tag: 'HEAD', children }
+}
+
+/** 5.5.1で必須の提出者(SUBM)レコード。個人情報を持たない固定値とする。 */
+function buildSubmitterRecord(): GedcomNode {
+  return {
+    tag: 'SUBM',
+    xref: SUBMITTER_XREF,
+    children: [{ tag: 'NAME', value: '家系図帖の利用者', children: [] }],
+  }
 }
 
 function lifeEventToNode<T extends string>(
@@ -68,7 +150,18 @@ function personToIndiNode(
   families: Family[],
   version: GedcomVersion,
 ): GedcomNode {
-  const children: GedcomNode[] = [personNameToGedcomNode(person.name)]
+  const children: GedcomNode[] = []
+
+  // 氏名が完全に空の人物は、空値のNAME行を出さずタグ自体を省略する
+  const hasAnyName = Boolean(
+    person.name.surname ||
+    person.name.given ||
+    person.name.surnameKana ||
+    person.name.givenKana,
+  )
+  if (hasAnyName) {
+    children.push(personNameToGedcomNode(person.name, version))
+  }
 
   children.push({
     tag: 'SEX',
@@ -99,16 +192,21 @@ function personToIndiNode(
       (child) => child.childId === person.id,
     )
     if (childLink) {
+      const pedi = pedigreeToPedi(childLink.pedigree, version)
+      const famcChildren: GedcomNode[] = []
+      if (pedi) {
+        famcChildren.push({
+          tag: 'PEDI',
+          value: pedi.value,
+          children: pedi.phrase
+            ? [{ tag: 'PHRASE', value: pedi.phrase, children: [] }]
+            : [],
+        })
+      }
       children.push({
         tag: 'FAMC',
         value: xrefToPointer(familyXref),
-        children: [
-          {
-            tag: 'PEDI',
-            value: pedigreeToPedi(childLink.pedigree, version),
-            children: [],
-          },
-        ],
+        children: famcChildren,
       })
     }
   }
@@ -118,6 +216,60 @@ function personToIndiNode(
   }
 
   return { tag: 'INDI', xref: personIdToXref.get(person.id), children }
+}
+
+interface SpouseEntry {
+  xref: string
+  gender: Gender
+}
+
+/**
+ * HUSB/WIFEの割当を決める。male→HUSB / female→WIFE を優先し、性別で
+ * 一意に決められない場合(両者同性・両者不明など)のみ従来どおり登録順
+ * (1人目→HUSB、2人目→WIFE)とし、roleUnknown(_SPOUSE_ROLE_UNKNOWN)を立てる。
+ *
+ * 注意: 性別ベースで割り当てるため、妻→夫の順で登録されたデータは再インポート時に
+ * spouseIds の順序が入れ替わる。ドメイン上の意味は配偶者の「集合」で保たれる。
+ */
+function assignSpouseRoles(entries: SpouseEntry[]): {
+  husb?: string
+  wife?: string
+  roleUnknown: boolean
+} {
+  if (entries.length === 0) {
+    return { roleUnknown: false }
+  }
+
+  if (entries.length === 1) {
+    const only = entries[0]
+    if (only.gender === 'female') {
+      return { wife: only.xref, roleUnknown: false }
+    }
+    if (only.gender === 'male') {
+      return { husb: only.xref, roleUnknown: false }
+    }
+    // 性別不明のひとり親は従来どおりHUSB枠へ入れ、役割未確定として印を付ける
+    return { husb: only.xref, roleUnknown: true }
+  }
+
+  const [a, b] = entries
+  const males = entries.filter((entry) => entry.gender === 'male')
+  const females = entries.filter((entry) => entry.gender === 'female')
+
+  if (males.length === 1 && females.length === 1) {
+    return { husb: males[0].xref, wife: females[0].xref, roleUnknown: false }
+  }
+  if (males.length === 1) {
+    // male+不明: 判明している側をHUSBへ、残りをWIFE枠へ(役割は未確定)
+    const other = entries.find((entry) => entry !== males[0])
+    return { husb: males[0].xref, wife: other?.xref, roleUnknown: true }
+  }
+  if (females.length === 1) {
+    const other = entries.find((entry) => entry !== females[0])
+    return { husb: other?.xref, wife: females[0].xref, roleUnknown: true }
+  }
+  // 両者同性・両者不明: 登録順
+  return { husb: a.xref, wife: b.xref, roleUnknown: true }
 }
 
 function familyToFamNode(
@@ -130,38 +282,41 @@ function familyToFamNode(
 ): GedcomNode {
   const children: GedcomNode[] = []
 
-  const [firstId, secondId, ...restIds] = family.spouseIds
+  const resolvedSpouses: SpouseEntry[] = []
+  for (const spouseId of family.spouseIds) {
+    const xref = personIdToXref.get(spouseId)
+    if (xref) {
+      resolvedSpouses.push({
+        xref,
+        gender: persons[spouseId]?.gender ?? 'unknown',
+      })
+    }
+  }
 
-  if (firstId) {
-    const xref = personIdToXref.get(firstId)
-    if (xref) {
-      children.push({ tag: 'HUSB', value: xrefToPointer(xref), children: [] })
-    }
+  const primary = resolvedSpouses.slice(0, 2)
+  const extras = resolvedSpouses.slice(2)
+  const { husb, wife, roleUnknown } = assignSpouseRoles(primary)
+
+  if (husb) {
+    children.push({ tag: 'HUSB', value: xrefToPointer(husb), children: [] })
   }
-  if (secondId) {
-    const xref = personIdToXref.get(secondId)
-    if (xref) {
-      children.push({ tag: 'WIFE', value: xrefToPointer(xref), children: [] })
-    }
+  if (wife) {
+    children.push({ tag: 'WIFE', value: xrefToPointer(wife), children: [] })
   }
-  for (const extraId of restIds) {
-    const xref = personIdToXref.get(extraId)
-    if (xref) {
-      children.push({ tag: 'WIFE', value: xrefToPointer(xref), children: [] })
-    }
+  for (const extra of extras) {
+    children.push({
+      tag: 'WIFE',
+      value: xrefToPointer(extra.xref),
+      children: [],
+    })
   }
-  if (restIds.length > 0) {
+  if (family.spouseIds.length > 2) {
     warnings.push(
       '3名以上のパートナーを持つ家族はGEDCOMの標準構造(HUSB/WIFE 2枠)を超えるため、3人目以降は非標準的に出力されます(再インポート時に失われる可能性があります)',
     )
   }
 
-  const firstGender = firstId ? persons[firstId]?.gender : undefined
-  const secondGender = secondId ? persons[secondId]?.gender : undefined
-  const roleIsGenderConsistent =
-    (!firstId || firstGender === 'male') &&
-    (!secondId || secondGender === 'female')
-  if (!roleIsGenderConsistent && (firstId || secondId)) {
+  if (roleUnknown) {
     children.push({ tag: '_SPOUSE_ROLE_UNKNOWN', value: 'Y', children: [] })
   }
 
@@ -225,12 +380,13 @@ export function exportGedcom(
 
   const roots: GedcomNode[] = [
     buildHeader(version, document),
+    ...(version === '5.5.1' ? [buildSubmitterRecord()] : []),
     ...indiNodes,
     ...famNodes,
     { tag: 'TRLR', children: [] },
   ]
 
-  return { text: serializeGedcomTree(roots), warnings }
+  return { text: serializeGedcomTree(roots, version), warnings }
 }
 
 /** UTF-8(BOM付き)のバイト列へエンコードする(エクスポートは常にBOM付きUTF-8とする)。 */

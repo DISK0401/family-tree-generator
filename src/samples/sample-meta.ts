@@ -72,9 +72,3 @@ export const SAMPLE_METAS: SampleMeta[] = [
     note: 'このサンプルに登場する人物・家族はすべて架空です。実在の人物・団体とは関係ありません。',
   },
 ]
-
-export function sampleMetaById(id: SampleId): SampleMeta {
-  const meta = SAMPLE_METAS.find((m) => m.id === id)
-  if (!meta) throw new Error(`unknown sample id: ${id}`)
-  return meta
-}

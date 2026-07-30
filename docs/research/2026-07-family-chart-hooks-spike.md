@@ -1,5 +1,9 @@
 # family-chart 既存フックの評価スパイク(2026-07)
 
+> **その後の経緯(2026-07-28 追記)**: 末尾「次にやること」の自前レイアウタは
+> `add-connected-full-view` change として実装済み(`src/layout/` +
+> `openspec/specs/pedigree-layout/spec.md`)。本文は調査時点の記録として書き換えない。
+
 全体表示が「家ごとのブロック」に分かれる制約と、婿養子の重複描画に対して、**fork せずに
 family-chart の未使用フックでどこまで到達できるか**を実測した記録。
 

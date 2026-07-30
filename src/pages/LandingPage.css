@@ -26,6 +26,8 @@
   padding: var(--header-padding-y) var(--header-padding-x);
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   backdrop-filter: blur(6px);
+  /* iOS Safari / 旧WebKit向け(監査 低7) */
+  -webkit-backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);
 }
 
@@ -162,6 +164,27 @@
   margin-top: var(--space-6);
 }
 
+/* 機能カードは現在5枚。広い画面のauto-fitでは4+1になり最後の1枚が孤立するため、
+   6カラムグリッドで「3+2(2枚目の行は中央寄せ)」に組む(デザイン検証の指摘5)。
+   カードの枚数に結合した指定なので、枚数を変えるときはここも見直すこと */
+@media (min-width: 1000px) {
+  .feature-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .feature-grid > * {
+    grid-column: span 2;
+  }
+
+  .feature-grid > *:nth-child(4) {
+    grid-column: 2 / span 2;
+  }
+
+  .feature-grid > *:nth-child(5) {
+    grid-column: 4 / span 2;
+  }
+}
+
 .feature-card {
   display: flex;
   flex-direction: column;
@@ -178,9 +201,7 @@
 
 .feature-card:hover {
   translate: 0 -2px;
-  box-shadow:
-    0 2px 4px rgb(33 29 22 / 0.08),
-    0 8px 20px rgb(33 29 22 / 0.12);
+  box-shadow: var(--shadow-hover);
 }
 
 .feature-card-head {

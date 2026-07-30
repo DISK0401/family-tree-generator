@@ -79,6 +79,26 @@ describe('サンプル読み込み(/app?sample=<id>)', () => {
     expect(useTreeStore.getState().document.persons['existing']).toBeDefined()
   })
 
+  it('blocked状態(保存データが現行より新しい)ではサンプルが読み込まれない', async () => {
+    // 現行より新しいschemaVersionのデータを仕込み、復元をblockedにする
+    await saveTreeDocument({ ...createTreeDocument(), schemaVersion: 999 })
+    window.history.replaceState(null, '', '/app?sample=natsume-soseki')
+    render(<App />)
+
+    // blockedの警告表示を待つ(= 初期ロード完了)
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+    // readyにならないためサンプルは読み込まれず、クエリも消費されない
+    expect(Object.keys(useTreeStore.getState().document.persons)).toHaveLength(
+      0,
+    )
+    expect(useTreeStore.getState().document.title).not.toBe(
+      '夏目漱石の家系図(サンプル)',
+    )
+    expect(window.location.search).toBe('?sample=natsume-soseki')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('上書きを確認するとサンプルに置き換わる', async () => {
     await saveTreeDocument(documentWithOnePerson())
     window.history.replaceState(null, '', '/app?sample=tokugawa-ieyasu')

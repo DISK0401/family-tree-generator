@@ -122,14 +122,8 @@
   color: var(--ink-soft);
 }
 
-.person-panel-relation-existing select {
-  font: inherit;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper);
-  color: var(--ink);
-}
+/* NOTE: 関係先の選択はPersonPicker(コンボボックス)に置き換え済みのため、
+   旧<select>向けのスタイルは削除した(監査 低4) */
 
 .person-panel-relation-note {
   margin: 0;

@@ -1,3 +1,4 @@
+import { isValidCalendarDate } from './calendar-date'
 import type { CalendarDate, DateQualifier, FuzzyDate } from './types'
 import { ERA_TABLE, warekiToGregorian, type WarekiResult } from './wareki'
 
@@ -8,11 +9,14 @@ import { ERA_TABLE, warekiToGregorian, type WarekiResult } from './wareki'
  * 入力原文は FuzzyDate.original にそのまま保持する。
  */
 
-const RANGE_SEPARATOR = /[〜~]/
+/** 範囲区切り。波ダッシュ・全角チルダに加え、半角チルダ(~)も同じ意図の入力として受け付ける */
+const RANGE_SEPARATOR = /[〜~~]/
 
 function toHalfWidth(s: string): string {
   // 全角数字(U+FF10〜U+FF19)を半角へ
-  return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+  return s.replace(/[０-９]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0xfee0),
+  )
 }
 
 interface QualifierMatch {
@@ -22,26 +26,26 @@ interface QualifierMatch {
 
 function stripQualifier(input: string): QualifierMatch {
   const s = input.trim()
-  if (/(頃|ころ|ごろ)$/.test(s)) return { qualifier: 'about', core: s.replace(/(頃|ころ|ごろ)$/, '').trim() }
-  if (/以前$/.test(s)) return { qualifier: 'before', core: s.replace(/以前$/, '').trim() }
-  if (/(以後|以降)$/.test(s)) return { qualifier: 'after', core: s.replace(/(以後|以降)$/, '').trim() }
+  if (/(頃|ころ|ごろ)$/.test(s))
+    return { qualifier: 'about', core: s.replace(/(頃|ころ|ごろ)$/, '').trim() }
+  if (/以前$/.test(s))
+    return { qualifier: 'before', core: s.replace(/以前$/, '').trim() }
+  if (/(以後|以降)$/.test(s))
+    return { qualifier: 'after', core: s.replace(/(以後|以降)$/, '').trim() }
   return { qualifier: 'exact', core: s }
 }
 
 const eraNames = ERA_TABLE.map((e) => e.name).join('|')
-const WAREKI_RE = new RegExp(`^(${eraNames})(元|\\d{1,2})年(?:(\\d{1,2})月(?:(\\d{1,2})日)?)?$`)
-const GREGORIAN_KANJI_RE = /^(\d{3,4})年(?:(\d{1,2})月(?:(\d{1,2})日)?)?$/
-const GREGORIAN_SEP_RE = /^(\d{3,4})(?:[/-](\d{1,2})(?:[/-](\d{1,2}))?)?$/
+const WAREKI_RE = new RegExp(
+  `^(${eraNames})(元|\\d{1,2})年(?:(\\d{1,2})月(?:(\\d{1,2})日)?)?$`,
+)
+// 西暦年は4桁のみ受け付ける。3桁年(196年 等)は史実として存在し得るが、家系図の入力では
+// 「1964」の打ち損じである可能性のほうが圧倒的に高く、誤入力の検出を優先して拒否する
+// (3桁年を扱いたい史料は原文のまま保持する運用に頼る)
+const GREGORIAN_KANJI_RE = /^(\d{4})年(?:(\d{1,2})月(?:(\d{1,2})日)?)?$/
+const GREGORIAN_SEP_RE = /^(\d{4})(?:[/-](\d{1,2})(?:[/-](\d{1,2}))?)?$/
 /** 区切りなし8桁数字(例: 19641010)。曖昧さを避けるため4桁年+2桁月+2桁日のみを対象とする */
 const GREGORIAN_COMPACT_RE = /^(\d{4})(\d{2})(\d{2})$/
-
-function isValidCalendarDate(year: number, month?: number, day?: number): boolean {
-  if (month === undefined) return true
-  if (month < 1 || month > 12) return false
-  if (day === undefined) return true
-  const daysInMonth = new Date(year, month, 0).getDate()
-  return day >= 1 && day <= daysInMonth
-}
 
 /** 単一の日付表記(修飾子・範囲を除いた部分)をグレゴリオ暦へ */
 function parseCore(core: string): WarekiResult<CalendarDate> {
@@ -59,7 +63,10 @@ function parseCore(core: string): WarekiResult<CalendarDate> {
     })
   }
 
-  const g = GREGORIAN_KANJI_RE.exec(s) ?? GREGORIAN_SEP_RE.exec(s) ?? GREGORIAN_COMPACT_RE.exec(s)
+  const g =
+    GREGORIAN_KANJI_RE.exec(s) ??
+    GREGORIAN_SEP_RE.exec(s) ??
+    GREGORIAN_COMPACT_RE.exec(s)
   if (g) {
     const [, y, m, d] = g
     const date: CalendarDate = {
@@ -75,8 +82,14 @@ function parseCore(core: string): WarekiResult<CalendarDate> {
 
   return {
     ok: false,
-    message: '日付を読み取れません(例: 昭和39年10月10日 / 1964年10月10日 / 1964-10-10)',
+    message:
+      '日付を読み取れません(例: 昭和39年10月10日 / 1964年10月10日 / 1964-10-10)',
   }
+}
+
+/** 範囲の前後判定用の比較キー。部分日付は月日を0として「その年(月)の先頭」とみなす */
+function calendarSortKey(d: CalendarDate): number {
+  return d.year * 10000 + (d.month ?? 0) * 100 + (d.day ?? 0)
 }
 
 /** 入力文字列をFuzzyDateへパースする。失敗時は理由つきエラーを返す */
@@ -90,9 +103,15 @@ export function parseDateInput(input: string): WarekiResult<FuzzyDate> {
     if (!from.ok) return from
     const to = parseCore(stripQualifier(rangeParts[1]).core)
     if (!to.ok) return to
+    // GEDCOMのBET A AND BはA≦Bが前提のため、逆順の入力(1970〜1960)は開始・終了を
+    // 入れ替えて正規化して受理する。意図に曖昧さがなく、拒否しても打ち直させるだけのため
+    const reversed = calendarSortKey(from.value) > calendarSortKey(to.value)
+    const [start, end] = reversed
+      ? [to.value, from.value]
+      : [from.value, to.value]
     return {
       ok: true,
-      value: { original, qualifier: 'between', date: from.value, date2: to.value },
+      value: { original, qualifier: 'between', date: start, date2: end },
     }
   }
 

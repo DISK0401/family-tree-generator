@@ -31,23 +31,21 @@
   box-shadow: var(--shadow-floating);
 }
 
-.person-picker-list button {
+/* 選択肢はli自身(role="option")。内側ボタンは廃止した(監査 中7: listbox構造) */
+.person-picker-option {
   display: block;
-  width: 100%;
   box-sizing: border-box;
   font: inherit;
   font-size: var(--text-sm);
   text-align: left;
   padding: var(--space-1) var(--space-2);
-  border: none;
   border-radius: var(--radius);
-  background: none;
   color: var(--ink);
   cursor: pointer;
 }
 
-.person-picker-list button:hover,
-.person-picker-list button.active {
+.person-picker-option:hover,
+.person-picker-option.active {
   background: var(--ai-wash);
   color: var(--ai-strong);
 }
@@ -56,4 +54,19 @@
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-sm);
   color: var(--ink-soft);
+}
+
+/*
+ * ダイアログ内用のインライン変形(listLayout='inline')。
+ * 浮かせる(position:absolute)とダイアログの矩形から候補が溢れて「下に消える」+
+ * ダイアログ自体のスクロールが発生するため、文書フローに置いてリストだけを
+ * スクロールさせる。ダイアログの面(--paper-raised)に対しリストは一段沈めた
+ * --paper で「面の中の領域」として描く
+ */
+.person-picker--inline .person-picker-list {
+  position: static;
+  max-height: min(20rem, 50vh);
+  margin-top: var(--space-1);
+  box-shadow: none;
+  background: var(--paper);
 }

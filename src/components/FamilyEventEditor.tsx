@@ -1,4 +1,11 @@
-import { useId, useState, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react'
 import { addSpouseLink, removeFamily, setFamilyEvent } from '../domain/commands'
 import { displayName } from '../domain/helpers'
 import type {
@@ -11,19 +18,25 @@ import type {
   TreeDocument,
 } from '../domain/types'
 import { useTreeStore } from '../store/tree-store'
+import { ConfirmDialog } from './ConfirmDialog'
 import { PersonPicker } from './PersonPicker'
 import { UnlinkRelationControl } from './UnlinkRelationControl'
 import { WarekiDateInput } from './WarekiDateInput'
-import './confirm-dialog.css'
 import './FamilyEventEditor.css'
 
 interface FamilyEventEditorProps {
   personId: PersonId
 }
 
-function spouseNames(doc: TreeDocument, family: Family, excludeId: PersonId): string {
+function spouseNames(
+  doc: TreeDocument,
+  family: Family,
+  excludeId: PersonId,
+): string {
   const others = family.spouseIds.filter((id) => id !== excludeId)
-  const names = others.map((id) => (doc.persons[id] ? displayName(doc.persons[id]) : '(不明)'))
+  const names = others.map((id) =>
+    doc.persons[id] ? displayName(doc.persons[id]) : '(不明)',
+  )
   return names.length > 0 ? names.join('・') : '(配偶者未登録)'
 }
 
@@ -31,7 +44,11 @@ function spouseNames(doc: TreeDocument, family: Family, excludeId: PersonId): st
  * その家族の2人目の配偶者になれる人物。自分自身・既に配偶者の人物に加え、
  * その家族の子を除く(自分自身の親にはなれないため。spec tree-editor)
  */
-function spouseCandidates(doc: TreeDocument, family: Family, personId: PersonId): Person[] {
+function spouseCandidates(
+  doc: TreeDocument,
+  family: Family,
+  personId: PersonId,
+): Person[] {
   const excluded = new Set<PersonId>([
     personId,
     ...family.spouseIds,
@@ -45,7 +62,13 @@ function spouseCandidates(doc: TreeDocument, family: Family, personId: PersonId)
  * 親子関係と婚姻関係が別々の家族に分かれて記録された状態を、利用者が明示的に統合するための導線
  * (design.md D5/D6)。`PedigreeEditor`と同じ行内`<select>`で、選択と同時に即時反映する
  */
-function SpouseLinkField({ family, personId }: { family: Family; personId: PersonId }) {
+function SpouseLinkField({
+  family,
+  personId,
+}: {
+  family: Family
+  personId: PersonId
+}) {
   const document = useTreeStore((s) => s.document)
   const apply = useTreeStore((s) => s.apply)
   const pickerId = useId()
@@ -59,7 +82,9 @@ function SpouseLinkField({ family, personId }: { family: Family; personId: Perso
       <PersonPicker
         id={pickerId}
         candidates={candidates}
-        onSelect={(spouseId) => apply((doc) => addSpouseLink(doc, family.id, spouseId))}
+        onSelect={(spouseId) =>
+          apply((doc) => addSpouseLink(doc, family.id, spouseId))
+        }
       />
     </label>
   )
@@ -72,7 +97,6 @@ function SpouseLinkField({ family, personId }: { family: Family; personId: Perso
 function FamilyDeleteControl({ family }: { family: Family }) {
   const apply = useTreeStore((s) => s.apply)
   const [open, setOpen] = useState(false)
-  const titleId = useId()
 
   const eventCount = family.events.length
   const childCount = family.children.length
@@ -87,41 +111,28 @@ function FamilyDeleteControl({ family }: { family: Family }) {
         この婚姻を削除
       </button>
       {open && (
-        <div className="confirm-dialog-overlay">
-          <div
-            className="confirm-dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-          >
-            <h2 id={titleId}>この婚姻を削除しますか？</h2>
-            <p>
-              {[
-                eventCount > 0 && `婚姻・離婚の記録${eventCount}件`,
-                childCount > 0 && `子${childCount}人の親としての帰属`,
-              ]
-                .filter(Boolean)
-                .join('・') || '記録されている婚姻・離婚の日付や子はありません。'}
-              {(eventCount > 0 || childCount > 0) && 'が失われます。'}
-              人物そのものは削除されません。削除後すぐであれば「元に戻す」で復元できます。
-            </p>
-            <div className="confirm-dialog-actions">
-              <button type="button" onClick={() => setOpen(false)}>
-                キャンセル
-              </button>
-              <button
-                type="button"
-                className="confirm-dialog-danger-button"
-                onClick={() => {
-                  apply((doc) => removeFamily(doc, family.id))
-                  setOpen(false)
-                }}
-              >
-                削除する
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="この婚姻を削除しますか？"
+          alertdialog
+          confirmLabel="削除する"
+          confirmDanger
+          onConfirm={() => {
+            apply((doc) => removeFamily(doc, family.id))
+            setOpen(false)
+          }}
+          onCancel={() => setOpen(false)}
+        >
+          <p>
+            {[
+              eventCount > 0 && `婚姻・離婚の記録${eventCount}件`,
+              childCount > 0 && `子${childCount}人の親としての帰属`,
+            ]
+              .filter(Boolean)
+              .join('・') || '記録されている婚姻・離婚の日付や子はありません。'}
+            {(eventCount > 0 || childCount > 0) && 'が失われます。'}
+            人物そのものは削除されません。削除後すぐであれば「元に戻す」で復元できます。
+          </p>
+        </ConfirmDialog>
       )}
     </>
   )
@@ -136,36 +147,73 @@ interface EventFieldsProps {
   extraCount: number
 }
 
+/** イベントの同値比較。undefined同士も等しいとみなす(無変更commitのスキップ判定に使う) */
+function eventsEqual(
+  a: LifeEvent<FamilyEventType> | undefined,
+  b: LifeEvent<FamilyEventType> | undefined,
+): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+}
+
 /**
- * 婚姻日・離婚日1組分の入力欄。ローカル状態で編集内容を保持し、フォーカスが外れた時点で
- * `setFamilyEvent`を適用する(spec tree-editor「即時反映(確定操作不要)」)。
+ * 婚姻日・離婚日1組分の入力欄。ローカル状態で編集内容を保持し、フォーカスがfieldsetの外へ
+ * 出た時点で`setFamilyEvent`を適用する(spec tree-editor「即時反映(確定操作不要)」)。
  * `PersonEditForm`のような確定ボタン+離脱確認は設けない(design.md D1)。
- * `WarekiDateInput`のヒント表示はキー入力のたびに更新されるローカルなプレビューに過ぎず、
- * 実際にデータモデルへ反映される(=キャンバスの婚姻線ラベル等に現れる)のはこの`commit`が
- * 走った時のみ。フォーカスを外さない操作(スクロールのみ等)では反映されないため、
- * テキスト入力から明示的に確定したいという操作(Enterキー)にも反応できるようにする
- * (`PersonEditForm`のEnter確定と同じ利用者体験に揃える)。
- * 呼び出し側が`event`の内容をkeyに含めてマウントすることで、保存後・undo/redo後の
- * 最新値への追従をエフェクトではなく再マウントで行う(react-hooks/set-state-in-effect対応)
+ *
+ * 監査 高2 の3点:
+ * - commit前に現在の`event`と構築結果を同値比較し、無変更なら`apply`しない
+ *   (`setFamilyEvent`はtouchで新参照を返すため、ストア側のno-op検知では止まらず
+ *   履歴と更新日時だけが動いてしまう。UI側の同値スキップが必須)
+ * - fieldset内のフォーカス移動(日付→場所欄など)ではcommitしない
+ *   (`relatedTarget`がfieldset内なら離脱ではない)
+ * - undo/redo等で`event`プロパティが変わったときは、再マウント(旧実装のkey方式)ではなく
+ *   ローカル状態への同期エフェクトで追随する(編集中のフォーカスを失わない)。
+ *   同期は「最後に同期/commitしたイベントのスナップショット」と異なるときのみ行う
  */
-function EventFields({ familyId, type, label, event, extraCount }: EventFieldsProps) {
+function EventFields({
+  familyId,
+  type,
+  label,
+  event,
+  extraCount,
+}: EventFieldsProps) {
   const apply = useTreeStore((s) => s.apply)
   const [date, setDate] = useState(event?.date)
   const [place, setPlace] = useState(event?.place ?? '')
   const placeId = useId()
+  /** 最後に同期またはcommitしたイベント。これと異なるevent到来 = 外部変更(undo/redo) */
+  const lastSyncedEventRef = useRef(event)
+
+  useEffect(() => {
+    if (eventsEqual(event, lastSyncedEventRef.current)) return
+    lastSyncedEventRef.current = event
+    setDate(event?.date)
+    setPlace(event?.place ?? '')
+  }, [event])
+
+  function buildEvent(): LifeEvent<FamilyEventType> | undefined {
+    const trimmedPlace = place.trim()
+    return date || trimmedPlace
+      ? {
+          type,
+          ...(date && { date }),
+          ...(trimmedPlace && { place: trimmedPlace }),
+        }
+      : undefined
+  }
 
   function commit() {
-    const trimmedPlace = place.trim()
-    apply((doc) =>
-      setFamilyEvent(
-        doc,
-        familyId,
-        type,
-        date || trimmedPlace
-          ? { type, ...(date && { date }), ...(trimmedPlace && { place: trimmedPlace }) }
-          : undefined,
-      ),
-    )
+    const next = buildEvent()
+    // 無変更のcommit(単なるフォーカス通過等)は履歴を積まない
+    if (eventsEqual(next, event)) return
+    lastSyncedEventRef.current = next
+    apply((doc) => setFamilyEvent(doc, familyId, type, next))
+  }
+
+  function handleBlur(e: FocusEvent<HTMLFieldSetElement>) {
+    // fieldset内のフォーカス移動(日付→場所へのTab等)はまだ編集の途中。commitしない
+    if (e.currentTarget.contains(e.relatedTarget)) return
+    commit()
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLFieldSetElement>) {
@@ -175,16 +223,31 @@ function EventFields({ familyId, type, label, event, extraCount }: EventFieldsPr
   }
 
   return (
-    <fieldset className="family-event-editor-event" onBlur={commit} onKeyDown={handleKeyDown}>
+    <fieldset
+      className="family-event-editor-event"
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+    >
       <legend>{label}</legend>
-      <WarekiDateInput label={label} hideLabel value={date} onChange={setDate} />
+      <WarekiDateInput
+        label={label}
+        hideLabel
+        value={date}
+        onChange={setDate}
+      />
       <label htmlFor={placeId} className="family-event-editor-field">
         場所
-        <input id={placeId} type="text" value={place} onChange={(e) => setPlace(e.target.value)} />
+        <input
+          id={placeId}
+          type="text"
+          value={place}
+          onChange={(e) => setPlace(e.target.value)}
+        />
       </label>
       {extraCount > 0 && (
         <p className="family-event-editor-note">
-          他に{extraCount}件の{label}イベントがあります(このUIでは編集できませんが、データは保持されます)
+          他に{extraCount}件の{label}
+          イベントがあります(このUIでは編集できませんが、データは保持されます)
         </p>
       )}
     </fieldset>
@@ -198,22 +261,29 @@ function EventFields({ familyId, type, label, event, extraCount }: EventFieldsPr
 export function FamilyEventEditor({ personId }: FamilyEventEditorProps) {
   const document = useTreeStore((s) => s.document)
 
-  const families = Object.values(document.families).filter((f) => f.spouseIds.includes(personId))
+  const families = Object.values(document.families).filter((f) =>
+    f.spouseIds.includes(personId),
+  )
   if (families.length === 0) return null
 
   return (
     <div className="family-event-editor">
       <h3 className="family-event-editor-title">婚姻・離婚</h3>
       {families.map((family) => {
-        const marriageEvents = family.events.filter((e) => e.type === 'marriage')
+        const marriageEvents = family.events.filter(
+          (e) => e.type === 'marriage',
+        )
         const divorceEvents = family.events.filter((e) => e.type === 'divorce')
         const hasOtherSpouse = family.spouseIds.some((id) => id !== personId)
         return (
           <div key={family.id} className="family-event-editor-family">
-            <p className="family-event-editor-spouse">{spouseNames(document, family, personId)}</p>
-            {!hasOtherSpouse && <SpouseLinkField family={family} personId={personId} />}
+            <p className="family-event-editor-spouse">
+              {spouseNames(document, family, personId)}
+            </p>
+            {!hasOtherSpouse && (
+              <SpouseLinkField family={family} personId={personId} />
+            )}
             <EventFields
-              key={`marriage:${JSON.stringify(marriageEvents[0] ?? null)}`}
               familyId={family.id}
               type="marriage"
               label="婚姻日"
@@ -221,7 +291,6 @@ export function FamilyEventEditor({ personId }: FamilyEventEditorProps) {
               extraCount={Math.max(0, marriageEvents.length - 1)}
             />
             <EventFields
-              key={`divorce:${JSON.stringify(divorceEvents[0] ?? null)}`}
               familyId={family.id}
               type="divorce"
               label="離婚日"

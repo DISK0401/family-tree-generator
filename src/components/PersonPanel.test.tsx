@@ -23,14 +23,22 @@ function relationFormGivenInput() {
 
 describe('PersonPanel: 配偶者の追加', () => {
   it('配偶者を追加すると新しい人物とFamilyが作成される', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
     fireEvent.change(relationFormGivenInput(), { target: { value: 'B' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const doc = useTreeStore.getState().document
     expect(Object.values(doc.persons)).toHaveLength(2)
-    const family = Object.values(doc.families).find((f) => f.spouseIds.includes(personAId))
+    const family = Object.values(doc.families).find((f) =>
+      f.spouseIds.includes(personAId),
+    )
     expect(family?.spouseIds).toHaveLength(2)
   })
 
@@ -40,13 +48,21 @@ describe('PersonPanel: 配偶者の追加', () => {
     doc = b.doc
     useTreeStore.getState().replace(doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
     fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const finalDoc = useTreeStore.getState().document
-    const aFamilies = Object.values(finalDoc.families).filter((f) => f.spouseIds.includes(personAId))
+    const aFamilies = Object.values(finalDoc.families).filter((f) =>
+      f.spouseIds.includes(personAId),
+    )
     expect(aFamilies).toHaveLength(2)
     expect(aFamilies.some((f) => f.id === b.familyId)).toBe(true)
   })
@@ -59,7 +75,13 @@ describe('PersonPanel: 子の追加', () => {
     doc = b.doc
     useTreeStore.getState().replace(doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '子を追加' }))
     fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
@@ -71,13 +93,21 @@ describe('PersonPanel: 子の追加', () => {
   })
 
   it('配偶者がいないときはひとり親家族へ子が帰属する', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '子を追加' }))
     fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
 
     const doc = useTreeStore.getState().document
-    const family = Object.values(doc.families).find((f) => f.spouseIds.includes(personAId))
+    const family = Object.values(doc.families).find((f) =>
+      f.spouseIds.includes(personAId),
+    )
     expect(family?.spouseIds).toEqual([personAId])
     expect(family?.children).toHaveLength(1)
   })
@@ -85,7 +115,13 @@ describe('PersonPanel: 子の追加', () => {
 
 describe('PersonPanel: 親の追加', () => {
   it('親未登録の人物に親を追加すると家族が新設される', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '親を追加' }))
     fireEvent.change(relationFormGivenInput(), { target: { value: '親' } })
     fireEvent.click(screen.getByRole('button', { name: '追加する' }))
@@ -159,7 +195,13 @@ describe('PersonPanel: 新規作成した人物への自動フォーカス', () 
 
 describe('PersonPanel: フォームの開閉', () => {
   it('同じアクションを再度クリックするとフォームが閉じる', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
     expect(screen.getAllByLabelText('名')).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
@@ -167,18 +209,32 @@ describe('PersonPanel: フォームの開閉', () => {
   })
 
   it('キャンセルでフォームが閉じ、データは変更されない', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
     fireEvent.change(relationFormGivenInput(), { target: { value: 'B' } })
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
 
     expect(screen.getAllByLabelText('名')).toHaveLength(1)
-    expect(Object.values(useTreeStore.getState().document.persons)).toHaveLength(1)
+    expect(
+      Object.values(useTreeStore.getState().document.persons),
+    ).toHaveLength(1)
   })
 
   it('閉じるボタンでonCloseが呼ばれる(狭幅画面でパネルから図に戻る手段)', () => {
     const onClose = vi.fn()
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={onClose} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={onClose}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: 'パネルを閉じる' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -186,17 +242,31 @@ describe('PersonPanel: フォームの開閉', () => {
 
 describe('PersonPanel: 編集フォーム', () => {
   it('選択時にサイドパネルの編集フォームが開く', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     expect(screen.getByRole('button', { name: '確定' })).toBeInTheDocument()
   })
 
   it('氏名を変更して確定するとデータモデルへ反映される', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     const givenInput = screen.getAllByLabelText('名')[0]
     fireEvent.change(givenInput, { target: { value: '次郎' } })
     fireEvent.click(screen.getByRole('button', { name: '確定' }))
 
-    expect(useTreeStore.getState().document.persons[personAId].name.given).toBe('次郎')
+    expect(useTreeStore.getState().document.persons[personAId].name.given).toBe(
+      '次郎',
+    )
   })
 })
 
@@ -205,21 +275,40 @@ describe('PersonPanel: 続柄の編集', () => {
     let doc = useTreeStore.getState().document
     const b = addPerson(doc, { name: { given: 'B' } })
     doc = b.doc
-    const c = addChild(doc, personAId, { name: { given: 'C' } }, { otherParentId: b.personId })
+    const c = addChild(
+      doc,
+      personAId,
+      { name: { given: 'C' } },
+      { otherParentId: b.personId },
+    )
     doc = c.doc
     useTreeStore.getState().replace(doc)
 
-    render(<PersonPanel personId={c.childId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={c.childId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     expect(screen.getByText('続柄')).toBeInTheDocument()
     const comboboxes = screen.getAllByRole('combobox')
-    fireEvent.change(comboboxes[comboboxes.length - 1], { target: { value: 'adopted' } })
+    fireEvent.change(comboboxes[comboboxes.length - 1], {
+      target: { value: 'adopted' },
+    })
 
     const family = useTreeStore.getState().document.families[c.familyId]
     expect(family.children[0].pedigree).toBe('adopted')
   })
 
   it('親がいない人物には続柄セクションが表示されない', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     expect(screen.queryByText('続柄')).not.toBeInTheDocument()
   })
 })
@@ -229,12 +318,23 @@ describe('PersonPanel: 人物の削除', () => {
     let doc = useTreeStore.getState().document
     const b = addSpouse(doc, personAId, { name: { given: 'B' } })
     doc = b.doc
-    const c = addChild(doc, personAId, { name: { given: 'C' } }, { otherParentId: b.spouseId })
+    const c = addChild(
+      doc,
+      personAId,
+      { name: { given: 'C' } },
+      { otherParentId: b.spouseId },
+    )
     doc = c.doc
     useTreeStore.getState().replace(doc)
 
     const onDeleted = vi.fn()
-    render(<PersonPanel personId={personAId} onDeleted={onDeleted} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={onDeleted}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: 'この人物を削除' }))
 
     expect(screen.getByText(/配偶者とのつながり1件/)).toBeInTheDocument()
@@ -246,7 +346,13 @@ describe('PersonPanel: 人物の削除', () => {
 
   it('キャンセルすると削除されずonDeletedも呼ばれない', () => {
     const onDeleted = vi.fn()
-    render(<PersonPanel personId={personAId} onDeleted={onDeleted} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={onDeleted}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: 'この人物を削除' }))
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
 
@@ -261,7 +367,13 @@ describe('PersonPanel: 人物の削除', () => {
     useTreeStore.getState().replace(doc)
 
     const onDeleted = vi.fn()
-    render(<PersonPanel personId={personAId} onDeleted={onDeleted} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={onDeleted}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: 'この人物を削除' }))
     fireEvent.click(screen.getByRole('button', { name: '削除する' }))
     expect(useTreeStore.getState().document.persons[personAId]).toBeUndefined()
@@ -269,9 +381,11 @@ describe('PersonPanel: 人物の削除', () => {
     useTreeStore.getState().undo()
     const restored = useTreeStore.getState().document
     expect(restored.persons[personAId]).toBeDefined()
-    expect(Object.values(restored.families).some((f) => f.spouseIds.includes(personAId))).toBe(
-      true,
-    )
+    expect(
+      Object.values(restored.families).some((f) =>
+        f.spouseIds.includes(personAId),
+      ),
+    ).toBe(true)
   })
 })
 
@@ -301,19 +415,31 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
   /** 氏名を入力して候補をクリックし、既存人物としてリンクする */
   function selectExisting(action: string, name: string) {
     fireEvent.change(openExisting(action), { target: { value: name } })
-    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name }))
+    fireEvent.click(
+      within(screen.getByRole('listbox')).getByRole('option', { name }),
+    )
   }
 
   it('既存の人物を配偶者にすると新しい家族が作られ、人物は増えない', () => {
-    const x = addPerson(useTreeStore.getState().document, { name: { given: 'X' } })
+    const x = addPerson(useTreeStore.getState().document, {
+      name: { given: 'X' },
+    })
     useTreeStore.getState().replace(x.doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     selectExisting('配偶者を追加', 'X')
 
     const doc = useTreeStore.getState().document
     expect(Object.values(doc.persons)).toHaveLength(2)
-    const family = Object.values(doc.families).find((f) => f.spouseIds.includes(personAId))
+    const family = Object.values(doc.families).find((f) =>
+      f.spouseIds.includes(personAId),
+    )
     expect(family?.spouseIds.sort()).toEqual([personAId, x.personId].sort())
   })
 
@@ -324,7 +450,13 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     const x = addPerson(doc, { name: { given: 'X' } })
     useTreeStore.getState().replace(x.doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     selectExisting('子を追加', 'X')
 
     const next = useTreeStore.getState().document
@@ -341,11 +473,20 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     const q = addPerson(doc, { name: { given: 'Q' } })
     useTreeStore.getState().replace(q.doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     selectExisting('親を追加', 'Q')
 
     const next = useTreeStore.getState().document
-    expect(next.families[p.familyId].spouseIds).toEqual([p.parentId, q.personId])
+    expect(next.families[p.familyId].spouseIds).toEqual([
+      p.parentId,
+      q.personId,
+    ])
   })
 
   it('もう一方の親を選ぶと、夫婦の子として記録し直される', () => {
@@ -399,7 +540,13 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     doc = addPerson(doc, { name: { given: 'Yumi' } }).doc
     useTreeStore.getState().replace(doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.change(openExisting('配偶者を追加'), { target: { value: 'Xa' } })
 
     expect(
@@ -416,7 +563,13 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     const x = addPerson(doc, { name: { given: 'X' } })
     useTreeStore.getState().replace(x.doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     expect(candidateNames('配偶者を追加')).toEqual(['X'])
   })
 
@@ -430,10 +583,89 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     const x = addPerson(doc, { name: { given: 'X' } })
     useTreeStore.getState().replace(x.doc)
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     const names = candidateNames('子を追加')
 
     expect(names).not.toContain('P')
+    expect(names).not.toContain('G')
+    expect(names).toContain('X')
+  })
+
+  it('配偶者は親の候補に出ない(linkParentの「配偶者を子にできない」ガードとの整合。監査 低1)', () => {
+    // A–B夫婦。Aの「親を追加 > 既存から」でBを選ぶと、linkParentの経路2で
+    // A–B家族へAを子として合流させることになり「家族の配偶者を子にはできません」で
+    // 例外になる。候補一覧の時点でBを除外する
+    let doc = useTreeStore.getState().document
+    const b = addSpouse(doc, personAId, { name: { given: 'B' } })
+    doc = b.doc
+    const x = addPerson(doc, { name: { given: 'X' } })
+    useTreeStore.getState().replace(x.doc)
+
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    const names = candidateNames('親を追加')
+
+    expect(names).not.toContain('B')
+    expect(names).toContain('X')
+  })
+
+  it('同じひとり親家族の子(きょうだい)は親の候補に出ない(linkParentの「子を配偶者にできない」ガードとの整合)', () => {
+    // ひとり親Pの子C・D。Cの親にDを選ぶと、linkParentの経路1でDが同じ家族の
+    // 配偶者と子を兼ねてしまうため例外になる。候補一覧の時点でDを除外する
+    let doc = useTreeStore.getState().document
+    const c = addChild(doc, personAId, { name: { given: 'C' } })
+    doc = c.doc
+    const d = addChild(doc, personAId, { name: { given: 'D' } })
+    doc = d.doc
+    const x = addPerson(doc, { name: { given: 'X' } })
+    useTreeStore.getState().replace(x.doc)
+
+    render(
+      <PersonPanel
+        personId={c.childId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    const names = candidateNames('親を追加')
+
+    expect(names).not.toContain('D')
+    // 既にいる親(A)も候補から外れる
+    expect(names).not.toContain('A')
+    expect(names).toContain('X')
+  })
+
+  it('子孫は親の候補に出ない(collectDescendantsによる一括循環判定)', () => {
+    // Aの子C、Cの子G。Aの親候補にC・Gは出ない(循環になるため)
+    let doc = useTreeStore.getState().document
+    const c = addChild(doc, personAId, { name: { given: 'C' } })
+    doc = c.doc
+    const g = addChild(doc, c.childId, { name: { given: 'G' } })
+    doc = g.doc
+    const x = addPerson(doc, { name: { given: 'X' } })
+    useTreeStore.getState().replace(x.doc)
+
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    const names = candidateNames('親を追加')
+
+    expect(names).not.toContain('C')
     expect(names).not.toContain('G')
     expect(names).toContain('X')
   })
@@ -446,22 +678,44 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
     useTreeStore.getState().replace(x.doc)
     const original = x.doc.persons[x.personId]
 
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     selectExisting('配偶者を追加', '富岡 榮')
 
-    expect(useTreeStore.getState().document.persons[x.personId]).toEqual(original)
-    expect(Object.keys(useTreeStore.getState().document.families)).toHaveLength(1)
+    expect(useTreeStore.getState().document.persons[x.personId]).toEqual(
+      original,
+    )
+    expect(Object.keys(useTreeStore.getState().document.families)).toHaveLength(
+      1,
+    )
 
     useTreeStore.getState().undo()
-    expect(Object.keys(useTreeStore.getState().document.families)).toHaveLength(0)
-    expect(useTreeStore.getState().document.persons[x.personId]).toEqual(original)
+    expect(Object.keys(useTreeStore.getState().document.families)).toHaveLength(
+      0,
+    )
+    expect(useTreeStore.getState().document.persons[x.personId]).toEqual(
+      original,
+    )
   })
 
   it('候補がいない場合はその旨が示される', () => {
-    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
     fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
     fireEvent.click(screen.getByRole('button', { name: '既存の人物から選ぶ' }))
 
-    expect(screen.getByText('この関係に選べる既存の人物はいません。')).toBeDefined()
+    expect(
+      screen.getByText('この関係に選べる既存の人物はいません。'),
+    ).toBeDefined()
   })
 })

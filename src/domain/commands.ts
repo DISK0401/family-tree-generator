@@ -17,7 +17,9 @@ import type {
  * ストア(undo/redo)はこれらの戻り値をスナップショットとして扱う。
  */
 
-export type PersonInit = { name: PersonName } & Partial<Omit<Person, 'id' | 'name'>>
+export type PersonInit = { name: PersonName } & Partial<
+  Omit<Person, 'id' | 'name'>
+>
 
 function touch(doc: TreeDocument): TreeDocument {
   return { ...doc, updatedAt: new Date().toISOString() }
@@ -29,6 +31,11 @@ function putPerson(doc: TreeDocument, person: Person): TreeDocument {
 
 function putFamily(doc: TreeDocument, family: Family): TreeDocument {
   return { ...doc, families: { ...doc.families, [family.id]: family } }
+}
+
+function requirePerson(doc: TreeDocument, personId: PersonId): void {
+  if (!doc.persons[personId])
+    throw new Error(`人物が見つかりません: ${personId}`)
 }
 
 export function addPerson(
@@ -56,7 +63,8 @@ export function addSpouse(
   spouseInit: PersonInit,
   kind: FamilyKind = 'unknown',
 ): { doc: TreeDocument; spouseId: PersonId; familyId: FamilyId } {
-  if (!doc.persons[personId]) throw new Error(`人物が見つかりません: ${personId}`)
+  if (!doc.persons[personId])
+    throw new Error(`人物が見つかりません: ${personId}`)
   const spouse = createPerson(spouseInit)
   const family = createFamily({ spouseIds: [personId, spouse.id], kind })
   let next = putPerson(doc, spouse)
@@ -71,9 +79,12 @@ export function addChild(
   childInit: PersonInit,
   options?: { otherParentId?: PersonId; pedigree?: Pedigree },
 ): { doc: TreeDocument; childId: PersonId; familyId: FamilyId } {
-  if (!doc.persons[parentId]) throw new Error(`人物が見つかりません: ${parentId}`)
+  requirePerson(doc, parentId)
   const pedigree = options?.pedigree ?? 'biological'
   const otherParentId = options?.otherParentId
+  // 相方は家族の検索キーかつ新設家族の配偶者になるため、存在しないIDを黙って
+  // spouseIdsへ書き込まない(参照切れのFamilyを作らない)
+  if (otherParentId !== undefined) requirePerson(doc, otherParentId)
 
   let family = Object.values(doc.families).find((f) =>
     otherParentId
@@ -104,10 +115,25 @@ export function addChildLink(
 ): TreeDocument {
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
-  if (!doc.persons[childId]) throw new Error(`人物が見つかりません: ${childId}`)
+  requirePerson(doc, childId)
   if (family.children.some((c) => c.childId === childId)) return doc
+  // linkChildと同じ不変条件をこの経路でも守る。familyIdを直接指定できるため、
+  // 検査を欠くと配偶者兼子や世代方向の循環をこの経路からだけ作れてしまう
+  if (family.spouseIds.includes(childId)) {
+    throw new Error(`家族の配偶者を子にはできません: ${childId}`)
+  }
+  if (
+    family.spouseIds.some((spouseId) =>
+      wouldCreateAncestryCycle(doc, spouseId, childId),
+    )
+  ) {
+    throw new Error(`世代方向の循環になるため子にできません: ${childId}`)
+  }
   return touch(
-    putFamily(doc, { ...family, children: [...family.children, { childId, pedigree }] }),
+    putFamily(doc, {
+      ...family,
+      children: [...family.children, { childId, pedigree }],
+    }),
   )
 }
 
@@ -155,6 +181,7 @@ function eventKey(event: LifeEvent<FamilyEventType>): string {
  * 2件並び、子がその2件に分かれて記録される。この状態では図の系線が夫婦の婚姻線ではなく
  * 片方の親から直接伸びてしまい、しかも双方に子がいるため重複した家族を削除して直すことも
  * できない。そこで子とイベントを既存の家族へ移し、1件へ統合する(design.md D2)。
+ * 双方に子がいても統合する(どちらの子の帰属も失わせない)。
  *
  * 統合が足す事実は「その2人が夫婦である」という、利用者がこの操作で明示した内容だけであり、
  * 推測で親子関係を作らない原則(`fix-spouseless-family-handling` design.md D5)には抵触しない。
@@ -195,7 +222,8 @@ function attachSpouse(
  * 分かれて記録された状態を、利用者の明示的な操作で1つの家族へ統合するための経路
  * (spec family-data-model「既存の家族への配偶者の追加」)。
  * `addSpouse`は常に新しい家族を作る(再婚対応)ため、既存家族への合流はこちらを使う。
- * 継親・後妻を子の親として誤って記録しないよう、推測による自動合流は行わない(design.md D5)
+ * 継親・後妻を子の親として誤って記録しないよう、推測による自動合流は行わない(design.md D5)。
+ * 合流の結果同じ夫婦のFamilyが二重になった場合は`attachSpouse`が1件へ統合する
  */
 export function addSpouseLink(
   doc: TreeDocument,
@@ -204,13 +232,45 @@ export function addSpouseLink(
 ): TreeDocument {
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
-  if (!doc.persons[personId]) throw new Error(`人物が見つかりません: ${personId}`)
+  requirePerson(doc, personId)
   if (family.spouseIds.includes(personId)) return doc
-  if (family.spouseIds.length >= 2) throw new Error(`配偶者は2人までです: ${familyId}`)
+  if (family.spouseIds.length >= 2)
+    throw new Error(`配偶者は2人までです: ${familyId}`)
   if (family.children.some((c) => c.childId === personId)) {
     throw new Error(`家族の子を配偶者にはできません: ${personId}`)
   }
   return touch(attachSpouse(doc, family, personId).doc)
+}
+
+/**
+ * childId→その人物が子として属する家族[]の逆引き。
+ * 探索(祖先収集・循環判定)のたびに全家族を線形走査すると人数×家族数の計算量になるため、
+ * 1回の走査で索引を作ってからたどる(O(V+E))。ドキュメントは不変なので探索中に索引が
+ * 古くなることはない
+ */
+function buildParentFamilyIndex(doc: TreeDocument): Map<PersonId, Family[]> {
+  const index = new Map<PersonId, Family[]>()
+  for (const family of Object.values(doc.families)) {
+    for (const child of family.children) {
+      const families = index.get(child.childId)
+      if (families) families.push(family)
+      else index.set(child.childId, [family])
+    }
+  }
+  return index
+}
+
+/** personId→その人物が配偶者(親)として属する家族[]の逆引き。用途は`buildParentFamilyIndex`と同様 */
+function buildSpouseFamilyIndex(doc: TreeDocument): Map<PersonId, Family[]> {
+  const index = new Map<PersonId, Family[]>()
+  for (const family of Object.values(doc.families)) {
+    for (const spouseId of family.spouseIds) {
+      const families = index.get(spouseId)
+      if (families) families.push(family)
+      else index.set(spouseId, [family])
+    }
+  }
+  return index
 }
 
 /**
@@ -222,14 +282,16 @@ export function addSpouseLink(
  * (spec family-data-model「世代方向の循環の禁止」)。
  * 各人物は`ancestors`へ高々1回しか積まれないため、既存データが循環を含む場合でも停止する。
  */
-export function collectAncestors(doc: TreeDocument, personId: PersonId): Set<PersonId> {
+export function collectAncestors(
+  doc: TreeDocument,
+  personId: PersonId,
+): Set<PersonId> {
+  const parentFamilies = buildParentFamilyIndex(doc)
   const ancestors = new Set<PersonId>()
+  // 先頭からの取り出し(shift)は配列の詰め直しでO(n)かかるため、添字で読み進める
   const queue: PersonId[] = [personId]
-  while (queue.length > 0) {
-    const current = queue.shift()
-    if (current === undefined) break
-    for (const family of Object.values(doc.families)) {
-      if (!family.children.some((c) => c.childId === current)) continue
+  for (let i = 0; i < queue.length; i++) {
+    for (const family of parentFamilies.get(queue[i]) ?? []) {
       for (const parentId of family.spouseIds) {
         if (ancestors.has(parentId)) continue
         ancestors.add(parentId)
@@ -241,9 +303,39 @@ export function collectAncestors(doc: TreeDocument, personId: PersonId): Set<Per
 }
 
 /**
+ * 指定人物の子孫の集合を返す(personId自身は含めない。子・その子…の推移閉包)。
+ * `collectAncestors`と対称に、その人物が配偶者(親)として属する**全ての**家族の子をたどる
+ * (実子・養子を問わない)。各人物は高々1回しか積まれないため、壊れたデータが循環を
+ * 含んでいても停止する。
+ *
+ * UI層の「親候補一覧の一括循環判定」用: 候補Cを personId の親にすると循環になるのは
+ * `C === personId || collectDescendants(doc, personId).has(C)` のとき。候補ごとに
+ * `wouldCreateAncestryCycle`を呼ぶと候補数×探索の計算量になるため、1回の子孫収集で済ませる
+ */
+export function collectDescendants(
+  doc: TreeDocument,
+  personId: PersonId,
+): Set<PersonId> {
+  const spouseFamilies = buildSpouseFamilyIndex(doc)
+  const descendants = new Set<PersonId>()
+  const queue: PersonId[] = [personId]
+  for (let i = 0; i < queue.length; i++) {
+    for (const family of spouseFamilies.get(queue[i]) ?? []) {
+      for (const child of family.children) {
+        if (descendants.has(child.childId)) continue
+        descendants.add(child.childId)
+        queue.push(child.childId)
+      }
+    }
+  }
+  return descendants
+}
+
+/**
  * 親子リンク(parentId → childId)を作ると世代方向の循環が生じるか(design.md D7)。
  * childIdがparentIdの祖先である場合、このリンクはchildIdを自分自身の祖先にしてしまう。
  * いとこ婚のように無向グラフとしては閉路になるが世代方向に矛盾しない関係はtrueにならない。
+ * 祖先の全集合は作らず、探索の途中でchildIdを見つけた時点で打ち切る。
  */
 export function wouldCreateAncestryCycle(
   doc: TreeDocument,
@@ -251,11 +343,20 @@ export function wouldCreateAncestryCycle(
   childId: PersonId,
 ): boolean {
   if (parentId === childId) return true
-  return collectAncestors(doc, parentId).has(childId)
-}
-
-function requirePerson(doc: TreeDocument, personId: PersonId): void {
-  if (!doc.persons[personId]) throw new Error(`人物が見つかりません: ${personId}`)
+  const parentFamilies = buildParentFamilyIndex(doc)
+  const visited = new Set<PersonId>()
+  const queue: PersonId[] = [parentId]
+  for (let i = 0; i < queue.length; i++) {
+    for (const family of parentFamilies.get(queue[i]) ?? []) {
+      for (const ancestorId of family.spouseIds) {
+        if (ancestorId === childId) return true
+        if (visited.has(ancestorId)) continue
+        visited.add(ancestorId)
+        queue.push(ancestorId)
+      }
+    }
+  }
+  return false
 }
 
 /**
@@ -291,7 +392,8 @@ export function linkSpouse(
 ): { doc: TreeDocument; familyId: FamilyId } {
   requirePerson(doc, personId)
   requirePerson(doc, spouseId)
-  if (personId === spouseId) throw new Error(`自分自身を配偶者にはできません: ${personId}`)
+  if (personId === spouseId)
+    throw new Error(`自分自身を配偶者にはできません: ${personId}`)
   if (
     Object.values(doc.families).some(
       (f) => f.spouseIds.includes(personId) && f.spouseIds.includes(spouseId),
@@ -322,7 +424,10 @@ export function linkChild(
   if (wouldCreateAncestryCycle(doc, parentId, childId)) {
     throw new Error(`世代方向の循環になるため子にできません: ${childId}`)
   }
-  if (otherParentId !== undefined && wouldCreateAncestryCycle(doc, otherParentId, childId)) {
+  if (
+    otherParentId !== undefined &&
+    wouldCreateAncestryCycle(doc, otherParentId, childId)
+  ) {
     throw new Error(`世代方向の循環になるため子にできません: ${childId}`)
   }
 
@@ -348,7 +453,10 @@ export function linkChild(
   }
   return {
     doc: touch(
-      putFamily(doc, { ...family, children: [...family.children, { childId, pedigree }] }),
+      putFamily(doc, {
+        ...family,
+        children: [...family.children, { childId, pedigree }],
+      }),
     ),
     familyId: family.id,
   }
@@ -377,7 +485,11 @@ export function linkChild(
  *
  * 2・3 は親の配偶者を子のもう一方の親として扱うことになるため、親が複数の婚姻を持つ場合
  * (再婚等でどの家族の子か決められない場合)は行わず、4 の新設にとどめる。
- * 続柄は`defaultLinkPedigree`に従い、既に親家族を持つ人物なら「不明」で記録する
+ * 続柄は`defaultLinkPedigree`に従い、既に親家族を持つ人物なら「不明」で記録する。
+ *
+ * 1・2 とも合流先の家族内で同一人物が配偶者と子を兼ねないことを検査する
+ * (`addSpouseLink`/`linkChild`が持つガードとの対称。世代方向の循環検査だけでは、
+ * 相手が親家族を持たない場合にこの矛盾を検出できない)
  */
 export function linkParent(
   doc: TreeDocument,
@@ -391,10 +503,15 @@ export function linkParent(
   }
 
   const existing = Object.values(doc.families).find(
-    (f) => f.children.some((c) => c.childId === childId) && f.spouseIds.length === 1,
+    (f) =>
+      f.children.some((c) => c.childId === childId) && f.spouseIds.length === 1,
   )
   if (existing) {
     if (existing.spouseIds.includes(parentId)) return { doc, familyId: existing.id }
+    // 例: ひとり親Pの子C・Dで、Cの親にDを指定すると、Dが同じ家族の配偶者と子を兼ねてしまう
+    if (existing.children.some((c) => c.childId === parentId)) {
+      throw new Error(`家族の子を配偶者(親)にはできません: ${parentId}`)
+    }
     const attached = attachSpouse(doc, existing, parentId)
     return { doc: touch(attached.doc), familyId: attached.familyId }
   }
@@ -409,6 +526,10 @@ export function linkParent(
         ? parentFamilies[0]
         : undefined
   if (target) {
+    // 例: A–B夫婦でAの親にBを指定すると経路2/3でこの家族が選ばれ、Aが同じ家族の配偶者と子を兼ねてしまう
+    if (target.spouseIds.includes(childId)) {
+      throw new Error(`家族の配偶者を子にはできません: ${childId}`)
+    }
     if (target.children.some((c) => c.childId === childId)) return { doc, familyId: target.id }
     return {
       doc: touch(
@@ -418,7 +539,10 @@ export function linkParent(
     }
   }
 
-  const family = createFamily({ spouseIds: [parentId], children: [{ childId, pedigree }] })
+  const family = createFamily({
+    spouseIds: [parentId],
+    children: [{ childId, pedigree }],
+  })
   return { doc: touch(putFamily(doc, family)), familyId: family.id }
 }
 
@@ -433,10 +557,14 @@ export function addParent(
   let next = putPerson(doc, parent)
 
   const existing = Object.values(doc.families).find(
-    (f) => f.children.some((c) => c.childId === childId) && f.spouseIds.length === 1,
+    (f) =>
+      f.children.some((c) => c.childId === childId) && f.spouseIds.length === 1,
   )
   if (existing) {
-    next = putFamily(next, { ...existing, spouseIds: [...existing.spouseIds, parent.id] })
+    next = putFamily(next, {
+      ...existing,
+      spouseIds: [...existing.spouseIds, parent.id],
+    })
     return { doc: touch(next), parentId: parent.id, familyId: existing.id }
   }
 
@@ -456,10 +584,15 @@ export function setChildPedigree(
 ): TreeDocument {
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
+  // 対象の子がその家族にいなければ何もしない(updatedAtも触らない)。
+  // mapが誰にも当たらないままtouchすると、無変更なのに更新日時と履歴だけが動いてしまう
+  if (!family.children.some((c) => c.childId === childId)) return doc
   return touch(
     putFamily(doc, {
       ...family,
-      children: family.children.map((c) => (c.childId === childId ? { ...c, pedigree } : c)),
+      children: family.children.map((c) =>
+        c.childId === childId ? { ...c, pedigree } : c,
+      ),
     }),
   )
 }
@@ -478,20 +611,23 @@ export function addFamilyEvent(
 /**
  * 指定種別(婚姻/離婚)の最初の1件を置換・新規追加・削除(`event`が`undefined`)する。
  * UIからの単純な「その家族の婚姻日を設定/更新/削除する」操作用。2件目以降(復縁等)は
- * 対象にせずそのまま保持する(design.md D3)。複数件を意図的に扱う経路は`addFamilyEvent`を使う
+ * 対象にせずそのまま保持する(design.md D3)。複数件を意図的に扱う経路は`addFamilyEvent`を使う。
+ * `type`と`event.type`の食い違い(marriage指定でdivorceイベントを渡す等)は型で防ぐ。
+ * `NoInfer`がないと両引数からTがユニオンに広がって推論され、食い違いがすり抜ける
  */
-export function setFamilyEvent(
+export function setFamilyEvent<T extends FamilyEventType>(
   doc: TreeDocument,
   familyId: FamilyId,
-  type: FamilyEventType,
-  event: LifeEvent<FamilyEventType> | undefined,
+  type: T,
+  event: LifeEvent<NoInfer<T>> | undefined,
 ): TreeDocument {
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
   const index = family.events.findIndex((e) => e.type === type)
   let events: LifeEvent<FamilyEventType>[]
   if (event === undefined) {
-    events = index === -1 ? family.events : family.events.filter((_, i) => i !== index)
+    events =
+      index === -1 ? family.events : family.events.filter((_, i) => i !== index)
   } else if (index === -1) {
     events = [...family.events, event]
   } else {
@@ -500,10 +636,16 @@ export function setFamilyEvent(
   return touch(putFamily(doc, { ...family, events }))
 }
 
+/**
+ * 家族の属性(種別・イベント)を書き換える。
+ * `spouseIds`/`children`はpatchの対象にしない。これらは循環禁止・配偶者と子の排他・
+ * 空家族の削除といった不変条件を専用コマンド(linkParent/addChildLink/unlink系)が
+ * 守っており、無検査のpatchで書けると全ガードを迂回できてしまうため型で閉じる
+ */
 export function updateFamily(
   doc: TreeDocument,
   familyId: FamilyId,
-  patch: Partial<Omit<Family, 'id'>>,
+  patch: Partial<Pick<Family, 'kind' | 'events'>>,
 ): TreeDocument {
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
@@ -516,7 +658,9 @@ export function updateFamily(
  * 成立しない(spec family-data-model「家族(婚姻単位)の表現」)。
  * 配偶者2人・子0人(子のいない夫婦)と、配偶者1人・子あり(ひとり親)はいずれも正当な状態
  */
-function isVacantFamily(family: Pick<Family, 'spouseIds' | 'children'>): boolean {
+function isVacantFamily(
+  family: Pick<Family, 'spouseIds' | 'children'>,
+): boolean {
   if (family.spouseIds.length === 0) return true
   return family.spouseIds.length === 1 && family.children.length === 0
 }
@@ -547,7 +691,10 @@ export function unlinkChild(
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
   if (!family.children.some((c) => c.childId === childId)) return doc
-  const next = { ...family, children: family.children.filter((c) => c.childId !== childId) }
+  const next = {
+    ...family,
+    children: family.children.filter((c) => c.childId !== childId),
+  }
   return touch(applyFamilyChange(doc, next))
 }
 
@@ -564,14 +711,22 @@ export function unlinkSpouse(
   const family = doc.families[familyId]
   if (!family) throw new Error(`家族が見つかりません: ${familyId}`)
   if (!family.spouseIds.includes(personId)) return doc
-  const next = { ...family, spouseIds: family.spouseIds.filter((id) => id !== personId) }
+  const next = {
+    ...family,
+    spouseIds: family.spouseIds.filter((id) => id !== personId),
+  }
   return touch(applyFamilyChange(doc, next))
 }
 
 /** どの家族にも配偶者としても子としても現れないか(spec family-data-model「どのFamilyにも属さない人物の保持」) */
-export function isUnconnectedPerson(doc: TreeDocument, personId: PersonId): boolean {
+export function isUnconnectedPerson(
+  doc: TreeDocument,
+  personId: PersonId,
+): boolean {
   return !Object.values(doc.families).some(
-    (f) => f.spouseIds.includes(personId) || f.children.some((c) => c.childId === personId),
+    (f) =>
+      f.spouseIds.includes(personId) ||
+      f.children.some((c) => c.childId === personId),
   )
 }
 
@@ -633,7 +788,8 @@ function planFamilyRemoval(
     const children = family.children.filter((c) => c.childId !== personId)
     const next = { ...family, spouseIds, children }
     const changed =
-      spouseIds.length !== family.spouseIds.length || children.length !== family.children.length
+      spouseIds.length !== family.spouseIds.length ||
+      children.length !== family.children.length
     // 無関係な家族を人物削除の巻き添えで消さないため、空判定はこの削除で内容が変化した
     // 家族にのみ適用する。変化していない家族は従来どおり完全に空の場合だけ落とす
     const drop = changed
@@ -660,16 +816,24 @@ export interface RemovalImpact {
 }
 
 /** 削除確認ダイアログ用: 人物削除の影響範囲を返す */
-export function computeRemovalImpact(doc: TreeDocument, personId: PersonId): RemovalImpact {
+export function computeRemovalImpact(
+  doc: TreeDocument,
+  personId: PersonId,
+): RemovalImpact {
   const families = Object.values(doc.families)
   const spouseFamilies = families.filter((f) => f.spouseIds.includes(personId))
-  const childLinks = families.filter((f) => f.children.some((c) => c.childId === personId))
+  const childLinks = families.filter((f) =>
+    f.children.some((c) => c.childId === personId),
+  )
   const { removedFamilies } = planFamilyRemoval(doc, personId)
   return {
     spouseFamilyCount: spouseFamilies.length,
     childLinkCount: childLinks.length,
     removedFamilyCount: removedFamilies.length,
-    removedFamilyEventCount: removedFamilies.reduce((sum, f) => sum + f.events.length, 0),
+    removedFamilyEventCount: removedFamilies.reduce(
+      (sum, f) => sum + f.events.length,
+      0,
+    ),
   }
 }
 
@@ -680,8 +844,12 @@ export function computeRemovalImpact(doc: TreeDocument, personId: PersonId): Rem
  *   関わらず削除され、残る子は親リンクを失うだけで人物としては残る
  * - 子として帰属するリンクを除く
  */
-export function removePerson(doc: TreeDocument, personId: PersonId): TreeDocument {
-  if (!doc.persons[personId]) throw new Error(`人物が見つかりません: ${personId}`)
+export function removePerson(
+  doc: TreeDocument,
+  personId: PersonId,
+): TreeDocument {
+  if (!doc.persons[personId])
+    throw new Error(`人物が見つかりません: ${personId}`)
   const persons = { ...doc.persons }
   delete persons[personId]
 
@@ -689,8 +857,12 @@ export function removePerson(doc: TreeDocument, personId: PersonId): TreeDocumen
   return touch({ ...doc, persons, families })
 }
 
-export function removeFamily(doc: TreeDocument, familyId: FamilyId): TreeDocument {
-  if (!doc.families[familyId]) throw new Error(`家族が見つかりません: ${familyId}`)
+export function removeFamily(
+  doc: TreeDocument,
+  familyId: FamilyId,
+): TreeDocument {
+  if (!doc.families[familyId])
+    throw new Error(`家族が見つかりません: ${familyId}`)
   const families = { ...doc.families }
   delete families[familyId]
   return touch({ ...doc, families })

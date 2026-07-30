@@ -18,7 +18,10 @@ export interface DisplaySettingsStoreState extends DisplaySettings {
   setDeathDateGranularity: (granularity: DateGranularity) => void
   setCalendarMode: (mode: CalendarMode) => void
   /** カード表示項目を1件だけオン/オフする(design.md D8) */
-  setVisibleCardField: (field: keyof CardFieldVisibility, value: boolean) => void
+  setVisibleCardField: (
+    field: keyof CardFieldVisibility,
+    value: boolean,
+  ) => void
   setShowMarriageDateOnLink: (value: boolean) => void
 }
 
@@ -32,32 +35,48 @@ function currentSettings(state: DisplaySettingsStoreState): DisplaySettings {
   }
 }
 
-export const useDisplaySettingsStore = create<DisplaySettingsStoreState>((set, get) => ({
-  ...(typeof localStorage === 'undefined' ? DEFAULT_DISPLAY_SETTINGS : loadDisplaySettings()),
+/**
+ * 初期設定の読み込み。`typeof localStorage`の裸評価は、サイトデータをブロックした環境
+ * (Chromeの「サイトがデバイス上にデータを保存することを許可しない」等)ではアクセサ自体が
+ * SecurityErrorをthrowし、モジュール評価ごとアプリを落とすため、必ずtry/catchで包む。
+ */
+function initialDisplaySettings(): DisplaySettings {
+  try {
+    if (typeof localStorage === 'undefined') return DEFAULT_DISPLAY_SETTINGS
+  } catch {
+    return DEFAULT_DISPLAY_SETTINGS
+  }
+  return loadDisplaySettings()
+}
 
-  setBirthDateGranularity: (birthDateGranularity) => {
-    set({ birthDateGranularity })
-    saveDisplaySettings({ ...currentSettings(get()), birthDateGranularity })
-  },
+export const useDisplaySettingsStore = create<DisplaySettingsStoreState>(
+  (set, get) => ({
+    ...initialDisplaySettings(),
 
-  setDeathDateGranularity: (deathDateGranularity) => {
-    set({ deathDateGranularity })
-    saveDisplaySettings({ ...currentSettings(get()), deathDateGranularity })
-  },
+    setBirthDateGranularity: (birthDateGranularity) => {
+      set({ birthDateGranularity })
+      saveDisplaySettings({ ...currentSettings(get()), birthDateGranularity })
+    },
 
-  setCalendarMode: (calendarMode) => {
-    set({ calendarMode })
-    saveDisplaySettings({ ...currentSettings(get()), calendarMode })
-  },
+    setDeathDateGranularity: (deathDateGranularity) => {
+      set({ deathDateGranularity })
+      saveDisplaySettings({ ...currentSettings(get()), deathDateGranularity })
+    },
 
-  setVisibleCardField: (field, value) => {
-    const visibleCardFields = { ...get().visibleCardFields, [field]: value }
-    set({ visibleCardFields })
-    saveDisplaySettings({ ...currentSettings(get()), visibleCardFields })
-  },
+    setCalendarMode: (calendarMode) => {
+      set({ calendarMode })
+      saveDisplaySettings({ ...currentSettings(get()), calendarMode })
+    },
 
-  setShowMarriageDateOnLink: (showMarriageDateOnLink) => {
-    set({ showMarriageDateOnLink })
-    saveDisplaySettings({ ...currentSettings(get()), showMarriageDateOnLink })
-  },
-}))
+    setVisibleCardField: (field, value) => {
+      const visibleCardFields = { ...get().visibleCardFields, [field]: value }
+      set({ visibleCardFields })
+      saveDisplaySettings({ ...currentSettings(get()), visibleCardFields })
+    },
+
+    setShowMarriageDateOnLink: (showMarriageDateOnLink) => {
+      set({ showMarriageDateOnLink })
+      saveDisplaySettings({ ...currentSettings(get()), showMarriageDateOnLink })
+    },
+  }),
+)

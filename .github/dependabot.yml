@@ -1,0 +1,19 @@
+# 依存の自動更新。vite と rolldown ネイティブバイナリは必ず同一PRで更新する
+# (rootの @rolldown/binding-* exact固定と vite の rolldown 依存がずれると
+# どちらのバイナリがロードされるか不定になるため。README「セットアップ」参照)
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      vite-rolldown:
+        patterns:
+          - vite
+          - rolldown
+          - '@rolldown/*'
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
