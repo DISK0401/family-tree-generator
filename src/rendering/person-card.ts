@@ -122,7 +122,9 @@ export function derivePersonCardView(
   // 同じ図の中でふりがなが入力済みの人物とで氏名の縦書き列が始まる高さがずれて見える
   // (`kana`はカードの縦積みの中で氏名列より上に来るため、行が消えると氏名列が上へ詰まる)。
   // 表示設定がオンの間は必ず`''`(空文字。undefinedにしない)を返し、行の高さを確保させる
-  const kana = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : undefined
+  const kana = fields.furigana
+    ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ')
+    : undefined
 
   const places = [
     fields.birthPlace ? person.birthPlace : undefined,
@@ -215,7 +217,10 @@ function htmlTag(
 }
 
 /** 氏名の1列分のHTML(縮小が必要な場合のみインラインスタイルを付す。htmlTag経由でエスケープする) */
-function nameColumnHtml(className: 'tree-card-surname' | 'tree-card-given', text: string): string {
+function nameColumnHtml(
+  className: 'tree-card-surname' | 'tree-card-given',
+  text: string,
+): string {
   const scale = nameFontScale(text.length)
   const attrs: Record<string, string> = { class: className }
   if (scale < 1) attrs.style = `font-size: ${scale.toFixed(2)}em`
@@ -281,8 +286,13 @@ export function personCardInnerHtml(
   // `view.kana`が`''`(表示設定はオンだがこの人物には未入力)の場合も行を描く。
   // 空のdivでも行の高さ(line-height由来)は確保されるため、ふりがな入力済みの人物と
   // 未入力の人物とで、下に続く氏名列の開始位置が上下にずれることを防げる
-  const kanaHtml = view.kana !== undefined ? htmlTag('div', { class: 'tree-card-kana' }, view.kana) : ''
-  const placesHtml = view.places ? htmlTag('div', { class: 'tree-card-places' }, view.places) : ''
+  const kanaHtml =
+    view.kana !== undefined
+      ? htmlTag('div', { class: 'tree-card-kana' }, view.kana)
+      : ''
+  const placesHtml = view.places
+    ? htmlTag('div', { class: 'tree-card-places' }, view.places)
+    : ''
 
   const badgeHtml =
     options.hiddenBadge !== undefined

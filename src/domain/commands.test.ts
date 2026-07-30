@@ -478,40 +478,57 @@ describe('addSpouseLink: 既存人物を既存家族の配偶者にする', () =
   }
 
   it('配偶者1人の家族へ既存人物を追加すると2人になり、子が両者の子になる', () => {
-    const { doc, cId, pId, qId, parentFamilyId, spouseFamilyId } = splitFamilies()
+    const { doc, cId, pId, qId, parentFamilyId, spouseFamilyId } =
+      splitFamilies()
 
     const next = addSpouseLink(doc, parentFamilyId, qId)
 
     // 同じ夫婦の家族が二重にならないよう、既存のP・Qの家族へ統合される
     expect(next.families[parentFamilyId]).toBeUndefined()
     expect(next.families[spouseFamilyId].spouseIds).toEqual([pId, qId])
-    expect(next.families[spouseFamilyId].children.map((c) => c.childId)).toEqual([cId])
-    expect(Object.values(next.families).filter((f) => f.spouseIds.includes(pId))).toHaveLength(1)
+    expect(
+      next.families[spouseFamilyId].children.map((c) => c.childId),
+    ).toEqual([cId])
+    expect(
+      Object.values(next.families).filter((f) => f.spouseIds.includes(pId)),
+    ).toHaveLength(1)
   })
 
   it('統合先の家族に既に子がいる場合、双方の子が1つの家族へ集まる', () => {
-    const { doc, cId, pId, qId, parentFamilyId, spouseFamilyId } = splitFamilies()
+    const { doc, cId, pId, qId, parentFamilyId, spouseFamilyId } =
+      splitFamilies()
     // P・Qの家族側にも子Dを登録し、子が2つの家族に分かれた状態を作る
-    const d = addChild(doc, pId, { name: { given: 'D' } }, { otherParentId: qId })
+    const d = addChild(
+      doc,
+      pId,
+      { name: { given: 'D' } },
+      { otherParentId: qId },
+    )
 
     const next = addSpouseLink(d.doc, parentFamilyId, qId)
 
     expect(next.families[parentFamilyId]).toBeUndefined()
-    expect(next.families[spouseFamilyId].children.map((c) => c.childId).sort()).toEqual(
-      [cId, d.childId].sort(),
-    )
+    expect(
+      next.families[spouseFamilyId].children.map((c) => c.childId).sort(),
+    ).toEqual([cId, d.childId].sort())
   })
 
   it('統合しても婚姻・離婚の記録は失われず、同じ記録が二重にならない', () => {
     const { doc, qId, parentFamilyId, spouseFamilyId } = splitFamilies()
     const marriage: LifeEvent<'marriage'> = {
       type: 'marriage',
-      date: { original: '明治36年1月26日', qualifier: 'exact', date: { year: 1903, month: 1, day: 26 } },
+      date: {
+        original: '明治36年1月26日',
+        qualifier: 'exact',
+        date: { year: 1903, month: 1, day: 26 },
+      },
     }
     // 同じ婚姻が両方の家族に記録され、片方にだけ離婚が記録されている状態
     let split = setFamilyEvent(doc, parentFamilyId, 'marriage', marriage)
     split = setFamilyEvent(split, spouseFamilyId, 'marriage', marriage)
-    split = setFamilyEvent(split, parentFamilyId, 'divorce', { type: 'divorce' })
+    split = setFamilyEvent(split, parentFamilyId, 'divorce', {
+      type: 'divorce',
+    })
 
     const next = addSpouseLink(split, parentFamilyId, qId)
 
@@ -529,9 +546,14 @@ describe('addSpouseLink: 既存人物を既存家族の配偶者にする', () =
 
     const next = addSpouseLink(d.doc, p.familyId, q.personId)
 
-    expect(next.families[p.familyId].spouseIds).toEqual([p.parentId, q.personId])
+    expect(next.families[p.familyId].spouseIds).toEqual([
+      p.parentId,
+      q.personId,
+    ])
     expect(next.families[d.familyId].spouseIds).toEqual([q.personId])
-    expect(next.families[d.familyId].children.map((c) => c.childId)).toEqual([d.childId])
+    expect(next.families[d.familyId].children.map((c) => c.childId)).toEqual([
+      d.childId,
+    ])
   })
 
   it('統合先の関係種別が「不明」なら、統合元で判明している種別を引き継ぐ', () => {
@@ -550,8 +572,13 @@ describe('addSpouseLink: 既存人物を既存家族の配偶者にする', () =
 
     const next = addSpouseLink(q.doc, p.familyId, q.personId)
 
-    expect(next.families[p.familyId].spouseIds).toEqual([p.parentId, q.personId])
-    expect(next.families[p.familyId].children.map((c) => c.childId)).toEqual([cId])
+    expect(next.families[p.familyId].spouseIds).toEqual([
+      p.parentId,
+      q.personId,
+    ])
+    expect(next.families[p.familyId].children.map((c) => c.childId)).toEqual([
+      cId,
+    ])
   })
 
   it('既に配偶者である人物を再度追加してもドキュメントは変化しない', () => {
@@ -1150,7 +1177,13 @@ describe('linkParent: 親が既に持つ家族への合流(婿養子)', () => {
       ...doc,
       families: {
         ...doc.families,
-        shell: { id: 'shell', spouseIds: [tokuoId], kind: 'unknown', events: [], children: [] },
+        shell: {
+          id: 'shell',
+          spouseIds: [tokuoId],
+          kind: 'unknown',
+          events: [],
+          children: [],
+        },
       },
     }
 
@@ -1159,8 +1192,12 @@ describe('linkParent: 親が既に持つ家族への合流(婿養子)', () => {
     // 空き殻の存在で家族が2件に数えられ、配偶者不在の家族が新設されてはならない
     expect(familyId).toBe(tokuoFamilyId)
     expect(next.families[tokuoFamilyId].spouseIds).toEqual([tokuoId, ginId])
-    expect(next.families[tokuoFamilyId].children.map((c) => c.childId)).toContain(taichiId)
-    expect(Object.values(next.families).filter((f) => f.spouseIds.includes(tokuoId))).toHaveLength(2)
+    expect(
+      next.families[tokuoFamilyId].children.map((c) => c.childId),
+    ).toContain(taichiId)
+    expect(
+      Object.values(next.families).filter((f) => f.spouseIds.includes(tokuoId)),
+    ).toHaveLength(2)
   })
 
   it('親がひとり親の家族も持つ場合、唯一の婚姻の家族が帰属先になる', () => {
@@ -1172,7 +1209,9 @@ describe('linkParent: 親が既に持つ家族への合流(婿養子)', () => {
     const { doc: next, familyId } = linkParent(solo.doc, taichiId, tokuoId)
 
     expect(familyId).toBe(tokuoFamilyId)
-    expect(next.families[solo.familyId].children.map((c) => c.childId)).toEqual([x.personId])
+    expect(next.families[solo.familyId].children.map((c) => c.childId)).toEqual(
+      [x.personId],
+    )
   })
 
   it('子のひとり親家族へ親を加えるとき、その2人の家族が既にあれば1件へ統合される', () => {
@@ -1186,9 +1225,13 @@ describe('linkParent: 親が既に持つ家族への合流(婿養子)', () => {
     expect(familyId).toBe(tokuoFamilyId)
     expect(next.families[split.familyId]).toBeUndefined()
     expect(next.families[tokuoFamilyId].spouseIds).toEqual([tokuoId, ginId])
-    expect(next.families[tokuoFamilyId].children.map((c) => c.childId)).toContain(taichiId)
+    expect(
+      next.families[tokuoFamilyId].children.map((c) => c.childId),
+    ).toContain(taichiId)
     // 徳雄・ぎんの家族は1件のまま(同じ夫婦の家族が二重にならない)
-    expect(Object.values(next.families).filter((f) => f.spouseIds.includes(tokuoId))).toHaveLength(1)
+    expect(
+      Object.values(next.families).filter((f) => f.spouseIds.includes(tokuoId)),
+    ).toHaveLength(1)
   })
 
   it('親が複数の家族を持つ場合は推測せず、その親だけの家族を新設する', () => {

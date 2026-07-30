@@ -117,7 +117,9 @@ function relationCandidates(
         return !joinFamily.children.some((c) => c.childId === p.id)
       }
       const candidateFamilies = spouseFamiliesByPerson.get(p.id) ?? []
-      const candidateMarriages = candidateFamilies.filter((f) => f.spouseIds.length === 2)
+      const candidateMarriages = candidateFamilies.filter(
+        (f) => f.spouseIds.length === 2,
+      )
       const target =
         candidateMarriages.length === 1
           ? candidateMarriages[0]

@@ -193,10 +193,15 @@ function attachSpouse(
 ): { doc: TreeDocument; familyId: FamilyId } {
   const partnerId = family.spouseIds[0]
   const duplicate =
-    partnerId === undefined ? undefined : findCoupleFamily(doc, partnerId, personId, family.id)
+    partnerId === undefined
+      ? undefined
+      : findCoupleFamily(doc, partnerId, personId, family.id)
   if (!duplicate) {
     return {
-      doc: putFamily(doc, { ...family, spouseIds: [...family.spouseIds, personId] }),
+      doc: putFamily(doc, {
+        ...family,
+        spouseIds: [...family.spouseIds, personId],
+      }),
       familyId: family.id,
     }
   }
@@ -206,10 +211,15 @@ function attachSpouse(
     ...duplicate,
     // 「不明」しか分かっていない側に、もう一方で判明している種別があればそれを残す
     kind: duplicate.kind === 'unknown' ? family.kind : duplicate.kind,
-    events: [...duplicate.events, ...family.events.filter((e) => !knownEventKeys.has(eventKey(e)))],
+    events: [
+      ...duplicate.events,
+      ...family.events.filter((e) => !knownEventKeys.has(eventKey(e))),
+    ],
     children: [
       ...duplicate.children,
-      ...family.children.filter((c) => !duplicate.children.some((d) => d.childId === c.childId)),
+      ...family.children.filter(
+        (c) => !duplicate.children.some((d) => d.childId === c.childId),
+      ),
     ],
   }
   const families = { ...doc.families, [merged.id]: merged }
@@ -507,7 +517,8 @@ export function linkParent(
       f.children.some((c) => c.childId === childId) && f.spouseIds.length === 1,
   )
   if (existing) {
-    if (existing.spouseIds.includes(parentId)) return { doc, familyId: existing.id }
+    if (existing.spouseIds.includes(parentId))
+      return { doc, familyId: existing.id }
     // 例: ひとり親Pの子C・Dで、Cの親にDを指定すると、Dが同じ家族の配偶者と子を兼ねてしまう
     if (existing.children.some((c) => c.childId === parentId)) {
       throw new Error(`家族の子を配偶者(親)にはできません: ${parentId}`)
@@ -517,7 +528,9 @@ export function linkParent(
   }
 
   const pedigree = defaultLinkPedigree(doc, childId)
-  const parentFamilies = Object.values(doc.families).filter((f) => f.spouseIds.includes(parentId))
+  const parentFamilies = Object.values(doc.families).filter((f) =>
+    f.spouseIds.includes(parentId),
+  )
   const marriages = parentFamilies.filter((f) => f.spouseIds.length === 2)
   const target =
     marriages.length === 1
@@ -530,10 +543,14 @@ export function linkParent(
     if (target.spouseIds.includes(childId)) {
       throw new Error(`家族の配偶者を子にはできません: ${childId}`)
     }
-    if (target.children.some((c) => c.childId === childId)) return { doc, familyId: target.id }
+    if (target.children.some((c) => c.childId === childId))
+      return { doc, familyId: target.id }
     return {
       doc: touch(
-        putFamily(doc, { ...target, children: [...target.children, { childId, pedigree }] }),
+        putFamily(doc, {
+          ...target,
+          children: [...target.children, { childId, pedigree }],
+        }),
       ),
       familyId: target.id,
     }

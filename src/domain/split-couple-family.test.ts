@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { addChild, addPerson, addSpouse, linkChild, linkParent, linkSpouse } from './commands'
+import {
+  addChild,
+  addPerson,
+  addSpouse,
+  linkChild,
+  linkParent,
+  linkSpouse,
+} from './commands'
 import { createTreeDocument } from './helpers'
 import type { PersonId, TreeDocument } from './types'
 import { toFamilyChartData } from '../rendering/to-family-chart-data'
@@ -35,11 +42,22 @@ describe('夫婦の子が片方の親だけの子として記録される不具�
       ...doc,
       families: {
         ...doc.families,
-        shell: { id: 'shell', spouseIds: [taichi.personId], kind: 'unknown', events: [], children: [] },
+        shell: {
+          id: 'shell',
+          spouseIds: [taichi.personId],
+          kind: 'unknown',
+          events: [],
+          children: [],
+        },
       },
     }
     const marriage = linkSpouse(doc, sakae.personId, taichi.personId)
-    return { doc: marriage.doc, taichiId: taichi.personId, sakaeId: sakae.personId, marriageId: marriage.familyId }
+    return {
+      doc: marriage.doc,
+      taichiId: taichi.personId,
+      sakaeId: sakae.personId,
+      marriageId: marriage.familyId,
+    }
   }
 
   it('空き殻が残っていても、「親を追加」した子は夫婦の家族へ入る', () => {
@@ -54,8 +72,12 @@ describe('夫婦の子が片方の親だけの子として記録される不具�
     }
 
     // 3人とも1つの夫婦の家族に属し、配偶者不在の家族が量産されない
-    expect(doc.families[marriageId].children.map((c) => c.childId)).toEqual(childIds)
-    expect(Object.values(doc.families).filter((f) => f.children.length > 0)).toHaveLength(1)
+    expect(doc.families[marriageId].children.map((c) => c.childId)).toEqual(
+      childIds,
+    )
+    expect(
+      Object.values(doc.families).filter((f) => f.children.length > 0),
+    ).toHaveLength(1)
     for (const childId of childIds) {
       expect(drawnParentCount(doc, childId)).toBe(2)
       expect(doc.families[marriageId].spouseIds).toEqual([sakaeId, taichiId])
@@ -67,9 +89,13 @@ describe('夫婦の子が片方の親だけの子として記録される不具�
     let doc = createTreeDocument()
     const tokuo = addPerson(doc, { name: { surname: '富岡', given: '徳雄' } })
     doc = tokuo.doc
-    const sakae = addChild(doc, tokuo.personId, { name: { surname: '富岡', given: '榮' } })
+    const sakae = addChild(doc, tokuo.personId, {
+      name: { surname: '富岡', given: '榮' },
+    })
     doc = sakae.doc
-    const gin = addSpouse(doc, tokuo.personId, { name: { surname: '富岡', given: 'ぎん' } })
+    const gin = addSpouse(doc, tokuo.personId, {
+      name: { surname: '富岡', given: 'ぎん' },
+    })
     doc = gin.doc
     const taichi = addPerson(doc, { name: { surname: '齋藤', given: '兎一' } })
     doc = linkChild(taichi.doc, tokuo.personId, taichi.personId, {
@@ -78,19 +104,25 @@ describe('夫婦の子が片方の親だけの子として記録される不具�
 
     // 修復前: 榮 の親は徳雄1人だけとして描かれる
     expect(drawnParentCount(doc, sakae.childId)).toBe(1)
-    expect(Object.values(doc.families).filter((f) => f.spouseIds.includes(tokuo.personId))).toHaveLength(2)
+    expect(
+      Object.values(doc.families).filter((f) =>
+        f.spouseIds.includes(tokuo.personId),
+      ),
+    ).toHaveLength(2)
 
     // 榮 に「親を追加」で ぎん を紐づける
     const repaired = linkParent(doc, sakae.childId, gin.spouseId)
 
     expect(repaired.familyId).toBe(gin.familyId)
     expect(drawnParentCount(repaired.doc, sakae.childId)).toBe(2)
-    expect(repaired.doc.families[gin.familyId].children.map((c) => c.childId).sort()).toEqual(
-      [sakae.childId, taichi.personId].sort(),
-    )
+    expect(
+      repaired.doc.families[gin.familyId].children.map((c) => c.childId).sort(),
+    ).toEqual([sakae.childId, taichi.personId].sort())
     // 徳雄・ぎんの家族は1件へ統合され、榮 と 兎一 が同じ夫婦の子になる
     expect(
-      Object.values(repaired.doc.families).filter((f) => f.spouseIds.includes(tokuo.personId)),
+      Object.values(repaired.doc.families).filter((f) =>
+        f.spouseIds.includes(tokuo.personId),
+      ),
     ).toHaveLength(1)
   })
 })
