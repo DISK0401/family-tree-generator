@@ -47,7 +47,11 @@ export interface PersonCardView {
   personId: PersonId
   surname?: string
   given?: string
-  /** ふりがな。姓・名を分けず1行の文字列として保持する(design.md D3を出発点に、既存カードの表示に合わせた判断) */
+  /**
+   * ふりがな。姓・名を分けず1行の文字列として保持する(design.md D3を出発点に、既存カードの表示に合わせた判断)。
+   * `undefined`(ふりがな表示設定そのものがオフ)と`''`(表示設定はオンだがこの人物には未入力)を区別する。
+   * `personCardInnerHtml`はこの違いを見て、後者でも高さ0の行を描く(次のコメント参照)
+   */
   kana?: string
   /** 生没年月日を表示設定の粒度・和暦/西暦で書式化した文字列(例: "1990-04-01 – 2020-01-01") */
   years?: string
@@ -93,7 +97,11 @@ export function derivePersonCardView(person: PersonCardInput, settings: CardDisp
   const surname = fields.surname ? person.surname : undefined
   const given = fields.given ? person.given : undefined
 
-  const kana = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : ''
+  // ふりがな未入力の人物を`undefined`にすると、ふりがな行そのものが描かれなくなり、
+  // 同じ図の中でふりがなが入力済みの人物とで氏名の縦書き列が始まる高さがずれて見える
+  // (`kana`はカードの縦積みの中で氏名列より上に来るため、行が消えると氏名列が上へ詰まる)。
+  // 表示設定がオンの間は必ず`''`(空文字。undefinedにしない)を返し、行の高さを確保させる
+  const kana = fields.furigana ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ') : undefined
 
   const places = [fields.birthPlace ? person.birthPlace : undefined, fields.deathPlace ? person.deathPlace : undefined]
     .filter((p): p is string => !!p)
@@ -103,7 +111,7 @@ export function derivePersonCardView(person: PersonCardInput, settings: CardDisp
     personId: person.personId,
     surname,
     given,
-    kana: kana || undefined,
+    kana,
     years: years || undefined,
     ageLabel,
     places: places || undefined,
@@ -217,7 +225,10 @@ export function personCardInnerHtml(view: PersonCardView, options: PersonCardHtm
           ? nameColumnHtml('tree-card-given', view.given)
           : ''
 
-  const kanaHtml = view.kana ? `<div class="tree-card-kana">${escapeHtml(view.kana)}</div>` : ''
+  // `view.kana`が`''`(表示設定はオンだがこの人物には未入力)の場合も行を描く。
+  // 空のdivでも行の高さ(line-height由来)は確保されるため、ふりがな入力済みの人物と
+  // 未入力の人物とで、下に続く氏名列の開始位置が上下にずれることを防げる
+  const kanaHtml = view.kana !== undefined ? `<div class="tree-card-kana">${escapeHtml(view.kana)}</div>` : ''
   const placesHtml = view.places ? `<div class="tree-card-places">${escapeHtml(view.places)}</div>` : ''
 
   const badgeHtml =

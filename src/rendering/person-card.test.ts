@@ -71,6 +71,17 @@ describe('derivePersonCardView: 表示項目の選択', () => {
     expect(view.kana).toBe('やまだ たろう')
   })
 
+  it('ふりがなをオンにしても、この人物にふりがなが未入力なら空文字になる(undefinedにはしない)', () => {
+    // undefinedにすると、personCardInnerHtmlがふりがな行そのものを描かなくなり、
+    // ふりがな入力済みの人物と並べたときに氏名列の開始位置がずれる(実機で報告された不具合)。
+    // 表示設定がオンの間は行の高さを必ず確保させるため、空文字であることを区別できる必要がある
+    const view = derivePersonCardView(
+      baseInput({ surnameKana: undefined, givenKana: undefined }),
+      baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+    )
+    expect(view.kana).toBe('')
+  })
+
   it('生年月日を非表示にすると年欄から除外される', () => {
     const view = derivePersonCardView(
       baseInput({ deathDate: { year: 2050, month: 1, day: 1 } }),
@@ -193,6 +204,26 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     const html = personCardInnerHtml(view)
     expect(html).not.toContain('<script>')
     expect(html).toContain('&lt;script&gt;')
+  })
+
+  it('ふりがな表示がオンの間は、未入力の人物でもふりがな行(高さ確保のための空div)が描かれる', () => {
+    // ふりがな入力済みの人物と未入力の人物が同じ図に混在するとき、行そのものが消える人物だけ
+    // 氏名列の開始位置がずれて見える(実機で報告された不具合)。行の有無ではなく、
+    // 表示設定がオンかどうかだけで行の存在を決める
+    const withKana = personCardInnerHtml(derivePersonCardView(baseInput(), baseSettings({ visibleCardFields: fields({ furigana: true }) })))
+    const withoutKanaData = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({ surnameKana: undefined, givenKana: undefined }),
+        baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+      ),
+    )
+    expect(withKana).toContain('<div class="tree-card-kana">やまだ たろう</div>')
+    expect(withoutKanaData).toContain('<div class="tree-card-kana"></div>')
+  })
+
+  it('ふりがな表示がオフのときは行自体が描かれない', () => {
+    const html = personCardInnerHtml(derivePersonCardView(baseInput(), baseSettings()))
+    expect(html).not.toContain('tree-card-kana')
   })
 
   it('非表示人数バッジはhiddenBadgeを渡したときだけ描かれる(design.md D4)', () => {

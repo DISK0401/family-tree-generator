@@ -36,6 +36,14 @@
 
 *代替案*: JS側でDOM計測してオーバーフローを検知しフォントサイズを調整(いわゆるauto-fit) → family-chart側のDOM生成タイミングと二重に絡む実装になり複雑度が高く、再描画のたびに計測コストが発生する。文字数という決定的な入力からCSSスケールを算出する方が、`derivePersonCardView`が既に持つ「純粋関数でカードの見た目を決める」設計(design.md D3)とも整合する。
 
+**D2.5: ふりがな行は「表示設定オン」だけで存在を決め、データの有無では消さない**
+
+`personCardInnerHtml`(`person-card.ts`)はカードの各部を`.tree-card`のflex縦積みとして並べる。`.tree-card-kana`は氏名列(`.tree-card-name-row`)より前に置かれるため、この行が現れるかどうかで氏名列の開始位置(縦方向)が変わる。従来は`derivePersonCardView`が「表示設定オフ」と「表示設定オンだがこの人物にふりがなデータが無い」の両方を`kana: undefined`として返しており、後者でも行そのものが消えていた。ふりがな入力済みの人物と未入力の人物が同じ図に混在すると、未入力の人物だけ氏名列が上へ詰まって見える(実機で報告)。
+
+`kana`を「表示設定オフ→`undefined`(行なし)」「表示設定オン・データ無し→`''`(空文字、行はあるが空)」に区別し、`personCardInnerHtml`は`view.kana !== undefined`で行の有無を判定する。空の`<div>`でも`line-height`由来の高さは残るため、`.tree-card-kana`に明示的な`min-height`を添えて高さをブラウザ実装差に依存させない。
+
+*代替案*: 表示設定が有効な間は常にJSでプレースホルダー要素の高さを計測して他のカードへ揃える → 実装が重く、`derivePersonCardView`が持つ「純粋関数でカードの見た目を決める」設計(D3)から外れる。「行の存在は表示設定だけで決める」という単純な規則のほうが見通しがよい。
+
 **D3: 新規作成した人物へ自動的にフォーカス・編集パネルを切り替える**
 
 `PersonPanel` に `onPersonCreated?: (personId: PersonId) => void` を追加し、`handleSubmit` 内で `addSpouse`/`addChild`/`addParent` が返す新規人物IDを使って呼び出す。`App.tsx` はこれを既存の `requestSelectionChange` に接続する。`AddPersonControl` の `onAdded` と同じパターンを踏襲することで、「人物を新規作成したら選択が切り替わる」という挙動をアプリ全体で一貫させる。

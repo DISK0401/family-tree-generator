@@ -204,6 +204,11 @@
   font-size: 0.5625rem;
   color: var(--ink-faint);
   text-align: center;
+  /* ふりがな未入力の人物はこの要素の中身が空文字になる(person-card.ts参照)。
+     min-heightを明示しないと、ブラウザや親要素の状況によって空の行の高さが0になりかねず、
+     ふりがな入力済みの人物との間で氏名列の開始位置がずれる。line-height基準で高さを固定する */
+  line-height: 1.2;
+  min-height: 1.2em;
 }
 
 .tree-card-places {
