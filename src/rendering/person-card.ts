@@ -139,6 +139,26 @@ export function personToCardInput(person: Person): PersonCardInput {
   }
 }
 
+/**
+ * 縦書き氏名の列は折り返しを禁止している(FamilyTreeCanvas.css `white-space: nowrap`, design.md D1)ため、
+ * 文字数がカードの固定高さに対して多い場合はフォントサイズを縮小して収める(design.md D2)。
+ * 2〜3文字は等倍のまま、それを超える分は文字数に反比例して縮小し、可読性を保つ下限を設ける。
+ * 姓・名は独立した列のため、縮小率も列ごとに個別の文字数で決める
+ */
+function nameFontScale(charCount: number): number {
+  const COMFORTABLE_CHARS = 2
+  const MIN_SCALE = 0.6
+  if (charCount <= COMFORTABLE_CHARS) return 1
+  return Math.max(COMFORTABLE_CHARS / charCount, MIN_SCALE)
+}
+
+/** 氏名の1列分のHTML(縮小が必要な場合のみインラインスタイルを付す) */
+function nameColumnHtml(className: 'tree-card-surname' | 'tree-card-given', text: string): string {
+  const scale = nameFontScale(text.length)
+  const style = scale < 1 ? ` style="font-size: ${scale.toFixed(2)}em"` : ''
+  return `<div class="${className}"${style}>${escapeHtml(text)}</div>`
+}
+
 /** 氏名は利用者入力のため、innerHTMLへ渡す前に必ずエスケープする */
 export function escapeHtml(value: string): string {
   return value
@@ -190,11 +210,11 @@ export function personCardInnerHtml(view: PersonCardView, options: PersonCardHtm
   // 片方しかない場合も「tree-card-given」列として描く(既存カードの見た目を保つための踏襲)
   const nameHtml =
     view.surname && view.given
-      ? `<div class="tree-card-surname">${escapeHtml(view.surname)}</div><div class="tree-card-given">${escapeHtml(view.given)}</div>`
+      ? `${nameColumnHtml('tree-card-surname', view.surname)}${nameColumnHtml('tree-card-given', view.given)}`
       : view.surname
-        ? `<div class="tree-card-given">${escapeHtml(view.surname)}</div>`
+        ? nameColumnHtml('tree-card-given', view.surname)
         : view.given
-          ? `<div class="tree-card-given">${escapeHtml(view.given)}</div>`
+          ? nameColumnHtml('tree-card-given', view.given)
           : ''
 
   const kanaHtml = view.kana ? `<div class="tree-card-kana">${escapeHtml(view.kana)}</div>` : ''

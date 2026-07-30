@@ -109,6 +109,9 @@ interface PersonPanelProps {
   onDirtyChange?: (isDirty: boolean) => void
   /** 親から`requestSubmit()`で確定操作をプログラム的に実行できるようにする(design.md D3) */
   editFormRef?: RefObject<HTMLFormElement | null>
+  /** 配偶者・子・親の追加で人物を新規作成した直後に呼ばれる(design.md D3)。
+   * 親はこれを選択状態の切り替えに使い、新規人物へフォーカスを移す */
+  onPersonCreated?: (personId: PersonId) => void
 }
 
 /**
@@ -116,7 +119,7 @@ interface PersonPanelProps {
  * 「図の上で家族を育てる」操作モデル(design.md D7)。フォームはこのパネル内で
  * 完結させ、モーダルで作業を中断させない。
  */
-export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editFormRef }: PersonPanelProps) {
+export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editFormRef, onPersonCreated }: PersonPanelProps) {
   const apply = useTreeStore((s) => s.apply)
   const document = useTreeStore((s) => s.document)
   const person = useTreeStore((s) => s.document.persons[personId])
@@ -148,17 +151,30 @@ export function PersonPanel({ personId, onDeleted, onClose, onDirtyChange, editF
     if (!canSubmit || !openAction) return
     const name = nameFromFields(surname, given)
 
+    let createdId: PersonId | undefined
+
     if (openAction === 'spouse') {
-      apply((doc) => addSpouse(doc, personId, { name }).doc)
+      apply((doc) => {
+        const result = addSpouse(doc, personId, { name })
+        createdId = result.spouseId
+        return result.doc
+      })
     } else if (openAction === 'child') {
       apply((doc) => {
         const otherParentId = findSoleSpouseId(doc, personId)
-        return addChild(doc, personId, { name }, otherParentId ? { otherParentId } : undefined).doc
+        const result = addChild(doc, personId, { name }, otherParentId ? { otherParentId } : undefined)
+        createdId = result.childId
+        return result.doc
       })
     } else if (openAction === 'parent') {
-      apply((doc) => addParent(doc, personId, { name }).doc)
+      apply((doc) => {
+        const result = addParent(doc, personId, { name })
+        createdId = result.parentId
+        return result.doc
+      })
     }
     closeForm()
+    if (createdId !== undefined) onPersonCreated?.(createdId)
   }
 
   /**

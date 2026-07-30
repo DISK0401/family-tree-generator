@@ -99,6 +99,64 @@ describe('PersonPanel: 親の追加', () => {
   })
 })
 
+describe('PersonPanel: 新規作成した人物への自動フォーカス', () => {
+  it('配偶者を追加すると、新規人物のIDでonPersonCreatedが呼ばれる', () => {
+    const onPersonCreated = vi.fn()
+    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} onPersonCreated={onPersonCreated} />)
+    fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'B' } })
+    fireEvent.click(screen.getByRole('button', { name: '追加する' }))
+
+    const doc = useTreeStore.getState().document
+    const created = Object.values(doc.persons).find((p) => p.id !== personAId)
+    expect(onPersonCreated).toHaveBeenCalledTimes(1)
+    expect(onPersonCreated).toHaveBeenCalledWith(created?.id)
+  })
+
+  it('子を追加すると、新規人物のIDでonPersonCreatedが呼ばれる', () => {
+    const onPersonCreated = vi.fn()
+    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} onPersonCreated={onPersonCreated} />)
+    fireEvent.click(screen.getByRole('button', { name: '子を追加' }))
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
+    fireEvent.click(screen.getByRole('button', { name: '追加する' }))
+
+    const doc = useTreeStore.getState().document
+    const created = Object.values(doc.persons).find((p) => p.id !== personAId)
+    expect(onPersonCreated).toHaveBeenCalledTimes(1)
+    expect(onPersonCreated).toHaveBeenCalledWith(created?.id)
+  })
+
+  it('親を追加すると、新規人物のIDでonPersonCreatedが呼ばれる', () => {
+    const onPersonCreated = vi.fn()
+    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} onPersonCreated={onPersonCreated} />)
+    fireEvent.click(screen.getByRole('button', { name: '親を追加' }))
+    fireEvent.change(relationFormGivenInput(), { target: { value: '親' } })
+    fireEvent.click(screen.getByRole('button', { name: '追加する' }))
+
+    const doc = useTreeStore.getState().document
+    const created = Object.values(doc.persons).find((p) => p.id !== personAId)
+    expect(onPersonCreated).toHaveBeenCalledTimes(1)
+    expect(onPersonCreated).toHaveBeenCalledWith(created?.id)
+  })
+
+  it('既存の人物を関係先として選んだ場合はonPersonCreatedが呼ばれない', () => {
+    let doc = useTreeStore.getState().document
+    const q = addPerson(doc, { name: { given: 'Q' } })
+    doc = q.doc
+    useTreeStore.getState().replace(doc)
+
+    const onPersonCreated = vi.fn()
+    render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} onPersonCreated={onPersonCreated} />)
+    fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
+    fireEvent.click(screen.getByRole('button', { name: '既存の人物から選ぶ' }))
+    const existingInput = screen.getByLabelText('既存の人物と新しい婚姻を作る')
+    fireEvent.change(existingInput, { target: { value: 'Q' } })
+    fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'Q' }))
+
+    expect(onPersonCreated).not.toHaveBeenCalled()
+  })
+})
+
 describe('PersonPanel: フォームの開閉', () => {
   it('同じアクションを再度クリックするとフォームが閉じる', () => {
     render(<PersonPanel personId={personAId} onDeleted={() => {}} onClose={() => {}} />)

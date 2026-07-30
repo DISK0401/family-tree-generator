@@ -180,6 +180,7 @@ function App() {
             onClose={() => requestSelectionChange(null)}
             onDirtyChange={setIsDirty}
             editFormRef={editFormRef}
+            onPersonCreated={requestSelectionChange}
           />
         ) : null}
       </aside>

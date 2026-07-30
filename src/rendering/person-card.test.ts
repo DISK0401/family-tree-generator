@@ -205,6 +205,29 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(withBadge).toContain('+3')
   })
 
+  it('姓名それぞれ2文字以下では列にフォントサイズの指定が付かない(既定表示のまま)', () => {
+    const view = derivePersonCardView(baseInput({ surname: '山田', given: '太郎' }), baseSettings())
+    const html = personCardInnerHtml(view)
+    expect(html).toContain('<div class="tree-card-surname">山田</div>')
+    expect(html).toContain('<div class="tree-card-given">太郎</div>')
+  })
+
+  it('3文字以上の列は折り返さず、フォントサイズを縮小して1列のまま収める', () => {
+    const view = derivePersonCardView(baseInput({ surname: '富岡', given: '愛梨奈' }), baseSettings())
+    const html = personCardInnerHtml(view)
+    expect(html).toMatch(/<div class="tree-card-given" style="font-size: 0\.\d+em">愛梨奈<\/div>/)
+    // 折り返しを許す複数列(tree-card-given が2回現れる等)は生成されない
+    expect(html.match(/tree-card-given/g)).toHaveLength(1)
+  })
+
+  it('列の縮小率には下限があり、極端に長い氏名でも文字が潰れきらない', () => {
+    const view = derivePersonCardView(baseInput({ surname: '富岡', given: '愛梨奈美智子' }), baseSettings())
+    const html = personCardInnerHtml(view)
+    const match = html.match(/tree-card-given" style="font-size: (0\.\d+)em"/)
+    expect(match).not.toBeNull()
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(0.6)
+  })
+
   it('性別アイコンのクラス・タイトルが性別ごとに切り替わる', () => {
     const male = personCardInnerHtml(derivePersonCardView(baseInput({ gender: 'M' }), baseSettings()))
     const female = personCardInnerHtml(derivePersonCardView(baseInput({ gender: 'F' }), baseSettings()))

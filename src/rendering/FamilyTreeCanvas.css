@@ -134,6 +134,9 @@
 .tree-card-surname,
 .tree-card-given {
   writing-mode: vertical-rl;
+  /* 折り返すと縦書きの列が増え、文字の並び順が崩れて見える(design.md D1)。
+     姓・名は必ず1列で描き、収まらない場合は列を増やさずフォントサイズを縮小する(D2) */
+  white-space: nowrap;
   font-family: var(--font-mincho);
   font-weight: 500;
   font-size: var(--text-md);
