@@ -130,6 +130,9 @@
 .tree-card-surname,
 .tree-card-given {
   writing-mode: vertical-rl;
+  /* 折り返すと縦書きの列が増え、文字の並び順が崩れて見える(design.md D1)。
+     姓・名は必ず1列で描き、収まらない場合は列を増やさずフォントサイズを縮小する(D2) */
+  white-space: nowrap;
   font-family: var(--font-mincho);
   font-weight: 500;
   font-size: var(--text-md);
@@ -197,6 +200,11 @@
   font-size: 0.5625rem;
   color: var(--ink-faint);
   text-align: center;
+  /* ふりがな未入力の人物はこの要素の中身が空文字になる(person-card.ts参照)。
+     min-heightを明示しないと、ブラウザや親要素の状況によって空の行の高さが0になりかねず、
+     ふりがな入力済みの人物との間で氏名列の開始位置がずれる。line-height基準で高さを固定する */
+  line-height: 1.2;
+  min-height: 1.2em;
 }
 
 .tree-card-places {

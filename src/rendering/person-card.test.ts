@@ -82,6 +82,17 @@ describe('derivePersonCardView: 表示項目の選択', () => {
     expect(view.kana).toBe('やまだ たろう')
   })
 
+  it('ふりがなをオンにしても、この人物にふりがなが未入力なら空文字になる(undefinedにはしない)', () => {
+    // undefinedにすると、personCardInnerHtmlがふりがな行そのものを描かなくなり、
+    // ふりがな入力済みの人物と並べたときに氏名列の開始位置がずれる(実機で報告された不具合)。
+    // 表示設定がオンの間は行の高さを必ず確保させるため、空文字であることを区別できる必要がある
+    const view = derivePersonCardView(
+      baseInput({ surnameKana: undefined, givenKana: undefined }),
+      baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+    )
+    expect(view.kana).toBe('')
+  })
+
   it('生年月日を非表示にすると年欄から除外される', () => {
     const view = derivePersonCardView(
       baseInput({ deathDate: { year: 2050, month: 1, day: 1 } }),
@@ -253,6 +264,35 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(html).toContain('&lt;script&gt;')
   })
 
+  it('ふりがな表示がオンの間は、未入力の人物でもふりがな行(高さ確保のための空div)が描かれる', () => {
+    // ふりがな入力済みの人物と未入力の人物が同じ図に混在するとき、行そのものが消える人物だけ
+    // 氏名列の開始位置がずれて見える(実機で報告された不具合)。行の有無ではなく、
+    // 表示設定がオンかどうかだけで行の存在を決める
+    const withKana = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput(),
+        baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+      ),
+    )
+    const withoutKanaData = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({ surnameKana: undefined, givenKana: undefined }),
+        baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+      ),
+    )
+    expect(withKana).toContain(
+      '<div class="tree-card-kana">やまだ たろう</div>',
+    )
+    expect(withoutKanaData).toContain('<div class="tree-card-kana"></div>')
+  })
+
+  it('ふりがな表示がオフのときは行自体が描かれない', () => {
+    const html = personCardInnerHtml(
+      derivePersonCardView(baseInput(), baseSettings()),
+    )
+    expect(html).not.toContain('tree-card-kana')
+  })
+
   it('非表示人数バッジはhiddenBadgeを渡したときだけ描かれる(design.md D4)', () => {
     const view = derivePersonCardView(baseInput(), baseSettings())
     const withoutBadge = personCardInnerHtml(view)
@@ -263,6 +303,40 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(withBadge).toContain('tree-card-hidden-badge')
     expect(withBadge).toContain('data-reveal-id="p2"')
     expect(withBadge).toContain('+3')
+  })
+
+  it('姓名それぞれ2文字以下では列にフォントサイズの指定が付かない(既定表示のまま)', () => {
+    const view = derivePersonCardView(
+      baseInput({ surname: '山田', given: '太郎' }),
+      baseSettings(),
+    )
+    const html = personCardInnerHtml(view)
+    expect(html).toContain('<div class="tree-card-surname">山田</div>')
+    expect(html).toContain('<div class="tree-card-given">太郎</div>')
+  })
+
+  it('3文字以上の列は折り返さず、フォントサイズを縮小して1列のまま収める', () => {
+    const view = derivePersonCardView(
+      baseInput({ surname: '富岡', given: '愛梨奈' }),
+      baseSettings(),
+    )
+    const html = personCardInnerHtml(view)
+    expect(html).toMatch(
+      /<div class="tree-card-given" style="font-size: 0\.\d+em">愛梨奈<\/div>/,
+    )
+    // 折り返しを許す複数列(tree-card-given が2回現れる等)は生成されない
+    expect(html.match(/tree-card-given/g)).toHaveLength(1)
+  })
+
+  it('列の縮小率には下限があり、極端に長い氏名でも文字が潰れきらない', () => {
+    const view = derivePersonCardView(
+      baseInput({ surname: '富岡', given: '愛梨奈美智子' }),
+      baseSettings(),
+    )
+    const html = personCardInnerHtml(view)
+    const match = html.match(/tree-card-given" style="font-size: (0\.\d+)em"/)
+    expect(match).not.toBeNull()
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(0.6)
   })
 
   it('性別アイコンのクラス・タイトルが性別ごとに切り替わる', () => {

@@ -95,9 +95,12 @@ function relationCandidates(
         f.children.some((c) => c.childId === personId) &&
         f.spouseIds.length === 1,
     )
-    // `linkParent`の合流経路2: 候補が配偶者として属する家族がちょうど1件なら、personIdは
-    // その家族の子として合流する。その家族の配偶者を子にはできない(新ガードとの整合)。
-    // 例: A–B夫婦でAの「親を追加 > 既存から」の候補にBが出てはならない
+    // `linkParent`の合流経路2・3: 候補の**婚姻**(配偶者2件の家族)がちょうど1件ならその家族、
+    // 婚姻が1件に定まらなくても候補が配偶者として属する家族がちょうど1件ならその家族が
+    // 合流先(target)になる。数える対象を候補が属する家族の総数ではなく婚姻に限るのは、
+    // 空き殻やひとり親の家族の存在で規則2の判定が鈍らないようにするため(design.md D1)。
+    // targetが既にpersonId(子)を配偶者として持つ場合、その家族の配偶者を子にはできない
+    // (新ガードとの整合。例: A–B夫婦でAの「親を追加 > 既存から」の候補にBが出てはならない)
     const spouseFamiliesByPerson = new Map<PersonId, Family[]>()
     for (const f of Object.values(doc.families)) {
       for (const id of f.spouseIds) {
@@ -114,12 +117,16 @@ function relationCandidates(
         return !joinFamily.children.some((c) => c.childId === p.id)
       }
       const candidateFamilies = spouseFamiliesByPerson.get(p.id) ?? []
-      if (
-        candidateFamilies.length === 1 &&
-        candidateFamilies[0].spouseIds.includes(personId)
-      ) {
-        return false
-      }
+      const candidateMarriages = candidateFamilies.filter(
+        (f) => f.spouseIds.length === 2,
+      )
+      const target =
+        candidateMarriages.length === 1
+          ? candidateMarriages[0]
+          : candidateFamilies.length === 1
+            ? candidateFamilies[0]
+            : undefined
+      if (target?.spouseIds.includes(personId)) return false
       return true
     })
   }
@@ -155,6 +162,9 @@ interface PersonPanelProps {
   onDirtyChange?: (isDirty: boolean) => void
   /** 親から`requestSubmit()`で確定操作をプログラム的に実行できるようにする(design.md D3) */
   editFormRef?: RefObject<HTMLFormElement | null>
+  /** 配偶者・子・親の追加で人物を新規作成した直後に呼ばれる(design.md D3)。
+   * 親はこれを選択状態の切り替えに使い、新規人物へフォーカスを移す */
+  onPersonCreated?: (personId: PersonId) => void
 }
 
 /**
@@ -168,6 +178,7 @@ export function PersonPanel({
   onClose,
   onDirtyChange,
   editFormRef,
+  onPersonCreated,
 }: PersonPanelProps) {
   const apply = useTreeStore((s) => s.apply)
   const document = useTreeStore((s) => s.document)
@@ -207,22 +218,35 @@ export function PersonPanel({
     if (!canSubmit || !openAction) return
     const name = nameFromFields(surname, given)
 
+    let createdId: PersonId | undefined
+
     if (openAction === 'spouse') {
-      apply((doc) => addSpouse(doc, personId, { name }).doc)
+      apply((doc) => {
+        const result = addSpouse(doc, personId, { name })
+        createdId = result.spouseId
+        return result.doc
+      })
     } else if (openAction === 'child') {
       apply((doc) => {
         const otherParentId = findSoleSpouseId(doc, personId)
-        return addChild(
+        const result = addChild(
           doc,
           personId,
           { name },
           otherParentId ? { otherParentId } : undefined,
-        ).doc
+        )
+        createdId = result.childId
+        return result.doc
       })
     } else if (openAction === 'parent') {
-      apply((doc) => addParent(doc, personId, { name }).doc)
+      apply((doc) => {
+        const result = addParent(doc, personId, { name })
+        createdId = result.parentId
+        return result.doc
+      })
     }
     closeForm()
+    if (createdId !== undefined) onPersonCreated?.(createdId)
   }
 
   /**

@@ -138,4 +138,24 @@ describe('カード表現の一致(9.1)', () => {
     expect(connected).toContain('†')
     expect(connected).toBe(collapsed)
   })
+
+  it('4文字以上の氏名でも、両方の描画系で同じ縮小フォントサイズの1列として表示される', () => {
+    useTreeStore.getState().replace({
+      ...docWithOnePerson(),
+      persons: {
+        [PERSON_ID]: {
+          id: PERSON_ID,
+          name: { surname: '富岡', given: '愛梨奈' },
+          gender: 'female',
+        },
+      },
+    })
+    const { collapsed, connected } = renderBothModes()
+
+    expect(connected).toBe(collapsed)
+    expect(collapsed).toContain('愛梨奈')
+    expect(collapsed).toMatch(/tree-card-given" style="font-size: 0\.\d+em"/)
+    // 折り返しによる複数列化(bug再発)が起きていないことの確認
+    expect(collapsed.match(/tree-card-given/g)).toHaveLength(1)
+  })
 })

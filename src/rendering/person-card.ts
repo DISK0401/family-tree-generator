@@ -51,7 +51,11 @@ export interface PersonCardView {
   personId: PersonId
   surname?: string
   given?: string
-  /** ふりがな。姓・名を分けず1行の文字列として保持する(design.md D3を出発点に、既存カードの表示に合わせた判断) */
+  /**
+   * ふりがな。姓・名を分けず1行の文字列として保持する(design.md D3を出発点に、既存カードの表示に合わせた判断)。
+   * `undefined`(ふりがな表示設定そのものがオフ)と`''`(表示設定はオンだがこの人物には未入力)を区別する。
+   * `personCardInnerHtml`はこの違いを見て、後者でも高さ0の行を描く(次のコメント参照)
+   */
   kana?: string
   /** 生没年月日を表示設定の粒度・和暦/西暦で書式化した文字列(例: "1990-04-01 – 2020-01-01") */
   years?: string
@@ -114,9 +118,13 @@ export function derivePersonCardView(
   const surname = fields.surname ? person.surname : undefined
   const given = fields.given ? person.given : undefined
 
+  // ふりがな未入力の人物を`undefined`にすると、ふりがな行そのものが描かれなくなり、
+  // 同じ図の中でふりがなが入力済みの人物とで氏名の縦書き列が始まる高さがずれて見える
+  // (`kana`はカードの縦積みの中で氏名列より上に来るため、行が消えると氏名列が上へ詰まる)。
+  // 表示設定がオンの間は必ず`''`(空文字。undefinedにしない)を返し、行の高さを確保させる
   const kana = fields.furigana
     ? [person.surnameKana, person.givenKana].filter(Boolean).join(' ')
-    : ''
+    : undefined
 
   const places = [
     fields.birthPlace ? person.birthPlace : undefined,
@@ -129,7 +137,7 @@ export function derivePersonCardView(
     personId: person.personId,
     surname,
     given,
-    kana: kana || undefined,
+    kana,
     years: years || undefined,
     ageLabel,
     places: places || undefined,
@@ -166,6 +174,19 @@ export function personToCardInput(person: Person): PersonCardInput {
   }
 }
 
+/**
+ * 縦書き氏名の列は折り返しを禁止している(FamilyTreeCanvas.css `white-space: nowrap`, design.md D1)ため、
+ * 文字数がカードの固定高さに対して多い場合はフォントサイズを縮小して収める(design.md D2)。
+ * 2〜3文字は等倍のまま、それを超える分は文字数に反比例して縮小し、可読性を保つ下限を設ける。
+ * 姓・名は独立した列のため、縮小率も列ごとに個別の文字数で決める
+ */
+function nameFontScale(charCount: number): number {
+  const COMFORTABLE_CHARS = 2
+  const MIN_SCALE = 0.6
+  if (charCount <= COMFORTABLE_CHARS) return 1
+  return Math.max(COMFORTABLE_CHARS / charCount, MIN_SCALE)
+}
+
 /** 氏名は利用者入力のため、innerHTMLへ渡す前に必ずエスケープする */
 export function escapeHtml(value: string): string {
   return value
@@ -193,6 +214,17 @@ function htmlTag(
     .map(([name, value]) => ` ${name}="${escapeHtml(value)}"`)
     .join('')
   return `<${tag}${attrHtml}>${escapeHtml(text)}</${tag}>`
+}
+
+/** 氏名の1列分のHTML(縮小が必要な場合のみインラインスタイルを付す。htmlTag経由でエスケープする) */
+function nameColumnHtml(
+  className: 'tree-card-surname' | 'tree-card-given',
+  text: string,
+): string {
+  const scale = nameFontScale(text.length)
+  const attrs: Record<string, string> = { class: className }
+  if (scale < 1) attrs.style = `font-size: ${scale.toFixed(2)}em`
+  return htmlTag('div', attrs, text)
 }
 
 /** 折りたたみ表示のみが持つ「非表示人数バッジ」(design.md D4)。PersonCardViewの一部にはしない(下記コメント参照) */
@@ -244,17 +276,20 @@ export function personCardInnerHtml(
   // 片方しかない場合も「tree-card-given」列として描く(既存カードの見た目を保つための踏襲)
   const nameHtml =
     view.surname && view.given
-      ? htmlTag('div', { class: 'tree-card-surname' }, view.surname) +
-        htmlTag('div', { class: 'tree-card-given' }, view.given)
+      ? `${nameColumnHtml('tree-card-surname', view.surname)}${nameColumnHtml('tree-card-given', view.given)}`
       : view.surname
-        ? htmlTag('div', { class: 'tree-card-given' }, view.surname)
+        ? nameColumnHtml('tree-card-given', view.surname)
         : view.given
-          ? htmlTag('div', { class: 'tree-card-given' }, view.given)
+          ? nameColumnHtml('tree-card-given', view.given)
           : ''
 
-  const kanaHtml = view.kana
-    ? htmlTag('div', { class: 'tree-card-kana' }, view.kana)
-    : ''
+  // `view.kana`が`''`(表示設定はオンだがこの人物には未入力)の場合も行を描く。
+  // 空のdivでも行の高さ(line-height由来)は確保されるため、ふりがな入力済みの人物と
+  // 未入力の人物とで、下に続く氏名列の開始位置が上下にずれることを防げる
+  const kanaHtml =
+    view.kana !== undefined
+      ? htmlTag('div', { class: 'tree-card-kana' }, view.kana)
+      : ''
   const placesHtml = view.places
     ? htmlTag('div', { class: 'tree-card-places' }, view.places)
     : ''

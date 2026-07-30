@@ -135,6 +135,94 @@ describe('PersonPanel: 親の追加', () => {
   })
 })
 
+describe('PersonPanel: 新規作成した人物への自動フォーカス', () => {
+  it('配偶者を追加すると、新規人物のIDでonPersonCreatedが呼ばれる', () => {
+    const onPersonCreated = vi.fn()
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+        onPersonCreated={onPersonCreated}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'B' } })
+    fireEvent.click(screen.getByRole('button', { name: '追加する' }))
+
+    const doc = useTreeStore.getState().document
+    const created = Object.values(doc.persons).find((p) => p.id !== personAId)
+    expect(onPersonCreated).toHaveBeenCalledTimes(1)
+    expect(onPersonCreated).toHaveBeenCalledWith(created?.id)
+  })
+
+  it('子を追加すると、新規人物のIDでonPersonCreatedが呼ばれる', () => {
+    const onPersonCreated = vi.fn()
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+        onPersonCreated={onPersonCreated}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '子を追加' }))
+    fireEvent.change(relationFormGivenInput(), { target: { value: 'C' } })
+    fireEvent.click(screen.getByRole('button', { name: '追加する' }))
+
+    const doc = useTreeStore.getState().document
+    const created = Object.values(doc.persons).find((p) => p.id !== personAId)
+    expect(onPersonCreated).toHaveBeenCalledTimes(1)
+    expect(onPersonCreated).toHaveBeenCalledWith(created?.id)
+  })
+
+  it('親を追加すると、新規人物のIDでonPersonCreatedが呼ばれる', () => {
+    const onPersonCreated = vi.fn()
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+        onPersonCreated={onPersonCreated}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '親を追加' }))
+    fireEvent.change(relationFormGivenInput(), { target: { value: '親' } })
+    fireEvent.click(screen.getByRole('button', { name: '追加する' }))
+
+    const doc = useTreeStore.getState().document
+    const created = Object.values(doc.persons).find((p) => p.id !== personAId)
+    expect(onPersonCreated).toHaveBeenCalledTimes(1)
+    expect(onPersonCreated).toHaveBeenCalledWith(created?.id)
+  })
+
+  it('既存の人物を関係先として選んだ場合はonPersonCreatedが呼ばれない', () => {
+    let doc = useTreeStore.getState().document
+    const q = addPerson(doc, { name: { given: 'Q' } })
+    doc = q.doc
+    useTreeStore.getState().replace(doc)
+
+    const onPersonCreated = vi.fn()
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+        onPersonCreated={onPersonCreated}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '配偶者を追加' }))
+    fireEvent.click(screen.getByRole('button', { name: '既存の人物から選ぶ' }))
+    const existingInput = screen.getByLabelText('既存の人物と新しい婚姻を作る')
+    fireEvent.change(existingInput, { target: { value: 'Q' } })
+    fireEvent.click(
+      within(screen.getByRole('listbox')).getByRole('option', { name: 'Q' }),
+    )
+
+    expect(onPersonCreated).not.toHaveBeenCalled()
+  })
+})
+
 describe('PersonPanel: フォームの開閉', () => {
   it('同じアクションを再度クリックするとフォームが閉じる', () => {
     render(
@@ -429,6 +517,80 @@ describe('PersonPanel: 既存の人物を関係先に選ぶ', () => {
       p.parentId,
       q.personId,
     ])
+  })
+
+  it('もう一方の親を選ぶと、夫婦の子として記録し直される', () => {
+    // 片方の親Pだけが登録された子A(=系線がPから直接伸びる状態)と、別の家族にいるPの配偶者Q
+    let doc = useTreeStore.getState().document
+    const p = addParent(doc, personAId, { name: { given: 'P' } })
+    doc = p.doc
+    const q = addSpouse(doc, p.parentId, { name: { given: 'Q' } })
+    useTreeStore.getState().replace(q.doc)
+
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    selectExisting('親を追加', 'Q')
+
+    const next = useTreeStore.getState().document
+    // 同じ夫婦の家族が二重にならず、AはP・Qの子として1つの家族に属する
+    expect(next.families[p.familyId]).toBeUndefined()
+    expect(next.families[q.familyId].spouseIds).toEqual([
+      p.parentId,
+      q.spouseId,
+    ])
+    expect(next.families[q.familyId].children.map((c) => c.childId)).toEqual([
+      personAId,
+    ])
+    expect(
+      Object.values(next.families).filter((f) =>
+        f.spouseIds.includes(p.parentId),
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('親に空き殻の家族が残っていても、既存の人物を親にすると夫婦の家族へ入る', () => {
+    // 親Pが婚姻(Q)に加えて、旧バージョンが残した空き殻(配偶者1件・子0件)を持つ
+    let doc = useTreeStore.getState().document
+    const p = addPerson(doc, { name: { given: 'P' } })
+    doc = p.doc
+    const q = addSpouse(doc, p.personId, { name: { given: 'Q' } })
+    doc = q.doc
+    doc = {
+      ...doc,
+      families: {
+        ...doc.families,
+        shell: {
+          id: 'shell',
+          spouseIds: [p.personId],
+          kind: 'unknown',
+          events: [],
+          children: [],
+        },
+      },
+    }
+    useTreeStore.getState().replace(doc)
+
+    render(
+      <PersonPanel
+        personId={personAId}
+        onDeleted={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    selectExisting('親を追加', 'P')
+
+    const next = useTreeStore.getState().document
+    expect(next.families[q.familyId].children.map((c) => c.childId)).toEqual([
+      personAId,
+    ])
+    // 配偶者不在の家族が新設されない(空き殻は残るが、子は増えない)
+    expect(next.families.shell.children).toEqual([])
+    expect(Object.values(next.families)).toHaveLength(2)
   })
 
   it('氏名で絞り込める', () => {
