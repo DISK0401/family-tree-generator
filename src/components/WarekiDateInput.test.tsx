@@ -25,6 +25,29 @@ describe('WarekiDateInput: 和暦入力時の西暦即時表示', () => {
   })
 })
 
+describe('WarekiDateInput: 江戸期の元号での入力', () => {
+  it('「文久2年5月10日」入力で「1862年5月10日」が即時表示され、確定するとFuzzyDateとして反映される', () => {
+    const onChange = vi.fn()
+    render(
+      <WarekiDateInput
+        label="生年月日"
+        value={undefined}
+        onChange={onChange}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText('生年月日'), {
+      target: { value: '文久2年5月10日' },
+    })
+
+    expect(screen.getByText('1862年5月10日')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledWith({
+      original: '文久2年5月10日',
+      qualifier: 'exact',
+      date: { year: 1862, month: 5, day: 10 },
+    })
+  })
+})
+
 describe('WarekiDateInput: 西暦入力時の和暦即時表示', () => {
   it('「1964-10-10」入力で「昭和39年10月10日」が即時表示される', () => {
     const onChange = vi.fn()

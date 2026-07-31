@@ -23,8 +23,11 @@ export const dateQualifierSchema = z.enum([
 ])
 
 /**
- * 実在日の検証。src/domain/parse-date.ts の isValidCalendarDate と同等のロジックを
+ * 実在日の検証。src/domain/calendar-date.ts の isValidDateForYear と同等のロジックを
  * スキーマ側にも適用する(2/31のような存在しない日付を拒否。うるう年を考慮)。
+ * 明治6年(1873年)のグレゴリオ暦採用より前は旧暦の日付のため、和暦入力の緩い受理
+ * (日は1〜30)と同じ基準で検証する。厳密にするとエクスポート済みの旧暦日付
+ * (例: 安政3年2月30日 → 1856-02-30)が再インポートできなくなる。
  */
 function isValidCalendarDate(
   year: number,
@@ -34,6 +37,7 @@ function isValidCalendarDate(
   if (month === undefined) return true
   if (month < 1 || month > 12) return false
   if (day === undefined) return true
+  if (year < 1873) return day >= 1 && day <= 30
   const daysInMonth = new Date(year, month, 0).getDate()
   return day >= 1 && day <= daysInMonth
 }
