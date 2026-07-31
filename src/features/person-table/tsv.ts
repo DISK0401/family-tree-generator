@@ -15,14 +15,14 @@
 const NEEDS_QUOTING = /[\t\n\r"]/
 
 /** 2次元のセル文字列を、表計算ソフトへ貼り付け可能なTSVテキストへ直列化する */
-export function serializeTsv(rows: ReadonlyArray<ReadonlyArray<string>>): string {
+export function serializeTsv(
+  rows: ReadonlyArray<ReadonlyArray<string>>,
+): string {
   return rows
     .map((row) =>
       row
         .map((cell) =>
-          NEEDS_QUOTING.test(cell)
-            ? `"${cell.replaceAll('"', '""')}"`
-            : cell,
+          NEEDS_QUOTING.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell,
         )
         .join('\t'),
     )

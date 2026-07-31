@@ -10,7 +10,7 @@
 
 ## 3. 列定義とセル解釈(D2・D3)
 
-- [ ] 3.1 `src/features/person-table/columns.ts` に列定義(id・見出し・`Person`→表示文字列の導出・セル文字列→`updatePerson` パッチへの解釈)を宣言的な配列として実装する。対象列: 姓・名・姓(ふりがな)・名(ふりがな)・性別(1.2 を使用)・生年月日・出生地・没年月日・没地・メモ、および読み取り専用の「配偶者」列(displayName の連結)。日付は既存 `parseDateInput` で解釈し `original` を保持、表示は既存 `formatDateForDisplay`(表示設定準拠)を使う(完了条件: 各列の導出・解釈・解釈エラーの単体テストが通り、レンダリング層に依存しないことを import で確認できる)
+- [x] 3.1 `src/features/person-table/columns.ts` に列定義(id・見出し・`Person`→表示文字列の導出・セル文字列→`updatePerson` パッチへの解釈)を宣言的な配列として実装する。対象列: 姓・名・姓(ふりがな)・名(ふりがな)・性別(1.2 を使用)・生年月日・出生地・没年月日・没地・メモ、および読み取り専用の「配偶者」列(displayName の連結)。日付は既存 `parseDateInput` で解釈し `original` を保持、表示は既存 `formatDateForDisplay`(表示設定準拠)を使う(完了条件: 各列の導出・解釈・解釈エラーの単体テストが通り、レンダリング層に依存しないことを import で確認できる)
 
 ## 4. 表ビュー(閲覧モード)(D1・D6)
 

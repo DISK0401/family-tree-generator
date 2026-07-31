@@ -44,9 +44,7 @@ describe('parseTsv: 表計算ソフトからの取り込み(D4)', () => {
   })
 
   it('引用内の連続する引用符はリテラルの引用符になる', () => {
-    expect(parseTsv('"彼は""太郎""と言った"')).toEqual([
-      ['彼は"太郎"と言った'],
-    ])
+    expect(parseTsv('"彼は""太郎""と言った"')).toEqual([['彼は"太郎"と言った']])
   })
 
   it('末尾の空セル・空行の途中行を保持する', () => {
@@ -72,8 +70,7 @@ describe('parseTsv: 表計算ソフトからの取り込み(D4)', () => {
 describe('実アプリのコピー出力パターン(2.2 フィクスチャ)', () => {
   it('Excel: CRLF行区切り・改行入りセルは引用・末尾CRLF', () => {
     // Excel for Windows で「氏名2列+改行入りメモ」の2行3列をコピーした形
-    const excel =
-      '山田\t太郎\t"長男。\n跡継ぎ。"\r\n佐藤\t花子\t\r\n'
+    const excel = '山田\t太郎\t"長男。\n跡継ぎ。"\r\n佐藤\t花子\t\r\n'
     expect(parseTsv(excel)).toEqual([
       ['山田', '太郎', '長男。\n跡継ぎ。'],
       ['佐藤', '花子', ''],
