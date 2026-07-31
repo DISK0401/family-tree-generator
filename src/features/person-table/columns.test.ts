@@ -258,3 +258,112 @@ describe('列定義: 並べ替え・絞り込みのメタデータ(D8)', () => {
     expect(dateColumns.map((c) => c.dateEventType)).toEqual(['birth', 'death'])
   })
 })
+
+describe('日付列の絞り込み: 書式に依らない照合(spec「列ごとの絞り込みと横断検索」)', () => {
+  /** 1994-10-01 生まれ(入力原文は和暦) */
+  function heiseiPerson(): Person {
+    return createPerson({
+      name: { surname: '平成' },
+      birth: {
+        type: 'birth',
+        date: {
+          original: '平成6年10月1日',
+          qualifier: 'exact',
+          date: { year: 1994, month: 10, day: 1 },
+        },
+      },
+    })
+  }
+
+  const birth = columnById('birthDate')
+  const match = (person: Person, query: string, ctx = makeContext()) =>
+    birth.filterMatch?.(person, ctx, query)
+
+  it('西暦表示のまま和暦で絞り込める(ゼロ埋めの有無も問わない)', () => {
+    const person = heiseiPerson()
+    const gregorianCtx = makeContext({ calendarMode: 'gregorian' })
+    // 表示は西暦
+    expect(birth.getValue(person, gregorianCtx)).toBe('1994-10-01')
+
+    expect(match(person, '平成6年10月1日', gregorianCtx)).toBe(true)
+    expect(match(person, '平成6年10月01日', gregorianCtx)).toBe(true)
+    expect(match(person, '平成6年', gregorianCtx)).toBe(true)
+  })
+
+  it('和暦表示のまま西暦で絞り込める(区切りあり・8桁とも)', () => {
+    const person = heiseiPerson()
+    const warekiCtx = makeContext({ calendarMode: 'wareki' })
+    expect(birth.getValue(person, warekiCtx)).toBe('平成6年10月1日')
+
+    expect(match(person, '1994-10-01', warekiCtx)).toBe(true)
+    expect(match(person, '1994/10/1', warekiCtx)).toBe(true)
+    expect(match(person, '19941001', warekiCtx)).toBe(true)
+    expect(match(person, '1994年10月1日', warekiCtx)).toBe(true)
+  })
+
+  it('粒度の設定(年のみ表示)でも日付の値で照合する', () => {
+    const person = heiseiPerson()
+    const yearOnlyCtx = makeContext({ birthDateGranularity: 'year' })
+    expect(birth.getValue(person, yearOnlyCtx)).toBe('1994')
+    // 表示は年だけでも、年月日の入力でヒットする
+    expect(match(person, '1994-10-01', yearOnlyCtx)).toBe(true)
+  })
+
+  it('年のみ・年月のみの入力はその範囲の日付に一致する', () => {
+    const person = heiseiPerson()
+    expect(match(person, '1994')).toBe(true)
+    expect(match(person, '1994-10')).toBe(true)
+    expect(match(person, '1994-11')).toBe(false)
+    expect(match(person, '1995')).toBe(false)
+  })
+
+  it('年月日まで指定した入力は日付が違えば一致しない', () => {
+    const person = heiseiPerson()
+    expect(match(person, '1994-10-02')).toBe(false)
+    expect(match(person, '平成6年10月2日')).toBe(false)
+  })
+
+  it('範囲(A〜B)の入力は範囲内を一致とする', () => {
+    const person = heiseiPerson()
+    expect(match(person, '1990〜2000')).toBe(true)
+    expect(match(person, '1990~1993')).toBe(false)
+    expect(match(person, '平成元年〜平成10年')).toBe(true)
+  })
+
+  it('日付として読めない入力は表示値・入力原文への部分一致で照合する', () => {
+    const unknown = createPerson({
+      name: { surname: '不詳' },
+      birth: {
+        type: 'birth',
+        date: { original: '生年不詳(過去帳より)', qualifier: 'about' },
+      },
+    })
+    expect(match(unknown, '不詳')).toBe(true)
+    expect(match(unknown, '過去帳')).toBe(true)
+    expect(match(unknown, '明治')).toBe(false)
+  })
+
+  it('構造化日付を持たない人物は、日付として解釈できる入力には一致しない', () => {
+    const noDate = createPerson({ name: { surname: '空' } })
+    expect(match(noDate, '1994')).toBe(false)
+    expect(match(noDate, '平成6年10月1日')).toBe(false)
+  })
+
+  it('没年月日の列も同じ規則で照合する', () => {
+    const person = createPerson({
+      name: { surname: '没' },
+      death: {
+        type: 'death',
+        date: {
+          original: '昭和39年10月10日',
+          qualifier: 'exact',
+          date: { year: 1964, month: 10, day: 10 },
+        },
+      },
+    })
+    const death = columnById('deathDate')
+    expect(death.filterMatch?.(person, makeContext(), '1964-10-10')).toBe(true)
+    expect(death.filterMatch?.(person, makeContext(), '昭和39年')).toBe(true)
+    expect(death.filterMatch?.(person, makeContext(), '1965')).toBe(false)
+  })
+})

@@ -859,3 +859,65 @@ describe('PersonTableView: 列ごとの絞り込み(spec「列ごとの絞り込
     expect(rowNames()).toEqual(['山田'])
   })
 })
+
+describe('PersonTableView: 日付列の絞り込みは書式に依らない(spec「列ごとの絞り込みと横断検索」)', () => {
+  beforeEach(() => {
+    useDisplaySettingsStore.getState().setCalendarMode('gregorian')
+    seedDocument()
+  })
+
+  it('西暦表示のまま和暦(ゼロ埋め)で絞り込める', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    // 表示は西暦(山田太郎は1964-10-10)
+    expect(cellOf(0, '生年月日').textContent).toBe('1964-10-10')
+
+    fireEvent.change(screen.getByLabelText('生年月日で絞り込み'), {
+      target: { value: '昭和39年10月10日' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+
+    // ゼロ埋めでも同じ結果になる
+    fireEvent.change(screen.getByLabelText('生年月日で絞り込み'), {
+      target: { value: '昭和39年10月10日' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+  })
+
+  it('和暦表示のまま西暦・8桁数字で絞り込める', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    act(() => {
+      useDisplaySettingsStore.getState().setCalendarMode('wareki')
+    })
+    expect(cellOf(0, '生年月日').textContent).toBe('昭和39年10月10日')
+
+    fireEvent.change(screen.getByLabelText('生年月日で絞り込み'), {
+      target: { value: '19641010' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+  })
+
+  it('年のみの入力でその年の人物に絞れる', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    // 1964(山田)と1970(佐藤)が登録されている
+    fireEvent.change(screen.getByLabelText('生年月日で絞り込み'), {
+      target: { value: '1970' },
+    })
+    expect(rowNames()).toEqual(['佐藤'])
+  })
+
+  it('範囲(A〜B)の入力で期間に含まれる人物に絞れる', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    fireEvent.change(screen.getByLabelText('生年月日で絞り込み'), {
+      target: { value: '1960〜1965' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+  })
+})

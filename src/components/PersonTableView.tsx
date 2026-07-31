@@ -92,6 +92,11 @@ function matchesColumnFilters(
   for (const column of columns) {
     const raw = filters[column.id]?.trim()
     if (!raw) continue
+    // 列固有の判定があれば優先する(日付列は書式に依らない値の照合。design.md D8)
+    if (column.filterMatch) {
+      if (!column.filterMatch(person, ctx, raw)) return false
+      continue
+    }
     const value = column.getValue(person, ctx)
     if (column.filterKind === 'select') {
       if (value !== raw) return false

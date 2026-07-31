@@ -2,6 +2,7 @@ import { parseGenderInput, formatGender } from '../../domain/gender'
 import { displayName } from '../../domain/helpers'
 import { parseDateInput } from '../../domain/parse-date'
 import type {
+  CalendarDate,
   LifeEvent,
   Person,
   PersonEventType,
@@ -61,6 +62,11 @@ export interface TableColumn {
   filterOptions?: readonly string[]
   /** 日付として比較・絞り込みする列か(表示文字列ではなく構造化日付を見る) */
   dateEventType?: PersonEventType
+  /**
+   * 列固有の絞り込み判定(design.md D8)。未指定なら表示値への部分一致(表側の既定)。
+   * 日付列は表示書式(西暦/和暦・粒度)に依らず日付の値で照合するためにこれを使う
+   */
+  filterMatch?: (person: Person, ctx: ColumnContext, query: string) => boolean
   /** 閲覧セルとコピーに使う表示文字列(spec「矩形選択とコピー」: 見たままコピー) */
   getValue: (person: Person, ctx: ColumnContext) => string
   /**
@@ -116,6 +122,24 @@ function eventPatch(
     : { death: event as LifeEvent<'death'> | undefined }
 }
 
+/** 部分日付の比較キー(月日が無い場合は「その年(月)の先頭」とみなす) */
+function dateSortKey(d: CalendarDate): number {
+  return d.year * 10000 + (d.month ?? 0) * 100 + (d.day ?? 0)
+}
+
+/**
+ * 絞り込み入力として解釈した日付と、行の日付が一致するか(design.md D8)。
+ * 入力に含まれる要素だけを比べる: 年のみの入力はその年の全日付に一致し、
+ * 年月なら同じ年月、年月日なら完全一致。書式(和暦/西暦・ゼロ埋め)は
+ * `parseDateInput` が吸収するため、ここでは値だけを見る
+ */
+function matchesDateParts(target: CalendarDate, query: CalendarDate): boolean {
+  if (target.year !== query.year) return false
+  if (query.month !== undefined && target.month !== query.month) return false
+  if (query.day !== undefined && target.day !== query.day) return false
+  return true
+}
+
 /** 生没イベントの日付セル。構造化日付は表示設定準拠で表示し、無ければ原文で代替する */
 function dateField(
   id: string,
@@ -123,6 +147,15 @@ function dateField(
   eventType: PersonEventType,
   granularityOf: (ctx: ColumnContext) => DateGranularity,
 ): TableColumn {
+  const displayOf = (person: Person, ctx: ColumnContext): string => {
+    const date = eventOf(person, eventType)?.date
+    return (
+      formatDateForDisplay(date?.date, granularityOf(ctx), ctx.calendarMode) ??
+      date?.original ??
+      ''
+    )
+  }
+
   return {
     id,
     label,
@@ -130,17 +163,32 @@ function dateField(
     sortable: true,
     filterKind: 'text',
     dateEventType: eventType,
-    getValue: (person, ctx) => {
-      const date = eventOf(person, eventType)?.date
-      return (
-        formatDateForDisplay(
-          date?.date,
-          granularityOf(ctx),
-          ctx.calendarMode,
-        ) ??
-        date?.original ??
-        ''
-      )
+    getValue: displayOf,
+    /**
+     * 日付は「表示値の文字列一致」では絞り込めない(表示は西暦/和暦・粒度の設定で
+     * 変わるため、和暦で入力しても西暦表示中はヒットしない等の理不尽が起きる)。
+     * 入力を日付として解釈できた場合は書式に依らず値で照合し、解釈できない断片
+     * (「不詳」「頃」等)は表示値と入力原文への部分一致で拾う
+     */
+    filterMatch: (person, ctx, query) => {
+      const q = query.trim()
+      if (q === '') return true
+      const fuzzy = eventOf(person, eventType)?.date
+      const parsed = parseDateInput(q)
+      if (parsed.ok && parsed.value.date) {
+        if (!fuzzy?.date) return false
+        const { date, date2, qualifier } = parsed.value
+        if (qualifier === 'between' && date && date2) {
+          // 範囲入力(A〜B)は範囲内を一致とする。部分日付は「その年(月)の先頭」で比較する
+          const key = dateSortKey(fuzzy.date)
+          return key >= dateSortKey(date) && key <= dateSortKey(date2)
+        }
+        return matchesDateParts(fuzzy.date, parsed.value.date)
+      }
+      const haystack = [displayOf(person, ctx), fuzzy?.original ?? '']
+        .join('\n')
+        .toLowerCase()
+      return haystack.includes(q.toLowerCase())
     },
     // 編集は表示書式ではなく入力原文から続ける(WarekiDateInputと同じ方針)
     getEditValue: (person) => eventOf(person, eventType)?.date?.original ?? '',
