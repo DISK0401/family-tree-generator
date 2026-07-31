@@ -141,6 +141,53 @@ const ieyasuFigure: FigureData = {
   ],
 }
 
+// ---- 徳川将軍15代(分家からの継承) ----
+//
+// 26人・15世代を1枚の図版に収めると読めないため、系統の要点(将軍家の直系・紀州家からの
+// 入嗣・甲府家の実子が別家の養子として将軍になる例)を抜粋する。抜粋であっても、
+// サンプルに実在する親子関係だけを描き、世代を飛ばした線は引かない
+const sIeyasu = n(300, 10, '徳川 家康', '初代', true)
+const sHidetada = n(170, 100, '徳川 秀忠', '2代')
+const sYorinobu = n(450, 100, '徳川 頼宣', '紀州家 初代')
+const sIemitsu = n(170, 190, '徳川 家光', '3代')
+const sMitsusada = n(450, 190, '徳川 光貞', '紀州家 2代')
+const sTsunashige = n(40, 280, '徳川 綱重', '甲府家')
+const sTsunayoshi = n(170, 280, '徳川 綱吉', '5代')
+const sYoshimune = n(450, 280, '徳川 吉宗', '8代')
+const sIenobu = n(105, 380, '徳川 家宣', '6代')
+
+const shogunsFigure: FigureData = {
+  width: 700,
+  height: 440,
+  nodes: [
+    sIeyasu,
+    sHidetada,
+    sYorinobu,
+    sIemitsu,
+    sMitsusada,
+    sTsunashige,
+    sTsunayoshi,
+    sYoshimune,
+    sIenobu,
+  ],
+  edges: [
+    // 家康の子: 将軍家(秀忠)と紀州家(頼宣)へ分かれる
+    dropTo(bottom(sIeyasu), 80, sHidetada),
+    dropTo(bottom(sIeyasu), 80, sYorinobu),
+    // 将軍家の直系
+    dropTo(bottom(sHidetada), 170, sIemitsu),
+    // 紀州家の直系(吉宗が8代将軍として入嗣する系統)
+    dropTo(bottom(sYorinobu), 170, sMitsusada),
+    // 家光の子: 甲府家の綱重と5代 綱吉
+    dropTo(bottom(sIemitsu), 260, sTsunashige),
+    dropTo(bottom(sIemitsu), 260, sTsunayoshi),
+    dropTo(bottom(sMitsusada), 260, sYoshimune),
+    // 家宣は綱重の実子(実線)であり、綱吉の養子(破線)として将軍職を継いだ
+    dropTo(bottom(sTsunashige), 355, sIenobu),
+    dropTo(bottom(sTsunayoshi), 355, sIenobu, { dashed: true }),
+  ],
+}
+
 // ---- 夏目漱石(養子縁組) ----
 
 const naokatsu = n(40, 10, '夏目 直克', '実父')
@@ -219,6 +266,7 @@ const modernFigure: FigureData = {
 
 export const SAMPLE_FIGURES: Record<SampleId, FigureData> = {
   'tokugawa-ieyasu': ieyasuFigure,
+  'tokugawa-shoguns': shogunsFigure,
   'natsume-soseki': sosekiFigure,
   'shibusawa-eiichi': eiichiFigure,
   'modern-family': modernFigure,

@@ -8,6 +8,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     globals: true,
+    /*
+     * 既定の5秒はjsdomのコンポーネントテストには短い。ファイル並列実行のCPU競合で、
+     * 実タイマー待ち(自動保存のデバウンス等)を含むテストが本質的な問題なしに
+     * タイムアウトすることがあったため、余裕を持たせる(遅いCI機でも同様)
+     */
+    testTimeout: 20_000,
     // e2e/ は Playwright(実ブラウザ)のテスト。Vitest には拾わせない
     exclude: [...configDefaults.exclude, 'e2e/**'],
     coverage: {
