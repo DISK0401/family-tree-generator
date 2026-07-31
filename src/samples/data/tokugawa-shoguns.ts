@@ -14,13 +14,16 @@ import { SCHEMA_VERSION } from '../../domain/types'
  * 収録方針:
  * - 生没日は Wikipedia 日本語版の各人物のインフォボックス(生誕・死没・父母)を
  *   1人ずつ原文で確認した値のみを使う(一覧表からの一括転記は誤りが多いため採らない)
- * - 明治6年の改暦以前(旧暦)の日付は、和暦の原文を original に保持し、構造化日付は
- *   **グレゴリオ暦の年のみ**とする。和暦の月日をグレゴリオ暦の月日として書くと誤りになる
- *   (例: 家康の 天文11年12月26日 は 1543年1月31日で、年すら和暦と一致しない)
+ * - 和暦の原文は original に保持する。構造化日付(date)は、その原文を日付入力欄に入れた
+ *   ときにこのアプリが記録する値(名目値)に揃える。明治6年の改暦以前は旧暦のため、和暦の
+ *   年月日をそのままの数字で西暦フィールドへ写す(厳密な換算はしない。domain/wareki.ts と
+ *   archive/2026-07-31-extend-wareki-edo-eras の方針)。したがって西暦表示は目安であり、
+ *   年をまたぐ換算とは一致しない(例: 家康の 天文11年12月26日 は {1542,12,26}。グレゴリオ暦
+ *   の実日付は1543年1月31日)。和暦表示が原文どおりに戻る方を優先している
+ * - 閏月(例: 天保12年閏1月7日)は原文のみに保持し、構造化日付は同じ番号の月へ畳む
+ *   (閏月の入力は上記changeのNon-Goal。和暦表示では「閏」が落ちる)
  * - 改暦以後の日付(慶喜の没=大正2年11月22日、天璋院の没=明治16年11月20日)は
- *   年月日まで構造化する。なおカードの日付表示は、アプリの和暦変換が明治以降の元号のみ
- *   対応(domain/wareki.ts の ERA_TABLE)のため、江戸期の人物では表示設定を和暦にしても
- *   西暦年で表示される(和暦の原文は人物パネル・表の編集時に現れる)
+ *   実際のグレゴリオ暦の年月日
  * - 中間世代を省略して祖先と子孫を直接の親子として記録することはしない
  *   (慶喜が家康まで繋がるよう、水戸徳川家は初代 頼房から斉昭まで全世代を収録している)
  * - 実父が判明していても収録範囲外の人物(宗堯の実父 松平頼豊など)は、実父を記録せず
@@ -52,7 +55,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '天文11年12月26日',
           qualifier: 'exact',
-          date: { year: 1543 },
+          date: { year: 1542, month: 12, day: 26 },
         },
       },
       death: {
@@ -61,7 +64,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '元和2年4月17日',
           qualifier: 'exact',
-          date: { year: 1616 },
+          date: { year: 1616, month: 4, day: 17 },
         },
       },
       note: '初代将軍。〔公知情報を基に簡略化したサンプルです〕',
@@ -81,7 +84,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '天正7年4月7日',
           qualifier: 'exact',
-          date: { year: 1579 },
+          date: { year: 1579, month: 4, day: 7 },
         },
       },
       death: {
@@ -90,7 +93,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛永9年1月24日',
           qualifier: 'exact',
-          date: { year: 1632 },
+          date: { year: 1632, month: 1, day: 24 },
         },
       },
       note: '2代将軍。家康の三男',
@@ -113,7 +116,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛永3年9月15日',
           qualifier: 'exact',
-          date: { year: 1626 },
+          date: { year: 1626, month: 9, day: 15 },
         },
       },
       note: '2代将軍 秀忠の正室(江)',
@@ -133,7 +136,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '慶長7年3月7日',
           qualifier: 'exact',
-          date: { year: 1602 },
+          date: { year: 1602, month: 3, day: 7 },
         },
       },
       death: {
@@ -142,7 +145,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛文11年1月10日',
           qualifier: 'exact',
-          date: { year: 1671 },
+          date: { year: 1671, month: 1, day: 10 },
         },
       },
       note: '紀州徳川家 初代。家康の十男',
@@ -162,7 +165,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '慶長8年8月10日',
           qualifier: 'exact',
-          date: { year: 1603 },
+          date: { year: 1603, month: 8, day: 10 },
         },
       },
       death: {
@@ -171,7 +174,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛文元年7月29日',
           qualifier: 'exact',
-          date: { year: 1661 },
+          date: { year: 1661, month: 7, day: 29 },
         },
       },
       note: '水戸徳川家 初代。家康の十一男',
@@ -193,7 +196,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '慶長9年7月17日',
           qualifier: 'exact',
-          date: { year: 1604 },
+          date: { year: 1604, month: 7, day: 17 },
         },
       },
       death: {
@@ -202,7 +205,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '慶安4年4月20日',
           qualifier: 'exact',
-          date: { year: 1651 },
+          date: { year: 1651, month: 4, day: 20 },
         },
       },
       note: '3代将軍。秀忠の次男',
@@ -222,7 +225,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛永18年8月3日',
           qualifier: 'exact',
-          date: { year: 1641 },
+          date: { year: 1641, month: 8, day: 3 },
         },
       },
       death: {
@@ -231,7 +234,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '延宝8年5月8日',
           qualifier: 'exact',
-          date: { year: 1680 },
+          date: { year: 1680, month: 5, day: 8 },
         },
       },
       note: '4代将軍。家光の長男',
@@ -248,10 +251,12 @@ export const tokugawaShogunsSample: TreeDocument = {
       birth: {
         type: 'birth',
         // 正保元年5月24日 = 1644年6月28日
+        // 正保への改元は同年12月16日。この日は改元前のため、和暦表示では改元前の
+        // 「寛永21年5月24日」に戻る(典拠が採る立年改元の表記は original 側に残る)
         date: {
           original: '正保元年5月24日',
           qualifier: 'exact',
-          date: { year: 1644 },
+          date: { year: 1644, month: 5, day: 24 },
         },
       },
       death: {
@@ -260,7 +265,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '延宝6年9月14日',
           qualifier: 'exact',
-          date: { year: 1678 },
+          date: { year: 1678, month: 9, day: 14 },
         },
       },
       note: '甲府徳川家。家光の三男。6代将軍 家宣の実父',
@@ -280,7 +285,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '正保3年1月8日',
           qualifier: 'exact',
-          date: { year: 1646 },
+          date: { year: 1646, month: 1, day: 8 },
         },
       },
       death: {
@@ -289,7 +294,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '宝永6年1月10日',
           qualifier: 'exact',
-          date: { year: 1709 },
+          date: { year: 1709, month: 1, day: 10 },
         },
       },
       note: '5代将軍。家光の四男',
@@ -309,7 +314,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛文2年4月25日',
           qualifier: 'exact',
-          date: { year: 1662 },
+          date: { year: 1662, month: 4, day: 25 },
         },
       },
       death: {
@@ -318,7 +323,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '正徳2年10月14日',
           qualifier: 'exact',
-          date: { year: 1712 },
+          date: { year: 1712, month: 10, day: 14 },
         },
       },
       note: '6代将軍。綱重の実子で、5代 綱吉の養子として将軍職を継いだ',
@@ -338,7 +343,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '宝永6年7月3日',
           qualifier: 'exact',
-          date: { year: 1709 },
+          date: { year: 1709, month: 7, day: 3 },
         },
       },
       death: {
@@ -347,7 +352,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '正徳6年4月30日',
           qualifier: 'exact',
-          date: { year: 1716 },
+          date: { year: 1716, month: 4, day: 30 },
         },
       },
       note: '7代将軍。家宣の四男。8歳で没し、将軍家の直系は途絶えた',
@@ -369,7 +374,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛永3年12月11日',
           qualifier: 'exact',
-          date: { year: 1627 },
+          date: { year: 1626, month: 12, day: 11 },
         },
       },
       death: {
@@ -378,7 +383,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '宝永2年8月8日',
           qualifier: 'exact',
-          date: { year: 1705 },
+          date: { year: 1705, month: 8, day: 8 },
         },
       },
       note: '紀州徳川家 2代。8代将軍 吉宗の実父',
@@ -398,7 +403,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '貞享元年10月21日',
           qualifier: 'exact',
-          date: { year: 1684 },
+          date: { year: 1684, month: 10, day: 21 },
         },
       },
       death: {
@@ -407,7 +412,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛延4年6月20日',
           qualifier: 'exact',
-          date: { year: 1751 },
+          date: { year: 1751, month: 6, day: 20 },
         },
       },
       note: '8代将軍。紀州徳川家から入嗣(家康の曾孫)',
@@ -427,7 +432,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '正徳元年12月21日',
           qualifier: 'exact',
-          date: { year: 1712 },
+          date: { year: 1711, month: 12, day: 21 },
         },
       },
       death: {
@@ -436,7 +441,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '宝暦11年6月12日',
           qualifier: 'exact',
-          date: { year: 1761 },
+          date: { year: 1761, month: 6, day: 12 },
         },
       },
       note: '9代将軍。吉宗の長男',
@@ -456,7 +461,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '元文2年5月22日',
           qualifier: 'exact',
-          date: { year: 1737 },
+          date: { year: 1737, month: 5, day: 22 },
         },
       },
       death: {
@@ -465,7 +470,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '天明6年8月25日',
           qualifier: 'exact',
-          date: { year: 1786 },
+          date: { year: 1786, month: 8, day: 25 },
         },
       },
       note: '10代将軍。家重の長男',
@@ -487,7 +492,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '享保6年閏7月16日',
           qualifier: 'exact',
-          date: { year: 1721 },
+          date: { year: 1721, month: 7, day: 16 },
         },
       },
       death: {
@@ -496,7 +501,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '明和元年12月22日',
           qualifier: 'exact',
-          date: { year: 1765 },
+          date: { year: 1764, month: 12, day: 22 },
         },
       },
       note: '一橋徳川家 初代。吉宗の四男',
@@ -516,7 +521,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '宝暦元年11月6日',
           qualifier: 'exact',
-          date: { year: 1751 },
+          date: { year: 1751, month: 11, day: 6 },
         },
       },
       death: {
@@ -525,7 +530,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '文政10年2月20日',
           qualifier: 'exact',
-          date: { year: 1827 },
+          date: { year: 1827, month: 2, day: 20 },
         },
       },
       note: '一橋徳川家 2代。11代将軍 家斉の実父',
@@ -545,7 +550,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '安永2年10月5日',
           qualifier: 'exact',
-          date: { year: 1773 },
+          date: { year: 1773, month: 10, day: 5 },
         },
       },
       death: {
@@ -554,7 +559,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '天保12年閏1月7日',
           qualifier: 'exact',
-          date: { year: 1841 },
+          date: { year: 1841, month: 1, day: 7 },
         },
       },
       note: '11代将軍。一橋徳川家から入嗣。在職50年',
@@ -574,7 +579,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛政5年5月14日',
           qualifier: 'exact',
-          date: { year: 1793 },
+          date: { year: 1793, month: 5, day: 14 },
         },
       },
       death: {
@@ -583,7 +588,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '嘉永6年6月22日',
           qualifier: 'exact',
-          date: { year: 1853 },
+          date: { year: 1853, month: 6, day: 22 },
         },
       },
       note: '12代将軍。家斉の次男',
@@ -603,7 +608,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '文政7年4月8日',
           qualifier: 'exact',
-          date: { year: 1824 },
+          date: { year: 1824, month: 4, day: 8 },
         },
       },
       death: {
@@ -612,7 +617,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '安政5年7月6日',
           qualifier: 'exact',
-          date: { year: 1858 },
+          date: { year: 1858, month: 7, day: 6 },
         },
       },
       note: '13代将軍。家慶の四男',
@@ -627,12 +632,12 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '天保6年12月19日',
           qualifier: 'exact',
-          date: { year: 1836 },
+          date: { year: 1835, month: 12, day: 19 },
         },
       },
       death: {
         type: 'death',
-        // 改暦後のため年月日まで構造化する
+        // 改暦後のため実際のグレゴリオ暦の年月日
         date: {
           original: '明治16年11月20日',
           qualifier: 'exact',
@@ -658,7 +663,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '享和元年9月9日',
           qualifier: 'exact',
-          date: { year: 1801 },
+          date: { year: 1801, month: 9, day: 9 },
         },
       },
       death: {
@@ -667,7 +672,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '弘化3年3月5日',
           qualifier: 'exact',
-          date: { year: 1846 },
+          date: { year: 1846, month: 3, day: 5 },
         },
       },
       note: '紀州徳川家 11代。家斉の子で、14代将軍 家茂の実父',
@@ -687,7 +692,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '弘化3年閏5月24日',
           qualifier: 'exact',
-          date: { year: 1846 },
+          date: { year: 1846, month: 5, day: 24 },
         },
       },
       death: {
@@ -696,7 +701,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '慶応2年7月20日',
           qualifier: 'exact',
-          date: { year: 1866 },
+          date: { year: 1866, month: 7, day: 20 },
         },
       },
       note: '14代将軍。斉順の実子で、13代 家定の養子として将軍職を継いだ',
@@ -718,7 +723,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '元和8年7月1日',
           qualifier: 'exact',
-          date: { year: 1622 },
+          date: { year: 1622, month: 7, day: 1 },
         },
       },
       death: {
@@ -727,7 +732,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '元禄8年4月12日',
           qualifier: 'exact',
-          date: { year: 1695 },
+          date: { year: 1695, month: 4, day: 12 },
         },
       },
       note: '高松松平家 初代。頼房の長男。水戸3代 綱條の実父',
@@ -747,7 +752,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛永5年6月10日',
           qualifier: 'exact',
-          date: { year: 1628 },
+          date: { year: 1628, month: 6, day: 10 },
         },
       },
       death: {
@@ -756,7 +761,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '元禄13年12月6日',
           qualifier: 'exact',
-          date: { year: 1701 },
+          date: { year: 1700, month: 12, day: 6 },
         },
       },
       note: '水戸徳川家 2代。頼房の三男',
@@ -776,7 +781,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '明暦2年8月26日',
           qualifier: 'exact',
-          date: { year: 1656 },
+          date: { year: 1656, month: 8, day: 26 },
         },
       },
       death: {
@@ -785,7 +790,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '享保3年9月11日',
           qualifier: 'exact',
-          date: { year: 1718 },
+          date: { year: 1718, month: 9, day: 11 },
         },
       },
       note: '水戸徳川家 3代。松平頼重の実子で、光圀の養子となった',
@@ -805,7 +810,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '宝永2年7月11日',
           qualifier: 'exact',
-          date: { year: 1705 },
+          date: { year: 1705, month: 7, day: 11 },
         },
       },
       death: {
@@ -814,7 +819,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '享保15年4月7日',
           qualifier: 'exact',
-          date: { year: 1730 },
+          date: { year: 1730, month: 4, day: 7 },
         },
       },
       // 実父の松平頼豊は収録範囲外のため記録していない(養父 綱條のみで繋ぐ)
@@ -835,7 +840,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '享保13年7月29日',
           qualifier: 'exact',
-          date: { year: 1728 },
+          date: { year: 1728, month: 7, day: 29 },
         },
       },
       death: {
@@ -844,7 +849,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '明和3年2月14日',
           qualifier: 'exact',
-          date: { year: 1766 },
+          date: { year: 1766, month: 2, day: 14 },
         },
       },
       note: '水戸徳川家 5代。宗堯の長男',
@@ -864,7 +869,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛延4年8月16日',
           qualifier: 'exact',
-          date: { year: 1751 },
+          date: { year: 1751, month: 8, day: 16 },
         },
       },
       death: {
@@ -873,7 +878,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '文化2年11月1日',
           qualifier: 'exact',
-          date: { year: 1805 },
+          date: { year: 1805, month: 11, day: 1 },
         },
       },
       note: '水戸徳川家 6代。宗翰の長男',
@@ -893,7 +898,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '安永2年10月24日',
           qualifier: 'exact',
-          date: { year: 1773 },
+          date: { year: 1773, month: 10, day: 24 },
         },
       },
       death: {
@@ -902,7 +907,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '文化13年閏8月19日',
           qualifier: 'exact',
-          date: { year: 1816 },
+          date: { year: 1816, month: 8, day: 19 },
         },
       },
       note: '水戸徳川家 7代。治保の長男',
@@ -922,7 +927,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '寛政12年3月11日',
           qualifier: 'exact',
-          date: { year: 1800 },
+          date: { year: 1800, month: 3, day: 11 },
         },
       },
       death: {
@@ -931,7 +936,7 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '万延元年8月15日',
           qualifier: 'exact',
-          date: { year: 1860 },
+          date: { year: 1860, month: 8, day: 15 },
         },
       },
       note: '水戸徳川家 9代。治紀の三男。15代将軍 慶喜の実父',
@@ -951,12 +956,12 @@ export const tokugawaShogunsSample: TreeDocument = {
         date: {
           original: '天保8年9月29日',
           qualifier: 'exact',
-          date: { year: 1837 },
+          date: { year: 1837, month: 9, day: 29 },
         },
       },
       death: {
         type: 'death',
-        // 改暦後のため年月日まで構造化する
+        // 改暦後のため実際のグレゴリオ暦の年月日
         date: {
           original: '大正2年11月22日',
           qualifier: 'exact',

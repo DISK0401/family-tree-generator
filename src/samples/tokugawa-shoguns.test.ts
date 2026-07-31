@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { formatDateForDisplay } from '../settings/display-settings'
 import { buildGraph, splitIntoComponents } from '../layout/graph'
 import { layoutPedigree } from '../layout'
 import { expectLayoutInvariants } from '../layout/test-invariants'
@@ -153,10 +154,7 @@ describe('徳川将軍15代サンプル: 系譜の連結', () => {
   })
 })
 
-describe('徳川将軍15代サンプル: 改暦をまたぐ日付(spec「改暦をまたぐ日付の収録方針」)', () => {
-  /** 明治6年(1873)の改暦。これ以前の日付は旧暦のため月日を構造化しない */
-  const CALENDAR_REFORM_YEAR = 1873
-
+describe('徳川将軍15代サンプル: 旧暦を含む日付(spec「旧暦を含む日付の収録方針」)', () => {
   it('全員の生没日に和暦の原文が保持されている', () => {
     for (const p of Object.values(doc.persons)) {
       for (const event of [p.birth, p.death]) {
@@ -170,18 +168,67 @@ describe('徳川将軍15代サンプル: 改暦をまたぐ日付(spec「改暦�
     }
   })
 
-  it('改暦以前の日付は年のみを構造化している(旧暦の月日を西暦の月日にしていない)', () => {
-    for (const p of Object.values(doc.persons)) {
-      for (const event of [p.birth, p.death]) {
-        const date = event?.date?.date
-        if (!date || date.year >= CALENDAR_REFORM_YEAR) continue
-        expect(date.month, `${p.id} の改暦前の日付に月がある`).toBeUndefined()
-        expect(date.day, `${p.id} の改暦前の日付に日がある`).toBeUndefined()
-      }
+  /*
+   * 旧暦の日付は「和暦の年月日をそのままの数字で写した名目値」で持つ(design D3)。
+   * グレゴリオ暦の換算年を入れると、旧暦12月の日付は換算で翌年に落ちるため和暦表示が
+   * 1年ずれる。この取り違えが起きやすい年またぎの6件を明示的に固定する。
+   */
+  const YEAR_CROSSING_DATES = [
+    ['ieyasu', 'birth', '天文11年12月26日', { year: 1542, month: 12, day: 26 }],
+    [
+      'mitsusada',
+      'birth',
+      '寛永3年12月11日',
+      { year: 1626, month: 12, day: 11 },
+    ],
+    [
+      'ieshige',
+      'birth',
+      '正徳元年12月21日',
+      { year: 1711, month: 12, day: 21 },
+    ],
+    [
+      'tenshoin',
+      'birth',
+      '天保6年12月19日',
+      { year: 1835, month: 12, day: 19 },
+    ],
+    [
+      'mitsukuni',
+      'death',
+      '元禄13年12月6日',
+      { year: 1700, month: 12, day: 6 },
+    ],
+    [
+      'munetada',
+      'death',
+      '明和元年12月22日',
+      { year: 1764, month: 12, day: 22 },
+    ],
+  ] as const
+
+  it.each(YEAR_CROSSING_DATES)(
+    '年をまたぐ旧暦の日付が和暦表示で原文どおりに戻る: %s の%s',
+    (id, kind, original, expected) => {
+      const fuzzy = person(id)[kind]?.date
+      expect(fuzzy?.original).toBe(original)
+      expect(fuzzy?.date).toEqual(expected)
+      expect(formatDateForDisplay(fuzzy?.date, 'full', 'wareki')).toBe(original)
+    },
+  )
+
+  it('閏月は原文のみに保持し、構造化日付は同じ番号の月へ畳んでいる', () => {
+    const leap = Object.values(doc.persons).flatMap((p) =>
+      [p.birth?.date, p.death?.date].filter((d) => d?.original.includes('閏')),
+    )
+    expect(leap.length, '閏月を含む原文').toBeGreaterThan(0)
+    for (const fuzzy of leap) {
+      const month = /閏(\d{1,2})月/.exec(fuzzy?.original ?? '')?.[1]
+      expect(fuzzy?.date?.month).toBe(Number(month))
     }
   })
 
-  it('改暦以後の日付は年月日まで構造化している(慶喜の没・天璋院の没)', () => {
+  it('改暦以後の日付は実際のグレゴリオ暦の年月日である(慶喜の没・天璋院の没)', () => {
     expect(person('yoshinobu').death?.date?.date).toEqual({
       year: 1913,
       month: 11,

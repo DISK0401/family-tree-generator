@@ -7,8 +7,9 @@ import { SCHEMA_VERSION } from '../../domain/types'
  * 実父母(biological)と養父母(adopted)の2家族への帰属で表現する。
  * Wikipedia等の公知情報を基に主要人物のみへ簡略化している。登場人物は全員故人。
  *
- * 構造化日付(date)は、明治6年(1873年)のグレゴリオ暦採用以降の日付に限り
- * originalの月日をそのまま写している。それより前は旧暦のため年のみとする。
+ * 構造化日付(date)は、original の和暦を日付入力欄に入れたときにこのアプリが記録する値
+ * (名目値)に揃える。明治6年(1873年)のグレゴリオ暦採用より前は旧暦のため、和暦の年月日を
+ * そのままの数字で西暦フィールドへ写す(厳密な換算はしない。domain/wareki.ts)。
  */
 export const natsumeSosekiSample: TreeDocument = {
   schemaVersion: SCHEMA_VERSION,
@@ -69,7 +70,7 @@ export const natsumeSosekiSample: TreeDocument = {
         date: {
           original: '慶応3年1月5日',
           qualifier: 'exact',
-          date: { year: 1867 },
+          date: { year: 1867, month: 1, day: 5 },
         },
       },
       death: {
