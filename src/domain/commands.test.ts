@@ -7,6 +7,7 @@ import {
   addPerson,
   addSpouse,
   addSpouseLink,
+  bulkUpsertPersons,
   collectAncestors,
   collectDescendants,
   computeRemovalImpact,
@@ -1659,5 +1660,77 @@ describe('setFamilyEvent: 種別とイベント内容の食い違い防止', () 
 
     const d = setFamilyEvent(doc2, familyId, 'divorce', { type: 'divorce' })
     expect(d.families[familyId].events).toEqual([{ type: 'divorce' }])
+  })
+})
+
+describe('bulkUpsertPersons: 複数セル操作の一括適用(spec person-table-editor「ペースト」)', () => {
+  it('更新2件+追加1件が1回のドキュメント遷移で適用される', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: '太郎' } })
+    doc = a.doc
+    const b = addPerson(doc, { name: { given: '花子' } })
+    doc = b.doc
+
+    const result = bulkUpsertPersons(
+      doc,
+      [
+        { personId: a.personId, patch: { name: { surname: '山田', given: '太郎' } } },
+        { personId: b.personId, patch: { note: 'メモ' } },
+      ],
+      [{ name: { given: '次郎' } }],
+    )
+
+    expect(result.doc).not.toBe(doc)
+    expect(result.doc.persons[a.personId].name.surname).toBe('山田')
+    expect(result.doc.persons[b.personId].note).toBe('メモ')
+    expect(result.addedPersonIds).toHaveLength(1)
+    expect(result.doc.persons[result.addedPersonIds[0]].name.given).toBe('次郎')
+    expect(Object.keys(result.doc.persons)).toHaveLength(3)
+    // 入力のドキュメントは変更されない(純関数)
+    expect(doc.persons[a.personId].name.surname).toBeUndefined()
+  })
+
+  it('全件が無変更で追加も無い場合は同一参照を返す(ストアのno-op検知に乗る)', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, {
+      name: { surname: '山田', given: '太郎' },
+      note: 'メモ',
+    })
+    doc = a.doc
+
+    const result = bulkUpsertPersons(doc, [
+      {
+        personId: a.personId,
+        patch: { name: { surname: '山田', given: '太郎' } },
+      },
+      { personId: a.personId, patch: { note: 'メモ' } },
+    ])
+
+    expect(result.doc).toBe(doc)
+    expect(result.addedPersonIds).toEqual([])
+  })
+
+  it('存在しないpersonIdの更新はthrowする(updatePersonと同じ意味論)', () => {
+    const doc = createTreeDocument()
+    expect(() =>
+      bulkUpsertPersons(doc, [{ personId: 'ghost', patch: { note: 'x' } }]),
+    ).toThrow('人物が見つかりません')
+  })
+
+  it('一部だけ変更がある場合、無変更の更新は無視されて変更分だけが適用される', () => {
+    let doc = createTreeDocument()
+    const a = addPerson(doc, { name: { given: '太郎' } })
+    doc = a.doc
+    const b = addPerson(doc, { name: { given: '花子' } })
+    doc = b.doc
+
+    const result = bulkUpsertPersons(doc, [
+      { personId: a.personId, patch: { name: { given: '太郎' } } },
+      { personId: b.personId, patch: { name: { given: '花子改' } } },
+    ])
+
+    expect(result.doc).not.toBe(doc)
+    expect(result.doc.persons[a.personId]).toBe(doc.persons[a.personId])
+    expect(result.doc.persons[b.personId].name.given).toBe('花子改')
   })
 })

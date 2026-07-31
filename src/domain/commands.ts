@@ -56,6 +56,57 @@ export function updatePerson(
   return touch(putPerson(doc, { ...person, ...patch }))
 }
 
+/** `bulkUpsertPersons` の更新1件分の指定 */
+export interface PersonBulkUpdate {
+  personId: PersonId
+  patch: Partial<Omit<Person, 'id'>>
+}
+
+/**
+ * 複数人物の属性更新と新規追加を、1回のドキュメント遷移にまとめて適用する
+ * (spec person-table-editor「ペースト」)。表形式ビューの複数セル操作
+ * (ペースト・範囲クリア・行数を超える貼り付けによる人物追加)から使い、
+ * ストアの`apply` 1回=undo 1件で操作全体を戻せるようにする。
+ *
+ * 個々の更新は`updatePerson`と同じ意味論を持つ(存在しないpersonIdはthrow)。
+ * 値が変わらない更新は無視し、全件が無変更かつ追加も無い場合は同一参照を返す
+ * (ストアのno-op検知に乗り、履歴を汚さない)。無変更の判定はJSON表現の一致で行う
+ * (Personは小さなプレーンデータで、パッチはスプレッド適用のためキー順も保たれる)。
+ */
+export function bulkUpsertPersons(
+  doc: TreeDocument,
+  updates: PersonBulkUpdate[],
+  additions: PersonInit[] = [],
+): { doc: TreeDocument; addedPersonIds: PersonId[] } {
+  let persons = doc.persons
+  let changed = false
+  const ensureCopied = () => {
+    if (persons === doc.persons) persons = { ...doc.persons }
+  }
+
+  for (const { personId, patch } of updates) {
+    const person = persons[personId]
+    if (!person) throw new Error(`人物が見つかりません: ${personId}`)
+    const next = { ...person, ...patch }
+    if (JSON.stringify(next) === JSON.stringify(person)) continue
+    ensureCopied()
+    persons[personId] = next
+    changed = true
+  }
+
+  const addedPersonIds: PersonId[] = []
+  for (const init of additions) {
+    const person = createPerson(init)
+    ensureCopied()
+    persons[person.id] = person
+    addedPersonIds.push(person.id)
+    changed = true
+  }
+
+  if (!changed) return { doc, addedPersonIds }
+  return { doc: touch({ ...doc, persons }), addedPersonIds }
+}
+
 /** 配偶者を新規作成して家族(婚姻単位)を新設する。既存の家族はそのまま残る(再婚対応) */
 export function addSpouse(
   doc: TreeDocument,

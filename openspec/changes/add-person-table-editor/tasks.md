@@ -1,7 +1,7 @@
 ## 1. ドメイン: バッチ更新の純関数(D3)
 
-- [ ] 1.1 `src/domain/commands.ts` に `bulkUpsertPersons(doc, updates, additions)` を追加する。複数人物の属性更新と新規追加を1回のドキュメント遷移にまとめ、内部は既存の `updatePerson` / `addPerson` 相当の更新の合成とする。全件 no-op の場合は同一参照を返す(完了条件: 更新2件+追加1件が1遷移で適用され store の undo 1回で全て戻る/全件 no-op で `toBe` 同一参照/存在しない personId の update が throw する単体テストが通る)
-- [ ] 1.2 性別文字列の解釈純関数を追加する(「男/女/不明」「M/F/U」「male/female/unknown」を受理、空文字は「変更なし」ではなく `unknown` として扱うかを含めて仕様コメント化。解釈不能はエラー)(完了条件: 受理・拒否の対応表どおりの単体テストが通る)
+- [x] 1.1 `src/domain/commands.ts` に `bulkUpsertPersons(doc, updates, additions)` を追加する。複数人物の属性更新と新規追加を1回のドキュメント遷移にまとめ、内部は既存の `updatePerson` / `addPerson` 相当の更新の合成とする。全件 no-op の場合は同一参照を返す(完了条件: 更新2件+追加1件が1遷移で適用され store の undo 1回で全て戻る/全件 no-op で `toBe` 同一参照/存在しない personId の update が throw する単体テストが通る)
+- [x] 1.2 性別文字列の解釈純関数を追加する(「男/女/不明」「M/F/U」「male/female/unknown」を受理、空文字は「変更なし」ではなく `unknown` として扱うかを含めて仕様コメント化。解釈不能はエラー)(完了条件: 受理・拒否の対応表どおりの単体テストが通る)
 
 ## 2. TSV クリップボード純関数(D4)
 
