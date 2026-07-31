@@ -206,7 +206,6 @@ export function PersonTableView({
     )
     row?.scrollIntoView?.({ block: 'nearest' })
     // マウント時と選択変更時のみ。行の並び替えでは追従しない(視界が跳ねるため)
-     
   }, [selectedPersonId])
 
   /** 編集開始時にエディタへフォーカスを移す */

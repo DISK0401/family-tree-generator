@@ -1,5 +1,15 @@
 import '@testing-library/jest-dom/vitest'
 import 'fake-indexeddb/auto'
+import { configure } from '@testing-library/dom'
+
+/*
+ * Testing Libraryの`findBy*`/`waitFor`の待ち時間(既定1秒)を延ばす。
+ * この上限はvitestの`testTimeout`とは別系統で、テストファイルの並列実行による
+ * CPU競合下では、本質的な問題がなくても1秒では足りず「要素が見つからない」形で
+ * 断続的に失敗していた(自動保存のデバウンス800msを待つテスト等が特に境界)。
+ * 待ち時間の延長は成功時の速度には影響しない(条件が満たされ次第すぐ進む)。
+ */
+configure({ asyncUtilTimeout: 5_000 })
 
 /*
  * jsdomにはDOMMatrix/WebKitCSSMatrixが実装されていない。

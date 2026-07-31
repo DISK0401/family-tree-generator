@@ -1674,7 +1674,10 @@ describe('bulkUpsertPersons: 複数セル操作の一括適用(spec person-table
     const result = bulkUpsertPersons(
       doc,
       [
-        { personId: a.personId, patch: { name: { surname: '山田', given: '太郎' } } },
+        {
+          personId: a.personId,
+          patch: { name: { surname: '山田', given: '太郎' } },
+        },
         { personId: b.personId, patch: { note: 'メモ' } },
       ],
       [{ name: { given: '次郎' } }],

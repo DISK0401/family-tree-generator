@@ -18,6 +18,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  /*
+   * expect の待ち時間(既定5秒)を延ばす。複数のブラウザを並列に走らせるため、
+   * サンプルの動的import+初回描画のような重い経路が5秒に収まらず、本質的な問題なしに
+   * 断続的に失敗していた。成功時の速度には影響しない(条件が満たされ次第すぐ進む)
+   */
+  expect: { timeout: 15_000 },
   use: {
     // Vite の `localhost` は環境により IPv6([::1])のみで LISTEN し、ブラウザの
     // IPv4 解決と食い違って ERR_CONNECTION_REFUSED になるため、IPv4 を明示する
