@@ -39,13 +39,28 @@ export interface ColumnContext {
   spouseNamesOf: (personId: PersonId) => string[]
 }
 
+/**
+ * 列ごとの絞り込みの入力種別(design.md D8)。
+ * 'select' は取りうる値が閉じている列(性別)に使い、表示値の完全一致で絞る
+ */
+export type ColumnFilterKind = 'text' | 'select'
+
 export interface TableColumn {
   id: string
   label: string
   /** 編集モードでセル編集・ペースト適用の対象になるか(配偶者列のみ false) */
   editable: boolean
-  /** 列見出しからの並べ替えを提供するか */
+  /**
+   * 列見出しからの並べ替えを提供するか(design.md D8: 現在は全列 true)。
+   * 「同じ値の行を隣に集める」用途は氏名・日付以外の列にもあるため、列ごとに可否を分けない
+   */
   sortable: boolean
+  /** 列ごとの絞り込みの入力種別 */
+  filterKind: ColumnFilterKind
+  /** filterKind === 'select' のときの選択肢(表示値と同じ文字列) */
+  filterOptions?: readonly string[]
+  /** 日付として比較・絞り込みする列か(表示文字列ではなく構造化日付を見る) */
+  dateEventType?: PersonEventType
   /** 閲覧セルとコピーに使う表示文字列(spec「矩形選択とコピー」: 見たままコピー) */
   getValue: (person: Person, ctx: ColumnContext) => string
   /**
@@ -73,7 +88,8 @@ function nameField(
     id,
     label,
     editable: true,
-    sortable: field === 'surname' || field === 'given',
+    sortable: true,
+    filterKind: 'text',
     getValue: (person) => person.name[field] ?? '',
     parse: (raw, person) => ({
       ok: true,
@@ -112,6 +128,8 @@ function dateField(
     label,
     editable: true,
     sortable: true,
+    filterKind: 'text',
+    dateEventType: eventType,
     getValue: (person, ctx) => {
       const date = eventOf(person, eventType)?.date
       return (
@@ -159,7 +177,8 @@ function placeField(
     id,
     label,
     editable: true,
-    sortable: false,
+    sortable: true,
+    filterKind: 'text',
     getValue: (person) => eventOf(person, eventType)?.place ?? '',
     parse: (raw, person) => {
       const place = normalizeText(raw)
@@ -192,7 +211,10 @@ export const PERSON_TABLE_COLUMNS: readonly TableColumn[] = [
     id: 'gender',
     label: '性別',
     editable: true,
-    sortable: false,
+    sortable: true,
+    // 値が3つに閉じているため選択式にする(部分一致より速く確実。design.md D8)
+    filterKind: 'select',
+    filterOptions: ['男', '女', '不明'],
     getValue: (person) => formatGender(person.gender),
     parse: (raw) => {
       const gender = parseGenderInput(raw)
@@ -223,7 +245,8 @@ export const PERSON_TABLE_COLUMNS: readonly TableColumn[] = [
     id: 'note',
     label: 'メモ',
     editable: true,
-    sortable: false,
+    sortable: true,
+    filterKind: 'text',
     getValue: (person) => person.note ?? '',
     parse: (raw) => {
       // メモは複数行を許すため、空判定以外の整形(trim)はしない
@@ -234,7 +257,8 @@ export const PERSON_TABLE_COLUMNS: readonly TableColumn[] = [
     id: 'spouses',
     label: '配偶者',
     editable: false,
-    sortable: false,
+    sortable: true,
+    filterKind: 'text',
     getValue: (person, ctx) => ctx.spouseNamesOf(person.id).join('、'),
   },
 ]

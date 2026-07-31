@@ -68,8 +68,8 @@ describe('PersonTableView: 大規模データの性能(D7の回帰監視)', () =
       console.log(
         `[PersonTableView] ${PERSON_COUNT}人の描画時間: ${elapsedMs.toFixed(0)}ms`,
       )
-      // ヘッダー1行+データ行
-      expect(screen.getAllByRole('row')).toHaveLength(PERSON_COUNT + 1)
+      // ヘッダー2行(見出し・列ごとの絞り込み)+データ行
+      expect(screen.getAllByRole('row')).toHaveLength(PERSON_COUNT + 2)
       expect(elapsedMs).toBeLessThan(15_000) // 回帰検知用の緩い上限(jsdomはブラウザより遅い)
     },
   )

@@ -235,3 +235,26 @@ describe('依存境界: 列定義はレンダリング層に依存しない(D2 �
     expect(source).not.toMatch(/from 'react/)
   })
 })
+
+describe('列定義: 並べ替え・絞り込みのメタデータ(D8)', () => {
+  it('すべての列が並べ替え対象で、絞り込み種別を持つ', () => {
+    for (const column of PERSON_TABLE_COLUMNS) {
+      expect(column.sortable).toBe(true)
+      expect(['text', 'select']).toContain(column.filterKind)
+    }
+  })
+
+  it('性別のみ選択式で、選択肢は表示値と一致する', () => {
+    const selectColumns = PERSON_TABLE_COLUMNS.filter(
+      (c) => c.filterKind === 'select',
+    )
+    expect(selectColumns.map((c) => c.id)).toEqual(['gender'])
+    expect(selectColumns[0].filterOptions).toEqual(['男', '女', '不明'])
+  })
+
+  it('日付列だけが日付として比較・絞り込みされる印を持つ', () => {
+    const dateColumns = PERSON_TABLE_COLUMNS.filter((c) => c.dateEventType)
+    expect(dateColumns.map((c) => c.id)).toEqual(['birthDate', 'deathDate'])
+    expect(dateColumns.map((c) => c.dateEventType)).toEqual(['birth', 'death'])
+  })
+})

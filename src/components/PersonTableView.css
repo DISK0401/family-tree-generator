@@ -116,7 +116,7 @@
 .person-table th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   background: var(--paper-sunken);
   color: var(--ink-soft);
   font-weight: 600;
@@ -136,7 +136,65 @@
   padding: 0;
 }
 
-.person-table-sort-button:hover {
+.person-table-sort-button:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.person-table-sort-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 列ごとの絞り込み行(design.md D8)。見出しに続く2段目としてsticky。
+   見出しより一段控えめな面にして「操作の行」であることを示す */
+.person-table-filter-row td {
+  position: sticky;
+  /* 見出し行(padding込みの実高さ)の下に貼り付く。見出しの行高が変わったら合わせて調整する */
+  top: 37px;
+  z-index: 1;
+  padding: var(--space-1) var(--space-2);
+  background: color-mix(in srgb, var(--paper-sunken) 70%, var(--paper-raised));
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.person-table-filter-row input,
+.person-table-filter-row select {
+  font: inherit;
+  font-size: var(--text-xs);
+  width: 100%;
+  min-width: 5em;
+  box-sizing: border-box;
+  padding: 2px var(--space-1);
+  /* 入力できる欄であることが一目で分かる強さの枠にする(面が紙色で近いため) */
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.person-table-filter-row input::placeholder {
+  color: var(--ink-faint);
+}
+
+.person-table-filter-row input:focus-visible,
+.person-table-filter-row select:focus-visible {
+  border-color: var(--ai);
+}
+
+.person-table-clear-filters {
+  font: inherit;
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.person-table-clear-filters:hover {
+  border-color: var(--ink-soft);
+  background: var(--paper-sunken);
   color: var(--ink);
 }
 
@@ -188,8 +246,10 @@
   box-shadow: inset 0 -2px 0 var(--danger);
 }
 
-.person-table td input,
-.person-table td select {
+/* セルエディタ(編集中のセルに現れる入力)。データ行にのみ現れるため tbody に限定する
+   — ヘッダーの絞り込み欄(thead内のinput/select)まで枠なしにしてしまわないように */
+.person-table tbody td input,
+.person-table tbody td select {
   font: inherit;
   width: 100%;
   min-width: 8em;
@@ -200,8 +260,8 @@
   color: var(--ink);
 }
 
-.person-table td input:focus-visible,
-.person-table td select:focus-visible {
+.person-table tbody td input:focus-visible,
+.person-table tbody td select:focus-visible {
   outline: none; /* セル側の.cell-focusedの枠で示す(二重枠を避ける) */
 }
 

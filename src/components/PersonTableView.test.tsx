@@ -50,13 +50,23 @@ function seedDocument(): { taroId: string; hanakoId: string } {
   return { taroId: taro.personId, hanakoId: hanako.personId }
 }
 
-/** 行(tr)の並びを氏名で取り出す。ヘッダー行と(編集モードの)ゴースト行は除く */
-function rowNames(): string[] {
+/** データ行(tbody内)のみを返す。ヘッダー2行(見出し・絞り込み)を除く */
+function dataRows(): HTMLElement[] {
   return screen
     .getAllByRole('row')
-    .slice(1)
+    .filter((row) => row.closest('tbody') !== null)
+}
+
+/** 行(tr)の並びを氏名で取り出す。ヘッダー行と(編集モードの)ゴースト行は除く */
+function rowNames(): string[] {
+  return dataRows()
     .filter((row) => !row.hasAttribute('data-ghost-row'))
     .map((row) => within(row).getAllByRole('gridcell')[0].textContent ?? '')
+}
+
+/** 正規表現に使う文字をエスケープする(列名に「(」を含むため) */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function enterEditMode() {
@@ -64,7 +74,7 @@ function enterEditMode() {
 }
 
 function cellOf(rowIndex: number, columnLabel: string): HTMLElement {
-  const row = screen.getAllByRole('row')[rowIndex + 1]
+  const row = dataRows()[rowIndex]
   const headers = screen
     .getAllByRole('columnheader')
     .map((h) => h.textContent?.replace(/[↑↓]/g, '').trim())
@@ -126,7 +136,7 @@ describe('PersonTableView: 閲覧(spec「列構成」「並べ替えと絞り込
     )
     expect(rowNames()).toHaveLength(2)
 
-    fireEvent.change(screen.getByRole('searchbox', { name: /絞り込み/ }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: '氏名で検索' }), {
       target: { value: 'やまだ' },
     })
 
@@ -159,7 +169,7 @@ describe('PersonTableView: 閲覧(spec「列構成」「並べ替えと絞り込
     const before = useTreeStore.getState().document
 
     fireEvent.click(screen.getByRole('button', { name: /生年月日/ }))
-    fireEvent.change(screen.getByRole('searchbox', { name: /絞り込み/ }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: '氏名で検索' }), {
       target: { value: 'やまだ' },
     })
 
@@ -205,7 +215,7 @@ describe('PersonTableView: 閲覧モードでは編集できない(spec「閲覧
 
     enterEditMode()
     // 既存2行+新規入力用のゴースト行
-    expect(screen.getAllByRole('row')).toHaveLength(1 + 3)
+    expect(dataRows()).toHaveLength(3)
     expect(screen.getByText('新しい人物…')).toBeInTheDocument()
   })
 })
@@ -587,7 +597,7 @@ describe('PersonTableView: ペースト(spec「ペースト」)', () => {
       <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
     )
     enterEditMode()
-    fireEvent.change(screen.getByRole('searchbox', { name: /絞り込み/ }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: '氏名で検索' }), {
       target: { value: 'やまだ' },
     })
     expect(rowNames()).toEqual(['山田'])
@@ -642,15 +652,210 @@ describe('PersonTableView: 範囲クリアと並べ替えの固定', () => {
     ).toBe(true)
   })
 
-  it('編集モード中は列見出しの並べ替えボタンが出ない(行順の固定)', () => {
+  it('編集モード中は並べ替えが無効化され、理由が示される(行順の固定)', () => {
     render(
       <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
     )
-    expect(screen.getByRole('button', { name: /生年月日/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /生年月日/ })).toBeEnabled()
 
     enterEditMode()
+    const sortButton = screen.getByRole('button', { name: /生年月日/ })
+    expect(sortButton).toBeDisabled()
+    expect(sortButton.getAttribute('title')).toContain(
+      '編集モード中は並べ替えできません',
+    )
+  })
+})
+
+describe('PersonTableView: 列見出しからの並べ替え(spec「列見出しからの並べ替え」)', () => {
+  beforeEach(() => {
+    useDisplaySettingsStore.getState().setCalendarMode('gregorian')
+    seedDocument()
+  })
+
+  it('すべての列が並べ替えできる', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    for (const label of [
+      '姓',
+      '名',
+      '姓(ふりがな)',
+      '名(ふりがな)',
+      '性別',
+      '生年月日',
+      '出生地',
+      '没年月日',
+      '没地',
+      'メモ',
+      '配偶者',
+    ]) {
+      // 並べ替え状態の矢印(↑↓)が付くため、末尾の矢印まで含めて一致させる
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${escapeRegExp(label)}( [↑↓])?$`),
+        }),
+      ).toBeEnabled()
+    }
+  })
+
+  it('日付以外の列(ふりがな)でも並べ替えられ、未入力は末尾に置かれる', () => {
+    // ふりがな未入力の人物を足す(seedDocumentの2人は「やまだ」「さとう」)
+    useTreeStore.getState().replace(
+      addPerson(useTreeStore.getState().document, {
+        name: { surname: '無名' },
+      }).doc,
+    )
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /^姓\(ふりがな\)/ }))
+    // さとう < やまだ、ふりがな未入力の「無名」は末尾
+    expect(rowNames()).toEqual(['佐藤', '山田', '無名'])
+
+    fireEvent.click(screen.getByRole('button', { name: /^姓\(ふりがな\)/ }))
+    expect(rowNames()).toEqual(['山田', '佐藤', '無名'])
+  })
+
+  it('同じ列を3回操作すると昇順→降順→解除に戻る', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const header = () =>
+      screen
+        .getAllByRole('columnheader')
+        .find((h) => h.dataset.columnId === 'birthDate')!
+
+    expect(header()).not.toHaveAttribute('aria-sort')
+
+    fireEvent.click(screen.getByRole('button', { name: /^生年月日/ }))
+    expect(header()).toHaveAttribute('aria-sort', 'ascending')
+
+    fireEvent.click(screen.getByRole('button', { name: /^生年月日/ }))
+    expect(header()).toHaveAttribute('aria-sort', 'descending')
+
+    fireEvent.click(screen.getByRole('button', { name: /^生年月日/ }))
+    expect(header()).not.toHaveAttribute('aria-sort')
+  })
+})
+
+describe('PersonTableView: 列ごとの絞り込み(spec「列ごとの絞り込みと横断検索」)', () => {
+  beforeEach(() => {
+    useDisplaySettingsStore.getState().setCalendarMode('gregorian')
+    seedDocument()
+  })
+
+  it('列ごとの絞り込み欄が列見出しの直下にあり、列名で取得できる', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    expect(screen.getByLabelText('姓で絞り込み')).toBeInTheDocument()
+    // 性別は選択式(spec: 選択肢が限られる列)
+    expect(screen.getByLabelText('性別で絞り込み').tagName).toBe('SELECT')
+    // 見出し行のcolumnheaderは列数どおり(絞り込み行で二重にならない)
+    expect(screen.getAllByRole('columnheader')).toHaveLength(11)
+  })
+
+  it('単一の列で絞り込める', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    fireEvent.change(screen.getByLabelText('姓で絞り込み'), {
+      target: { value: '山田' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+  })
+
+  it('複数列の条件はANDで組み合わされる', () => {
+    // 山田姓の女性を足す(seedDocumentの山田太郎は男性)
+    useTreeStore.getState().replace(
+      addPerson(useTreeStore.getState().document, {
+        name: { surname: '山田', given: '梅' },
+        gender: 'female',
+      }).doc,
+    )
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+
+    fireEvent.change(screen.getByLabelText('姓で絞り込み'), {
+      target: { value: '山田' },
+    })
+    expect(rowNames()).toEqual(['山田', '山田'])
+
+    fireEvent.change(screen.getByLabelText('性別で絞り込み'), {
+      target: { value: '女' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+    expect(within(dataRows()[0]).getAllByRole('gridcell')[1].textContent).toBe(
+      '梅',
+    )
+  })
+
+  it('横断検索と列ごとの絞り込みもANDで組み合わされる', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    fireEvent.change(screen.getByRole('searchbox', { name: '氏名で検索' }), {
+      target: { value: 'やまだ' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+
+    // 併用して矛盾する条件を入れると0件になる
+    fireEvent.change(screen.getByLabelText('姓で絞り込み'), {
+      target: { value: '佐藤' },
+    })
+    expect(rowNames()).toEqual([])
+  })
+
+  it('絞り込みが有効なときだけ解除ボタンが出て、押すと全件に戻る', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
     expect(
-      screen.queryByRole('button', { name: /生年月日/ }),
+      screen.queryByRole('button', { name: '絞り込みを解除' }),
     ).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('姓で絞り込み'), {
+      target: { value: '山田' },
+    })
+    fireEvent.change(screen.getByRole('searchbox', { name: '氏名で検索' }), {
+      target: { value: 'やまだ' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+
+    fireEvent.click(screen.getByRole('button', { name: '絞り込みを解除' }))
+
+    expect(rowNames()).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: '絞り込みを解除' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('列ごとの絞り込みはドキュメントを変更しない', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const before = useTreeStore.getState().document
+
+    fireEvent.change(screen.getByLabelText('メモで絞り込み'), {
+      target: { value: 'メモ' },
+    })
+
+    expect(rowNames()).toEqual(['山田'])
+    expect(useTreeStore.getState().document).toBe(before)
+  })
+
+  it('編集モードでも列ごとの絞り込みが使える(貼り付け対象を絞る用途)', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.change(screen.getByLabelText('姓で絞り込み'), {
+      target: { value: '山田' },
+    })
+    expect(rowNames()).toEqual(['山田'])
   })
 })

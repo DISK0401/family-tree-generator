@@ -60,7 +60,7 @@ function cellMarkerKey(
   return `${personId ?? `ghost-${rowIndex}`}:${columnId}`
 }
 
-/** 絞り込み: 氏名・ふりがなの部分一致(PersonPickerと同じ考え方) */
+/** 横断検索: 氏名・ふりがなの部分一致(PersonPickerと同じ考え方) */
 function matchesFilter(person: Person, query: string): boolean {
   if (!query) return true
   const name = [person.name.surname, person.name.given]
@@ -75,7 +75,38 @@ function matchesFilter(person: Person, query: string): boolean {
   return name.includes(q) || kana.includes(q)
 }
 
-/** 列ごとの比較。日付列は構造化日付(未入力は末尾)、それ以外は表示文字列の日本語順 */
+/** 列ごとの絞り込み値(列id → 入力値)。空文字は「その列は絞り込まない」 */
+type ColumnFilters = Record<string, string>
+
+/**
+ * 列ごとの絞り込み(spec「列ごとの絞り込みと横断検索」)。
+ * すべての条件を満たす行のみを残す(AND)。テキストは表示値の部分一致、
+ * 選択式(性別)は表示値の完全一致
+ */
+function matchesColumnFilters(
+  person: Person,
+  columns: readonly TableColumn[],
+  filters: ColumnFilters,
+  ctx: ColumnContext,
+): boolean {
+  for (const column of columns) {
+    const raw = filters[column.id]?.trim()
+    if (!raw) continue
+    const value = column.getValue(person, ctx)
+    if (column.filterKind === 'select') {
+      if (value !== raw) return false
+    } else if (!value.toLowerCase().includes(raw.toLowerCase())) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * 列ごとの比較(design.md D8)。日付列は構造化日付として比較し、それ以外は
+ * 表示文字列の日本語順。未入力は昇順・降順のいずれでも末尾に固定する
+ * (空行が先頭を占めると一覧の意味が薄れるため)
+ */
 function comparePersons(
   a: Person,
   b: Person,
@@ -84,20 +115,22 @@ function comparePersons(
   direction: SortDirection,
 ): number {
   const sign = direction === 'asc' ? 1 : -1
-  if (column.id === 'birthDate' || column.id === 'deathDate') {
+  if (column.dateEventType) {
     const dateOf = (p: Person) =>
-      column.id === 'birthDate' ? p.birth?.date : p.death?.date
+      column.dateEventType === 'birth' ? p.birth?.date : p.death?.date
     const da = dateOf(a)
     const db = dateOf(b)
-    // 未入力は昇順・降順に関わらず常に末尾(spec「並べ替えと絞り込み」)
     if (!da?.date && !db?.date) return 0
     if (!da?.date) return 1
     if (!db?.date) return -1
     return compareFuzzyDate(da, db) * sign
   }
-  return (
-    column.getValue(a, ctx).localeCompare(column.getValue(b, ctx), 'ja') * sign
-  )
+  const va = column.getValue(a, ctx)
+  const vb = column.getValue(b, ctx)
+  if (va === '' && vb === '') return 0
+  if (va === '') return 1
+  if (vb === '') return -1
+  return va.localeCompare(vb, 'ja') * sign
 }
 
 /**
@@ -123,7 +156,10 @@ export function PersonTableView({
   const calendarMode = useDisplaySettingsStore((s) => s.calendarMode)
 
   const [mode, setMode] = useState<'browse' | 'edit'>('browse')
+  /** 横断検索(氏名・ふりがな)。列ごとの絞り込みとはANDで合成する */
   const [filter, setFilter] = useState('')
+  /** 列ごとの絞り込み(列見出し直下の行。design.md D8) */
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({})
   const [sort, setSort] = useState<SortSpec | null>(null)
   /** 編集モードのセルフォーカス(rovingフォーカスの現在地) */
   const [focus, setFocus] = useState<CellPos | null>(null)
@@ -162,22 +198,34 @@ export function PersonTableView({
 
   /** 表示する行(人物)の並び。閲覧=並べ替え+絞り込み、編集=固定順+絞り込み */
   const rows = useMemo<Person[]>(() => {
-    const persons = Object.values(doc.persons)
+    const keep = (p: Person) =>
+      matchesFilter(p, filter.trim()) &&
+      matchesColumnFilters(p, columns, columnFilters, ctx)
     if (mode === 'edit') {
       const byId = doc.persons
       return editOrderRef.current
         .map((id) => byId[id])
         .filter((p): p is Person => p !== undefined)
-        .filter((p) => matchesFilter(p, filter.trim()))
+        .filter(keep)
     }
-    const filtered = persons.filter((p) => matchesFilter(p, filter.trim()))
+    const filtered = Object.values(doc.persons).filter(keep)
     if (!sort) return filtered
     const column = columns.find((c) => c.id === sort.columnId)
     if (!column) return filtered
     return [...filtered].sort((a, b) =>
       comparePersons(a, b, column, ctx, sort.direction),
     )
-  }, [doc, mode, filter, sort, columns, ctx])
+  }, [doc, mode, filter, columnFilters, sort, columns, ctx])
+
+  /** 絞り込みが1つ以上有効か(解除ボタンの表示条件。spec「列ごとの絞り込みと横断検索」) */
+  const hasActiveFilter =
+    filter.trim() !== '' ||
+    Object.values(columnFilters).some((v) => v.trim() !== '')
+
+  function clearAllFilters() {
+    setFilter('')
+    setColumnFilters({})
+  }
 
   /** 編集モードでは末尾に「新しい人物」のゴースト行を1行足す(design.md D3) */
   const ghostRowIndex = mode === 'edit' ? rows.length : -1
@@ -574,7 +622,7 @@ export function PersonTableView({
     <div className="person-table-view" ref={rootRef}>
       <div className="person-table-toolbar">
         <label className="person-table-filter">
-          絞り込み
+          氏名で検索
           <input
             type="search"
             value={filter}
@@ -582,6 +630,15 @@ export function PersonTableView({
             placeholder="氏名・ふりがな"
           />
         </label>
+        {hasActiveFilter ? (
+          <button
+            type="button"
+            className="person-table-clear-filters"
+            onClick={clearAllFilters}
+          >
+            絞り込みを解除
+          </button>
+        ) : null}
         <p className="person-table-count" aria-live="polite">
           {rows.length} / {Object.keys(doc.persons).length}人
         </p>
@@ -637,7 +694,7 @@ export function PersonTableView({
         <table
           role="grid"
           aria-label="人物の一覧"
-          aria-rowcount={rowCount + 1}
+          aria-rowcount={rowCount + 2}
           className={mode === 'edit' ? 'person-table editing' : 'person-table'}
         >
           <thead>
@@ -650,10 +707,18 @@ export function PersonTableView({
                   aria-sort={sortIndicator(column)}
                   data-column-id={column.id}
                 >
-                  {column.sortable && mode === 'browse' ? (
+                  {column.sortable ? (
                     <button
                       type="button"
                       className="person-table-sort-button"
+                      // 編集モード中は行順を固定する(design.md D5・D8)。
+                      // ボタンを消すと「壊れた」と読めるため、無効化して理由を示す
+                      disabled={mode === 'edit'}
+                      title={
+                        mode === 'edit'
+                          ? '編集モード中は並べ替えできません(行の対応がずれるため)'
+                          : `${column.label}で並べ替え`
+                      }
                       onClick={() => toggleSort(column)}
                     >
                       {column.label}
@@ -667,6 +732,45 @@ export function PersonTableView({
                     column.label
                   )}
                 </th>
+              ))}
+            </tr>
+            {/* 列ごとの絞り込み行(design.md D8)。columnheaderを二重に持たせないよう
+                td で組む(thead 内の td はHTML5で妥当) */}
+            <tr className="person-table-filter-row">
+              {columns.map((column) => (
+                <td key={column.id} data-column-id={column.id}>
+                  {column.filterKind === 'select' ? (
+                    <select
+                      aria-label={`${column.label}で絞り込み`}
+                      value={columnFilters[column.id] ?? ''}
+                      onChange={(e) =>
+                        setColumnFilters((prev) => ({
+                          ...prev,
+                          [column.id]: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">すべて</option>
+                      {column.filterOptions?.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="search"
+                      aria-label={`${column.label}で絞り込み`}
+                      value={columnFilters[column.id] ?? ''}
+                      onChange={(e) =>
+                        setColumnFilters((prev) => ({
+                          ...prev,
+                          [column.id]: e.target.value,
+                        }))
+                      }
+                    />
+                  )}
+                </td>
               ))}
             </tr>
           </thead>
