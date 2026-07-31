@@ -42,14 +42,17 @@
 
 ### D2: テーブルはライブラリを導入せず自前実装する(セマンティックな `<table>` + 自前の選択・クリップボード層)
 
-| 候補 | 不採用の理由 |
+| 候補 | 評価 |
 |---|---|
-| AG Grid Community | 矩形選択・クリップバードは Enterprise 限定(有償)。核心機能が使えない |
-| Handsontable | 商用ライセンスが必要(freemium 製品に組み込めない) |
-| Glide Data Grid | Canvas 描画のため、既存のデザイントークン・a11y(DOM ベースの SR 対応)・縦書き等の統合コストが高い |
-| TanStack Table(headless) | MIT で CSP 制約も満たすが、得られるのは列モデルとソート程度。核心(矩形選択・TSV・和暦解釈・undo バッチ)はどのみち自前で、固定10列の表に依存1つ分の価値がない |
+| AG Grid Community | 不採用。矩形選択・クリップボードは Enterprise 限定(有償)。核心機能が使えない |
+| Handsontable | 不採用。商用ライセンスが必要(freemium 製品に組み込めない) |
+| Glide Data Grid | 不採用。Canvas 描画のため、既存のデザイントークン・a11y(DOM ベースの SR 対応)・縦書き等の統合コストが高い |
+| TanStack Table(headless) | 不採用。MIT で CSP 制約も満たすが、得られるのは列モデルとソート程度。核心(矩形選択・TSV・和暦解釈・undo バッチ)はどのみち自前で、固定10列の表に依存1つ分の価値がない |
+| **Tabulator(v6, MIT)** | **次点=正式なプラン B**。`selectableRange`+`clipboardPasteParser/Action:"range"` で矩形選択・範囲ペーストを公式装備し、`clipboardPasteAction` のカスタム関数で自前コマンド(`bulkUpsertPersons`)へ横取りできることを確認済み。仮想描画内蔵(D7 も解消)。一方で ①内部に行データを持つため store 正本との**二重モデル調停**(編集面は読み取り専用描画より同期が複雑)、②内蔵エディタの **IME 挙動が未検証**(壊れていればカスタムエディタで置換=結局自前)、③div ベースの独自 ARIA・和紙テーマへの全面上書き・内蔵 undo の無効化、④JS 約100KB gzip(遅延チャンク化で初期ロード影響は回避可能)のコストが乗る |
 
-本アプリの必要機能の核はどのライブラリを選んでも自前実装になる。残り(ソート・絞り込み・列定義)は小さく、依存を増やさない方針(family-chart/idb/zod/zustand のみ)とデザイン・a11y の完全な統合を優先する。
+自前と Tabulator は総工数で大差なく、**リスクの置き場所**が違う(自前=矩形選択の作り込み(有界・テスト可能)/Tabulator=統合で発見されるリスク(IME・a11y・モデル同期))。本製品の差別化部分はどちらでも自前であり、family-chart で「ライブラリがモデルを握る摩擦」を経験済み(自前レイアウタ新設の経緯)であることから、v1 は自前を選ぶ。デザイン・a11y の完全な統合と依存最小の方針(family-chart/idb/zod/zustand のみ)を優先する。
+
+**プラン B 条項**: 実装中に矩形選択・キーボードナビの工数が見積もりを大きく超えた場合、または行数の増加で仮想化が必要になった段階では、Tabulator への乗り換えを第一候補として再評価する。その際の統合点は「カスタム paste action で `bulkUpsertPersons` へ接続」「日付・性別はカスタムエディタ(IME ガード込み)」「内蔵 history 無効化+外部 undo」「表ビューを遅延チャンク化」。列定義(D2 後段)とセル解釈を Tabulator 非依存の純関数として切り出しておくことで、乗り換え時も解釈層・テストを再利用できる構造にする。
 
 - マークアップは `role="grid"` パターン(`<table>` + grid/row/gridcell/columnheader、`aria-selected`、roving tabindex)。
 - 列定義は「id・見出し・Person からの導出・セル文字列から `updatePerson` パッチへの解釈」を1箇所に持つ宣言的な配列とし、列追加が1エントリで済む形にする。
