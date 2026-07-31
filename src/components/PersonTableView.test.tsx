@@ -50,11 +50,12 @@ function seedDocument(): { taroId: string; hanakoId: string } {
   return { taroId: taro.personId, hanakoId: hanako.personId }
 }
 
-/** 行(tr)の並びを氏名で取り出す。ヘッダー行は除く */
+/** 行(tr)の並びを氏名で取り出す。ヘッダー行と(編集モードの)ゴースト行は除く */
 function rowNames(): string[] {
   return screen
     .getAllByRole('row')
     .slice(1)
+    .filter((row) => !row.hasAttribute('data-ghost-row'))
     .map((row) => within(row).getAllByRole('gridcell')[0].textContent ?? '')
 }
 
@@ -413,5 +414,243 @@ describe('PersonTableView: grid構造(spec/a11y)', () => {
       .getAllByRole('gridcell')
       .filter((cell) => cell.getAttribute('tabindex') === '0')
     expect(focusable).toHaveLength(1)
+  })
+})
+
+/** clipboardDataを備えたpaste/copyイベントを合成する(jsdomはClipboardEventを実装しない) */
+function firePaste(target: Element, text: string) {
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', {
+    value: { getData: () => text },
+  })
+  fireEvent(target, event)
+}
+
+function fireCopy(target: Element): string {
+  let written = ''
+  const event = new Event('copy', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', {
+    value: {
+      setData: (_type: string, value: string) => {
+        written = value
+      },
+    },
+  })
+  fireEvent(target, event)
+  return written
+}
+
+describe('PersonTableView: 矩形選択とコピー(spec「矩形選択とコピー」)', () => {
+  beforeEach(() => {
+    useDisplaySettingsStore.getState().setCalendarMode('gregorian')
+    seedDocument()
+  })
+
+  it('Shift+クリックで矩形選択され、aria-selectedが同期する', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, '姓'))
+    fireEvent.mouseDown(cellOf(1, '名'), { shiftKey: true })
+
+    // 2行×2列(姓・名)が選択される
+    for (const [row, col] of [
+      [0, '姓'],
+      [0, '名'],
+      [1, '姓'],
+      [1, '名'],
+    ] as const) {
+      expect(cellOf(row, col)).toHaveAttribute('aria-selected', 'true')
+    }
+    expect(cellOf(0, '性別')).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('選択範囲がTSVとしてコピーされる', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, '姓'))
+    fireEvent.mouseDown(cellOf(1, '名'), { shiftKey: true })
+    const tsv = fireCopy(screen.getByRole('grid'))
+
+    expect(tsv).toBe('山田\t太郎\r\n佐藤\t花子')
+  })
+
+  it('改行を含むメモは引用符で1セルとしてコピーされる', () => {
+    useTreeStore.getState().replace(
+      addPerson(createTreeDocument(), {
+        name: { surname: '田中' },
+        note: '1行目\n2行目',
+      }).doc,
+    )
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, 'メモ'))
+    expect(fireCopy(screen.getByRole('grid'))).toBe('"1行目\n2行目"')
+  })
+})
+
+describe('PersonTableView: ペースト(spec「ペースト」)', () => {
+  beforeEach(() => {
+    useDisplaySettingsStore.getState().setCalendarMode('gregorian')
+    seedDocument()
+  })
+
+  it('表計算ソフトからの2行×2列が一括で反映される', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, '姓'))
+    firePaste(screen.getByRole('grid'), '渡辺\t一郎\r\n鈴木\t二郎')
+
+    const persons = Object.values(useTreeStore.getState().document.persons)
+    expect(
+      persons.map((p) => `${p.name.surname}${p.name.given}`).sort(),
+    ).toEqual(['渡辺一郎', '鈴木二郎'].sort())
+  })
+
+  it('貼り付け全体が1回のundoで戻る', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, '姓'))
+    firePaste(screen.getByRole('grid'), '渡辺\t一郎\r\n鈴木\t二郎')
+
+    act(() => {
+      useTreeStore.getState().undo()
+    })
+    const persons = Object.values(useTreeStore.getState().document.persons)
+    expect(persons.some((p) => p.name.surname === '山田')).toBe(true)
+    expect(persons.some((p) => p.name.surname === '佐藤')).toBe(true)
+  })
+
+  it('不正な値が混在しても有効なセルは適用され、取り込めなかったセルが明示される', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    // 生年月日の列へ2行貼る(2行目が解釈できない日付)
+    fireEvent.mouseDown(cellOf(0, '生年月日'))
+    firePaste(screen.getByRole('grid'), '1990-01-01\r\n昭和99年13月40日')
+
+    // 有効な1行目は適用され、2行目は元の値のまま
+    const persons = Object.values(useTreeStore.getState().document.persons)
+    const yamada = persons.find((p) => p.name.surname === '山田')
+    const sato = persons.find((p) => p.name.surname === '佐藤')
+    expect(yamada?.birth?.date?.date).toEqual({ year: 1990, month: 1, day: 1 })
+    expect(sato?.birth?.date?.date).toEqual({ year: 1970, month: 1, day: 2 })
+    // 取り込めなかったセルの要約が表示される
+    expect(screen.getByRole('status').textContent).toMatch(
+      /取り込めませんでした/,
+    )
+    expect(screen.getByRole('status').textContent).toMatch(/元に戻す/)
+  })
+
+  it('行数を超える貼り付けで超過分が新規人物として追加される', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    // 2行目(最終行)を起点に3行貼る → 更新1+追加2
+    fireEvent.mouseDown(cellOf(1, '姓'))
+    firePaste(screen.getByRole('grid'), '更新\r\n追加1\r\n追加2')
+
+    const persons = Object.values(useTreeStore.getState().document.persons)
+    expect(persons).toHaveLength(4)
+    expect(persons.map((p) => p.name.surname)).toContain('追加1')
+    expect(persons.map((p) => p.name.surname)).toContain('追加2')
+
+    // 追加分もまとめて1回のundoで戻る
+    act(() => {
+      useTreeStore.getState().undo()
+    })
+    expect(Object.keys(useTreeStore.getState().document.persons)).toHaveLength(
+      2,
+    )
+  })
+
+  it('絞り込み中は表示されている行にのみ適用される', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+    fireEvent.change(screen.getByRole('searchbox', { name: /絞り込み/ }), {
+      target: { value: 'やまだ' },
+    })
+    expect(rowNames()).toEqual(['山田'])
+
+    fireEvent.mouseDown(cellOf(0, '姓'))
+    firePaste(screen.getByRole('grid'), '書き換え')
+
+    const persons = Object.values(useTreeStore.getState().document.persons)
+    // 表示されていた山田だけが書き換わり、隠れていた佐藤は不変
+    expect(persons.some((p) => p.name.surname === '書き換え')).toBe(true)
+    expect(persons.some((p) => p.name.surname === '佐藤')).toBe(true)
+  })
+
+  it('読み取り専用の配偶者列へ貼ると、その列は取り込まれず理由が示される', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, '配偶者'))
+    firePaste(screen.getByRole('grid'), '誰か')
+
+    expect(screen.getByRole('status').textContent).toMatch(/読み取り専用/)
+  })
+})
+
+describe('PersonTableView: 範囲クリアと並べ替えの固定', () => {
+  beforeEach(() => {
+    seedDocument()
+  })
+
+  it('Deleteで選択範囲がクリアされ、1回のundoで戻る', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    enterEditMode()
+
+    fireEvent.mouseDown(cellOf(0, '姓'))
+    fireEvent.mouseDown(cellOf(1, '名'), { shiftKey: true })
+    fireEvent.keyDown(screen.getByRole('grid'), { key: 'Delete' })
+
+    const persons = Object.values(useTreeStore.getState().document.persons)
+    expect(persons.every((p) => !p.name.surname && !p.name.given)).toBe(true)
+
+    act(() => {
+      useTreeStore.getState().undo()
+    })
+    expect(
+      Object.values(useTreeStore.getState().document.persons).some(
+        (p) => p.name.surname === '山田',
+      ),
+    ).toBe(true)
+  })
+
+  it('編集モード中は列見出しの並べ替えボタンが出ない(行順の固定)', () => {
+    render(
+      <PersonTableView selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    expect(screen.getByRole('button', { name: /生年月日/ })).toBeInTheDocument()
+
+    enterEditMode()
+    expect(
+      screen.queryByRole('button', { name: /生年月日/ }),
+    ).not.toBeInTheDocument()
   })
 })
