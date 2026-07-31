@@ -306,3 +306,45 @@ describe('図 / 表のビュー切替(spec person-table-editor「表形式ビュ
     ).not.toBeInTheDocument()
   })
 })
+
+describe('表の編集が自動保存に乗る(spec person-table-editor「既存の編集経路との等価性」)', () => {
+  it('セル編集の確定で保存済みになり、リロード相当の再マウントで復元される', async () => {
+    const doc = createTreeDocument()
+    doc.persons['a'] = {
+      id: 'a',
+      name: { surname: '山田', given: '太郎' },
+      gender: 'male',
+    }
+    useTreeStore.getState().replace(doc)
+    const { unmount } = render(<App />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '表' })).toBeInTheDocument()
+    })
+
+    // 表の編集モードで姓を書き換える
+    fireEvent.click(screen.getByRole('button', { name: '表' }))
+    fireEvent.click(screen.getByRole('button', { name: '編集' }))
+    fireEvent.doubleClick(screen.getByRole('gridcell', { name: '山田' }))
+    const input = screen.getByRole('textbox', { name: '姓' })
+    fireEvent.change(input, { target: { value: '渡辺' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    // 自動保存(デバウンス)の完了がヘッダーに現れる
+    await waitFor(() => {
+      expect(screen.getByText(/保存済み/)).toBeInTheDocument()
+    })
+
+    // リロード相当: ストアを空にしてから再マウントし、IndexedDBから復元されることを見る
+    unmount()
+    useTreeStore.getState().replace(createTreeDocument())
+    render(<App />)
+
+    await waitFor(() => {
+      expect(
+        Object.values(useTreeStore.getState().document.persons).some(
+          (p) => p.name.surname === '渡辺',
+        ),
+      ).toBe(true)
+    })
+  })
+})
