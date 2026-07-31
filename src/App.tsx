@@ -3,6 +3,7 @@ import './App.css'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { EmptyStateGuide } from './components/EmptyStateGuide'
 import { PersonPanel } from './components/PersonPanel'
+import { PersonTableView } from './components/PersonTableView'
 import { SettingsMenu } from './components/SettingsMenu'
 import {
   usePersistedTree,
@@ -66,6 +67,14 @@ function App() {
   >(undefined)
   const editFormRef = useRef<HTMLFormElement | null>(null)
 
+  // 図 / 表のビュー切替(spec person-table-editor「表形式ビューと図の切り替え」、
+  // design.md D1)。キャンバス左下の表示モード3種は「図の描き方」の切替であり、
+  // 表は図ではないため別の切替として持つ。URLには載せない(リロードで図に戻る)
+  const [view, setView] = useState<'chart' | 'table'>('chart')
+  // 表へ移る操作もパネルの未確定変更の離脱確認を通す。確認の移動先は「選択」だが、
+  // 表へ切り替えたい意図を保持しておき、確認の解決後に反映する
+  const [pendingView, setPendingView] = useState<'chart' | 'table' | null>(null)
+
   function requestSelectionChange(next: string | null) {
     if (isDirty) {
       setPendingSelection(next)
@@ -74,8 +83,25 @@ function App() {
     setSelectedPersonId(next)
   }
 
+  function requestViewChange(next: 'chart' | 'table') {
+    if (next === view) return
+    if (isDirty) {
+      // 未確定の変更があるうちは切り替えない(離脱確認の結果を待つ)
+      setPendingView(next)
+      setPendingSelection(selectedPersonId)
+      return
+    }
+    setView(next)
+  }
+
   function cancelPendingSelection() {
     setPendingSelection(undefined)
+    setPendingView(null)
+  }
+
+  function applyPendingView() {
+    if (pendingView) setView(pendingView)
+    setPendingView(null)
   }
 
   function discardAndMove() {
@@ -83,6 +109,7 @@ function App() {
     setIsDirty(false)
     setSelectedPersonId(pendingSelection)
     setPendingSelection(undefined)
+    applyPendingView()
   }
 
   function saveAndMove() {
@@ -91,12 +118,35 @@ function App() {
     setIsDirty(false)
     setSelectedPersonId(pendingSelection)
     setPendingSelection(undefined)
+    applyPendingView()
   }
 
   return (
     <div className="app-frame">
       <header className="app-header">
         <h1 className="app-title">家系図帖</h1>
+        {ready && !empty ? (
+          <div
+            className="app-view-toggle"
+            role="group"
+            aria-label="表示の切り替え"
+          >
+            <button
+              type="button"
+              aria-pressed={view === 'chart'}
+              onClick={() => requestViewChange('chart')}
+            >
+              図
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'table'}
+              onClick={() => requestViewChange('table')}
+            >
+              表
+            </button>
+          </div>
+        ) : null}
         <div className="app-header-right">
           {saveError ? (
             <div className="app-save-error" role="alert">
@@ -119,7 +169,10 @@ function App() {
           ブラウザの判断で保存データが削除される場合があります。定期的なエクスポートをおすすめします
         </p>
       ) : null}
-      <main className="app-canvas" aria-label="家系図キャンバス">
+      <main
+        className="app-canvas"
+        aria-label={view === 'table' ? '人物一覧' : '家系図キャンバス'}
+      >
         {editingHalted ? (
           <div className="app-blocked-message" role="alert">
             <p>{saveStatusText(status)}</p>
@@ -140,8 +193,14 @@ function App() {
           </p>
         ) : null}
         {empty ? <EmptyStateGuide onAdded={setSelectedPersonId} /> : null}
-        {ready && !empty ? (
+        {ready && !empty && view === 'chart' ? (
           <FamilyTreeCanvas
+            selectedPersonId={selectedPersonId}
+            onSelectPerson={requestSelectionChange}
+          />
+        ) : null}
+        {ready && !empty && view === 'table' ? (
+          <PersonTableView
             selectedPersonId={selectedPersonId}
             onSelectPerson={requestSelectionChange}
           />
@@ -182,12 +241,14 @@ function App() {
           </p>
         </ConfirmDialog>
       ) : null}
+      {/* 表モードでは属性編集を表自身が担うため、右パネルは出さない(design.md D1)。
+          関係の編集をしたくなったら図へ戻る(選択は共有されている) */}
       <aside
         className="app-panel"
         aria-label="編集パネル"
-        hidden={!selectedPersonId || !ready}
+        hidden={!selectedPersonId || !ready || view === 'table'}
       >
-        {selectedPersonId && ready ? (
+        {selectedPersonId && ready && view === 'chart' ? (
           <PersonPanel
             personId={selectedPersonId}
             onDeleted={() => {
