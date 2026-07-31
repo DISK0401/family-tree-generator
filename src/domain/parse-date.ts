@@ -1,6 +1,6 @@
-import { isValidCalendarDate } from './calendar-date'
+import { isValidDateForYear } from './calendar-date'
 import type { CalendarDate, DateQualifier, FuzzyDate } from './types'
-import { ERA_TABLE, warekiToGregorian, type WarekiResult } from './wareki'
+import { warekiToGregorian, type WarekiResult } from './wareki'
 
 /**
  * 日付文字列 → FuzzyDate のパース。
@@ -35,10 +35,12 @@ function stripQualifier(input: string): QualifierMatch {
   return { qualifier: 'exact', core: s }
 }
 
-const eraNames = ERA_TABLE.map((e) => e.name).join('|')
-const WAREKI_RE = new RegExp(
-  `^(${eraNames})(元|\\d{1,2})年(?:(\\d{1,2})月(?:(\\d{1,2})日)?)?$`,
-)
+// 元号は「漢字列+年」の形で受け、実在するかどうかは warekiToGregorian に委ねる。
+// ERA_TABLE の元号名を列挙する方式だと、未収録の元号(南朝の「天授」など)が
+// 「日付を読み取れません」という一般エラーになってしまい、「元号「天授」には
+// 対応していません」という具体的な理由を返せない(spec: 南朝の元号は非対応)
+const WAREKI_RE =
+  /^([一-鿿々]+?)(元|\d{1,2})年(?:(\d{1,2})月(?:(\d{1,2})日)?)?$/
 // 西暦年は4桁のみ受け付ける。3桁年(196年 等)は史実として存在し得るが、家系図の入力では
 // 「1964」の打ち損じである可能性のほうが圧倒的に高く、誤入力の検出を優先して拒否する
 // (3桁年を扱いたい史料は原文のまま保持する運用に頼る)
@@ -74,7 +76,8 @@ function parseCore(core: string): WarekiResult<CalendarDate> {
       ...(m !== undefined && { month: Number(m) }),
       ...(d !== undefined && { day: Number(d) }),
     }
-    if (!isValidCalendarDate(date.year, date.month, date.day)) {
+    // 明治6年(1873年)より前は旧暦の日付として暦法非依存の緩い検査になる(calendar-date.ts参照)
+    if (!isValidDateForYear(date.year, date.month, date.day)) {
       return { ok: false, message: `存在しない日付です(${s})` }
     }
     return { ok: true, value: date }
