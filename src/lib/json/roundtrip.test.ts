@@ -59,6 +59,36 @@ describe('JSONラウンドトリップの完全性', () => {
   })
 })
 
+describe('江戸期の和暦日付のJSONラウンドトリップ', () => {
+  it('旧暦にしかない日(安政3年2月30日)を含む江戸期日付が失われずに復元される', () => {
+    let document = createTreeDocument()
+
+    const birth = parseDateInput('安政3年2月30日')
+    expect(birth.ok).toBe(true)
+    const death = parseDateInput('文久2年5月10日')
+    expect(death.ok).toBe(true)
+
+    const person = addPerson(document, {
+      name: { surname: '渡邊', given: '榮' },
+      birth: birth.ok ? { type: 'birth', date: birth.value } : undefined,
+      death: death.ok ? { type: 'death', date: death.value } : undefined,
+    })
+    document = person.doc
+
+    const text = exportFamilyTreeJsonText(document)
+    const result = importFamilyTreeJson(text)
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.document).toEqual(document)
+    expect(result.document.persons[person.personId].birth?.date?.date).toEqual({
+      year: 1856,
+      month: 2,
+      day: 30,
+    })
+  })
+})
+
 describe('関係を持たない人物のJSONラウンドトリップ', () => {
   it('どのFamilyにも属さない人物が失われずに復元される', () => {
     let document = createTreeDocument()
