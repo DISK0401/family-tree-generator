@@ -650,7 +650,7 @@ export function FamilyTreeCanvas({
           >
             <button
               type="button"
-              className="tree-show-all-toggle"
+              className="segmented-item tree-show-all-toggle"
               aria-pressed={mode === 'collapsed'}
               onClick={() => setMode('collapsed')}
             >
@@ -658,7 +658,7 @@ export function FamilyTreeCanvas({
             </button>
             <button
               type="button"
-              className="tree-show-all-toggle"
+              className="segmented-item tree-show-all-toggle"
               aria-pressed={mode === 'full'}
               onClick={() => setMode('full')}
             >
@@ -666,7 +666,7 @@ export function FamilyTreeCanvas({
             </button>
             <button
               type="button"
-              className="tree-show-all-toggle"
+              className="segmented-item tree-show-all-toggle"
               aria-pressed={mode === 'connected'}
               onClick={() => setMode('connected')}
             >

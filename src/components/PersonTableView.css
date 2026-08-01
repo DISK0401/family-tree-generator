@@ -99,6 +99,9 @@
 .person-table-sort-button {
   color: inherit;
   padding: 0;
+  /* 面も枠も持たないため、基本形の角丸は要らない
+     (:focus-visible の輪郭だけが丸くなってしまう) */
+  border-radius: 0;
 }
 
 .person-table-sort-button:hover:not(:disabled) {

@@ -133,6 +133,7 @@ function App() {
           >
             <button
               type="button"
+              className="segmented-item"
               aria-pressed={view === 'chart'}
               onClick={() => requestViewChange('chart')}
             >
@@ -140,6 +141,7 @@ function App() {
             </button>
             <button
               type="button"
+              className="segmented-item"
               aria-pressed={view === 'table'}
               onClick={() => requestViewChange('table')}
             >

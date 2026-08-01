@@ -167,6 +167,8 @@
 .tree-show-all-toggle {
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
+  /* 基本形の `font: inherit` が行送りを1.6にするため、UA既定の詰まった高さを保つ */
+  line-height: normal;
   text-align: left;
   /* 文言が長いので、文字の途中で折り返さないようにする
      (過去にボタンの文字折り返しの不具合を出しているため必ず付ける) */

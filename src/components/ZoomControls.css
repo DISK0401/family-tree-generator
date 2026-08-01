@@ -11,6 +11,8 @@
   bottom: var(--space-3);
 }
 
+/* 正方形のアイコンボタン。基本形の `font: inherit`(行送り1.6)ではなく
+   字面を中央に置くための line-height: 1 を保つ */
 .zoom-controls button {
   width: 36px;
   height: 36px;

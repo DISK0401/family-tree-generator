@@ -13,7 +13,7 @@
 - [x] 1.11 `App.tsx` / `App.css` と `LandingPage` 系へ基本形クラスを付与し、各 CSS を差分のみへ削減する(完了条件: ヘッダの図/表切替とランディングの見た目が変更前と一致する)
 - [x] 1.12 `tokens.css` へ `--radius-pill: 999px` を追加し、`border-radius: 999px` のハードコード 9 箇所をトークン参照へ置き換える(完了条件: `999px` の直接指定が CSS に残っていない)
 - [x] 1.13 `.tree-card` 系のスタイルを `FamilyTreeCanvas.css` から `src/rendering/person-card.css` へ切り出し、`FamilyTreeCanvas.tsx` と `PedigreeCanvas.tsx` の両方から明示的に import する(完了条件: `FamilyTreeCanvas.css` の import を外した状態でも `PedigreeCanvas` のカードがスタイルを失わないことを確認し、既存の `card-consistency` テストが変更なしで通る)
-- [ ] 1.14 ライト/ダーク両テーマで主要画面(空状態・編集パネル・表形式ビュー・3 表示モード・設定メニュー・確認ダイアログ・ランディング)の視覚回帰がないことを確認する(完了条件: 変更前後のスクリーンショットで差異がない)
+- [x] 1.14 ライト/ダーク両テーマで主要画面(空状態・編集パネル・表形式ビュー・3 表示モード・設定メニュー・確認ダイアログ・ランディング)の視覚回帰がないことを確認する(完了条件: 変更前後のスクリーンショットで差異がない)
 - [x] 1.15 第1段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` を各 exit code まで確認する(完了条件: すべて exit code 0)
 
 ## 2. 第2段: 層への移動(見た目・振る舞いをゼロ変更。触るのはファイル配置と import パスのみ)

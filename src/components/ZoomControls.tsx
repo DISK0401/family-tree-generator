@@ -23,13 +23,28 @@ export function ZoomControls({
       role="group"
       aria-label="表示倍率"
     >
-      <button type="button" onClick={onZoomIn} aria-label="拡大">
+      <button
+        type="button"
+        className="segmented-item"
+        onClick={onZoomIn}
+        aria-label="拡大"
+      >
         +
       </button>
-      <button type="button" onClick={onZoomOut} aria-label="縮小">
+      <button
+        type="button"
+        className="segmented-item"
+        onClick={onZoomOut}
+        aria-label="縮小"
+      >
         −
       </button>
-      <button type="button" onClick={onFit} aria-label="画面に合わせる">
+      <button
+        type="button"
+        className="segmented-item"
+        onClick={onFit}
+        aria-label="画面に合わせる"
+      >
         ⊡
       </button>
     </div>

@@ -268,7 +268,12 @@
   overflow: hidden;
 }
 
-.segmented > button {
+/*
+ * 子は必ず単一クラスで定義する。`.segmented > button` のような子孫セレクタにすると
+ * 詳細度(0,1,1)がコンポーネント側の1クラスのルール(0,1,0)を上回り、各所の
+ * font-size / line-height の上書きが効かなくなる(実測で検出した回帰)。
+ */
+.segmented-item {
   font: inherit;
   border: none;
   background: transparent;
@@ -276,43 +281,44 @@
   cursor: pointer;
 }
 
-/* 現在の選択は藍で示す。朱は「選択中の人物」の一意な印なので切替には使わない */
-.segmented > button[aria-pressed='true'] {
-  background: var(--ai-wash);
-  color: var(--ai-strong);
-  font-weight: 600;
-}
-
-/* 枠でくるむ横並び(ヘッダの図/表、表の閲覧/編集) */
+/* 枠でくるむ横並び(ヘッダの図/表、表の閲覧/編集)。
+   並びの向きで決まる区切りと面は各所で上書きしない性質なので子孫セレクタでよい */
 .segmented--framed {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
 }
 
-.segmented--framed > button {
+.segmented--framed > .segmented-item {
   font-size: var(--text-sm);
   padding: var(--space-1) var(--space-3);
   background: var(--paper);
 }
 
-.segmented--framed > button + button {
+.segmented--framed > .segmented-item + .segmented-item {
   border-left: 1px solid var(--line-strong);
 }
 
-/* 縦積み(図の上の操作面)。外枠は .surface--overlay と併用する */
+/* 縦積み(図の上の操作面)。外枠は .surface--overlay と併用する。
+   文字サイズと行送りは用途ごとに異なる(表示モード=小さめ/ズーム=正方形)ため、
+   ここでは指定せず各所に委ねる */
 .segmented--stacked {
   flex-direction: column;
 }
 
-.segmented--stacked > button {
+.segmented--stacked > .segmented-item {
   border-bottom: 1px solid var(--line);
   border-radius: 0;
-  /* 縦積みの操作面は UA既定の行送りを前提に高さが組まれている(注意1)。
-     `.segmented > button` の `font: inherit` は詳細度が同じで先に来るため、
-     ここで打ち消す(.btn--tight は詳細度が足りず勝てない) */
-  line-height: normal;
 }
 
-.segmented--stacked > button:last-child {
+.segmented--stacked > .segmented-item:last-child {
   border-bottom: none;
+}
+
+/* 現在の選択は藍で示す。朱は「選択中の人物」の一意な印なので切替には使わない。
+   並びごとの面指定(.segmented--framed > .segmented-item)と詳細度が同じ(0,2,0)なので、
+   選択状態が必ず勝つようセグメント定義の最後に置く */
+.segmented-item[aria-pressed='true'] {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  font-weight: 600;
 }

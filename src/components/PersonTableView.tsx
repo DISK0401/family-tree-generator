@@ -655,6 +655,7 @@ export function PersonTableView({
         >
           <button
             type="button"
+            className="segmented-item"
             aria-pressed={mode === 'browse'}
             onClick={exitEditMode}
           >
@@ -662,6 +663,7 @@ export function PersonTableView({
           </button>
           <button
             type="button"
+            className="segmented-item"
             aria-pressed={mode === 'edit'}
             onClick={enterEditMode}
           >
