@@ -30,7 +30,7 @@
 - [x] 2.10 空になった `src/components/` `src/features/` `src/rendering/` `src/settings/` を削除する(完了条件: 4 ディレクトリが存在せず、`npm run typecheck` が通る)
 - [x] 2.11 クラス名依存の `querySelector`(実測 19 箇所)が移動後も意図どおり動作することを個別に確認する(完了条件: 19 箇所すべてを目視で確認し、該当テストが通る)
 - [x] 2.12 ビルド後のチャンク構成を確認し、ランディングの初回表示チャンクに family-chart / D3 が含まれないことを検証する(完了条件: `npm run build` の出力とチャンク内容から、ランディング側に family-chart が含まれないことを確認する)
-- [ ] 2.13 第2段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
+- [x] 2.13 第2段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
 
 ## 3. 第3段: `atoms/` の適用(触るのは `*.tsx` の中身)
 
@@ -56,7 +56,7 @@
 
 ## 5. 最終検証と archive
 
-- [ ] 5.1 E2E を全件実行し、外部送信ゼロを含めて回帰がないことを確認する(完了条件: `npm run test:e2e` が exit code 0 で全件パスし、自オリジン以外へのリクエストが 0 件)
-- [ ] 5.2 主要画面のスクリーンショットをライト/ダーク両テーマで取得し、変更前(`develop`)との比較で視覚回帰がないことを確認する(完了条件: 空状態・編集パネル・表形式ビュー・3 表示モード・設定メニュー・確認ダイアログ・ランディングの各スクリーンショットに差異がなく、比較結果を design.md へ追記する)
-- [ ] 5.3 `openspec` の spec を同期し、change を archive する(完了条件: `openspec/specs/ui-component-layers/spec.md` が作成され、`openspec validate` が通る)
+- [x] 5.1 E2E を全件実行し、外部送信ゼロを含めて回帰がないことを確認する(完了条件: `npm run test:e2e` が exit code 0 で全件パスし、自オリジン以外へのリクエストが 0 件)
+- [x] 5.2 主要画面のスクリーンショットをライト/ダーク両テーマで取得し、変更前(`develop`)との比較で視覚回帰がないことを確認する(完了条件: 空状態・編集パネル・表形式ビュー・3 表示モード・設定メニュー・確認ダイアログ・ランディングの各スクリーンショットに差異がなく、比較結果を design.md へ追記する)
+- [x] 5.3 `openspec` の spec を同期し、change を archive する(完了条件: `openspec/specs/ui-component-layers/spec.md` が作成され、`openspec validate` が通る)
 - [ ] 5.4 PR を作成する(完了条件: 必須チェック(ジョブID `quality`)が通る)
