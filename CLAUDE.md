@@ -21,10 +21,12 @@ Node は `.nvmrc`(22)を使う。PR の必須チェック名はジョブID `qual
 
 ## OpenSpec change のブランチ運用
 
-1つの OpenSpec change(`openspec/changes/<name>/`)に関する作業は、雛形作成から実装・dev/本番のE2E検証・最終的な archive まで **同一のブランチ1本** で行う。
+1つの OpenSpec change(`openspec/changes/<name>/`)に関する作業は、雛形作成から実装・ローカルでの検証・最終的な archive まで **同一のブランチ1本** で行う。
+
+**archive のゲートはローカル検証**: `npm run test:e2e` の全件パスと、必要な画面のスクリーンショットによる確認が通れば archive してよい。dev/本番のデプロイ環境での確認を archive の前提条件にしない。デプロイ環境での確認が必要な change では、ユーザーがそのつど指示する(その場合は `develop` へのマージ後にデプロイ環境で確認する)。
 
 - 例: `claude/<change-name>` のようなブランチを最初に作成し、その change の作業が完全に終わる(= archive の PR が `develop` にマージされる)まで、同じブランチ名を使い続ける。
-- `develop` へのマージ後に追加の commit が必要になった場合(dev 環境検証結果の記録、本番マージ後の検証記録、archive など)は、**新しいブランチ名を作らず**、同じブランチを最新の `develop` へ reset してから作業を続け、同じブランチ名で PR を出し直す。
+- `develop` へのマージ後に追加の commit が必要になった場合(指示を受けたデプロイ環境での検証結果の記録、archive など)は、**新しいブランチ名を作らず**、同じブランチを最新の `develop` へ reset してから作業を続け、同じブランチ名で PR を出し直す。
   ```bash
   git fetch origin develop
   git checkout -B claude/<change-name> origin/develop
@@ -32,5 +34,5 @@ Node は `.nvmrc`(22)を使う。PR の必須チェック名はジョブID `qual
   git push -u origin claude/<change-name>
   ```
   (force-with-lease が必要な場合はユーザーに確認してから実行する)
-- 途中で `develop` への実マージが必要になる理由(dev 環境への実デプロイを伴う検証など)がある場合は、そのつどマージしてよいが、ブランチ自体は使い回す。
+- 途中で `develop` への実マージが必要になる理由(指示を受けた dev 環境への実デプロイを伴う検証など)がある場合は、そのつどマージしてよいが、ブランチ自体は使い回す。
 - change の archive PR が `develop` にマージされたら、そのブランチは役目を終えたものとして **削除する**(GitHub 上のリモートブランチを削除)。
