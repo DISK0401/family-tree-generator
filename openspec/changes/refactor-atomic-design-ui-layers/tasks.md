@@ -47,12 +47,12 @@
 
 ## 4. 第4段: 規律の機械検証で固定する
 
-- [ ] 4.1 ESLint に層間依存ルール(`no-restricted-imports`)を追加する: `atoms/` → `domain/` `store/` `persistence/` `lib/` 禁止、`molecules/` → `store/` `persistence/` 禁止、`atoms/` `molecules/` → 上位層禁止(完了条件: 各禁止パターンを一時的に仕込むと `npm run lint` が非ゼロ終了し、現行コードでは 0 件である)
-- [ ] 4.2 ESLint に機能間の直接依存禁止(`organisms/<機能A>/` → `organisms/<機能B>/`)を追加する(完了条件: 機能をまたぐ import を一時的に仕込むと `npm run lint` が非ゼロ終了し、現行コードでは 0 件である)
-- [ ] 4.3 `src/styles/primitives.test.ts` を実装する: `primitives.css` 以外の CSS が操作要素の基本形(`cursor: pointer` + `border-radius` + `padding` の同時指定)を定義していないことを `fs` で実ファイルから検証する(完了条件: 違反を一時的に仕込むとテストが失敗し、現行コードでは通る。除外ファイルはテスト内に明示列挙されている)
-- [ ] 4.4 README の「開発者向け情報 > アーキテクチャ」を 5 層構成へ更新し、層の判定基準と、`src/layout/`(座標計算)と `src/templates/`(UI の骨組み)の役割の違いを明記する(完了条件: 記載内容が実装と一致し、新しい部品の置き場が記載のみで判断できる)
-- [ ] 4.5 CLAUDE.md の「アーキテクチャの要点」を 5 層構成と層間依存規則に合わせて更新する(完了条件: 記載が README と矛盾せず、`src/components/` 等の消えたディレクトリへの言及が残っていない)
-- [ ] 4.6 第4段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
+- [x] 4.1 ESLint に層間依存ルール(`no-restricted-imports`)を追加する: `atoms/` → `domain/` `store/` `persistence/` `lib/` 禁止、`molecules/` → `store/` `persistence/` 禁止、`atoms/` `molecules/` → 上位層禁止(完了条件: 各禁止パターンを一時的に仕込むと `npm run lint` が非ゼロ終了し、現行コードでは 0 件である)
+- [x] 4.2 ESLint に機能間の直接依存禁止(`organisms/<機能A>/` → `organisms/<機能B>/`)を追加する(完了条件: 機能をまたぐ import を一時的に仕込むと `npm run lint` が非ゼロ終了し、現行コードでは 0 件である)
+- [x] 4.3 `src/styles/primitives.test.ts` を実装する: `primitives.css` 以外の CSS が操作要素の基本形(`cursor: pointer` + `border-radius` + `padding` の同時指定)を定義していないことを `fs` で実ファイルから検証する(完了条件: 違反を一時的に仕込むとテストが失敗し、現行コードでは通る。除外ファイルはテスト内に明示列挙されている)
+- [x] 4.4 README の「開発者向け情報 > アーキテクチャ」を 5 層構成へ更新し、層の判定基準と、`src/layout/`(座標計算)と `src/templates/`(UI の骨組み)の役割の違いを明記する(完了条件: 記載内容が実装と一致し、新しい部品の置き場が記載のみで判断できる)
+- [x] 4.5 CLAUDE.md の「アーキテクチャの要点」を 5 層構成と層間依存規則に合わせて更新する(完了条件: 記載が README と矛盾せず、`src/components/` 等の消えたディレクトリへの言及が残っていない)
+- [x] 4.6 第4段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
 
 ## 5. 最終検証と archive
 

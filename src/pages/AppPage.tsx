@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../molecules/ConfirmDialog'
 import { EmptyStateGuide } from '../organisms/onboarding/EmptyStateGuide'
 import { PersonPanel } from '../organisms/person-edit/PersonPanel'
 import { PersonTableView } from '../organisms/person-table/PersonTableView'
+import { ImportExportControl } from '../organisms/import-export/ImportExportControl'
 import { SettingsMenu } from '../organisms/settings/SettingsMenu'
 import {
   usePersistedTree,
@@ -155,7 +156,10 @@ function AppPage() {
       <p className="app-header-status" aria-live="polite">
         {saveStatusText(status)}
       </p>
-      <SettingsMenu onReset={resetAllData} importDisabled={editingHalted} />
+      <SettingsMenu
+        onReset={resetAllData}
+        importExport={<ImportExportControl importDisabled={editingHalted} />}
+      />
     </>
   )
 

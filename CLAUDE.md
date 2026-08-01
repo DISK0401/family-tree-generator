@@ -17,7 +17,20 @@ Node は `.nvmrc`(22)を使う。PR の必須チェック名はジョブID `qual
 - レイヤ構成と各ディレクトリの役割は README「開発者向け情報 > アーキテクチャ」を参照。設計判断の経緯は `openspec/changes/archive/*/design.md`。
 - 「無料版はデータを一切サーバーへ送信しない」が絶対制約(openspec/config.yaml)。外部リソース・解析タグ・CDN を追加しない。CSP(`worker/index.ts`)が `connect-src 'self'` を強制している。
 - ドメイン層(`src/domain/`)は純関数。コマンドは不変更新で、`src/store/tree-store.ts` の undo 履歴は「旧 document の参照」をそのまま積む — ドキュメントを in-place で変更するコードを書いてはならない。
-- ユーザー入力を HTML 文字列へ入れてよいのは `src/rendering/person-card.ts` のエスケープ済みヘルパ経由のみ。
+- ユーザー入力を HTML 文字列へ入れてよいのは `src/organisms/tree-canvas/person-card.ts` のエスケープ済みヘルパ経由のみ。
+
+### UI層(Atomic Design)の置き場
+
+`atoms/` → `molecules/` → `organisms/<機能>/` → `templates/` → `pages/` の5層。**層は見た目の複雑さではなく依存の向きで決まる**(ESLint の `no-restricted-imports` が強制する)。
+
+- `atoms/`: `domain/` を import しない。`styles/primitives.css` の基本形(`.btn` `.field` `.surface--*` `.segmented`)を使う薄いラッパ
+- `molecules/`: `domain/` の型は知ってよいが `store/` を購読しない。**機能をまたいで2箇所以上**から使われるものだけを置く
+- `organisms/<機能>/`: `store/` を購読してよい。UIとその機能専用の純関数・CSSを同居させる。**機能をまたぐ直接の参照は禁止**(共有したい部品は `molecules/` へ昇格)
+- 依存は必ず下向き。下位層から上位層を参照しない
+
+見た目の基本形は `src/styles/primitives.css` にのみ置く。コンポーネントのCSSは差分だけを持つ(`src/styles/primitives.test.ts` が散らばりを検出する)。トークンは `src/styles/tokens.css`。
+
+`src/layout/`(家系図の座標計算・純関数)と `src/templates/`(画面の骨組み・React)は別物。
 
 ## OpenSpec change のブランチ運用
 

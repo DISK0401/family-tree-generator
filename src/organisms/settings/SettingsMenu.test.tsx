@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeDocument } from '../../domain/helpers'
 import { useTreeStore } from '../../store/tree-store'
+import { ImportExportControl } from '../import-export/ImportExportControl'
 import { SettingsMenu } from './SettingsMenu'
 
 beforeEach(() => {
@@ -86,11 +87,14 @@ describe('SettingsMenu: ディスクロージャとしてのa11y(監査 中6)', 
 })
 
 describe('SettingsMenu: インポート無効化の伝播', () => {
-  it('importDisabledがImportExportControlへ渡り、無効化の説明が表示される', () => {
+  it('無効化されたインポート操作をスロットへ差し込むと、無効化の説明が表示される', () => {
+    // インポート/エクスポートは別の機能(organisms/import-export)に属するため、
+    // SettingsMenu は直接 import せずスロットで受ける(design.md D2)。
+    // 無効化の指定はページ側の責務になったので、ここでも同じ形で組み立てる
     render(
       <SettingsMenu
         onReset={vi.fn().mockResolvedValue(undefined)}
-        importDisabled
+        importExport={<ImportExportControl importDisabled />}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: '設定' }))

@@ -1,15 +1,23 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { DisplaySettingsControl } from '../settings/DisplaySettingsControl'
 import { DataResetControl } from './DataResetControl'
-import { ImportExportControl } from '../import-export/ImportExportControl'
 import './SettingsMenu.css'
 import { Button } from '../../atoms/Button'
 import { Surface } from '../../atoms/Surface'
 
 interface SettingsMenuProps {
   onReset: () => Promise<void>
-  /** blocked / unavailable / stale 中はインポートを無効化する(読み込んでも保存されないため) */
-  importDisabled?: boolean
+  /**
+   * インポート/エクスポートの操作。別の機能(organisms/import-export)に属するため、
+   * ここで直接 import せずページから差し込む(機能間の直接依存を作らない。design.md D2)
+   */
+  importExport?: ReactNode
 }
 
 /**
@@ -20,10 +28,7 @@ interface SettingsMenuProps {
  * 満たせないため、role="menu"/aria-haspopupは使わず「aria-expandedのみの
  * ディスクロージャ」として実装する。Escで閉じてトリガーへフォーカスを戻す。
  */
-export function SettingsMenu({
-  onReset,
-  importDisabled = false,
-}: SettingsMenuProps) {
+export function SettingsMenu({ onReset, importExport }: SettingsMenuProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -65,7 +70,7 @@ export function SettingsMenu({
       {open && (
         <Surface variant="floating" className="settings-menu-panel">
           <DisplaySettingsControl />
-          <ImportExportControl importDisabled={importDisabled} />
+          {importExport}
           <DataResetControl onReset={onReset} />
         </Surface>
       )}
