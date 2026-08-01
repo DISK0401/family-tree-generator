@@ -3,6 +3,8 @@ import { DisplaySettingsControl } from '../settings/DisplaySettingsControl'
 import { DataResetControl } from './DataResetControl'
 import { ImportExportControl } from '../import-export/ImportExportControl'
 import './SettingsMenu.css'
+import { Button } from '../../atoms/Button'
+import { Surface } from '../../atoms/Surface'
 
 interface SettingsMenuProps {
   onReset: () => Promise<void>
@@ -50,22 +52,22 @@ export function SettingsMenu({
 
   return (
     <div className="settings-menu" ref={rootRef} onKeyDown={handleKeyDown}>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        className="settings-menu-trigger"
         ref={triggerRef}
-        className="btn btn--ghost settings-menu-trigger"
         aria-expanded={open}
         aria-label="設定"
         onClick={() => setOpen((v) => !v)}
       >
         ⋯
-      </button>
+      </Button>
       {open && (
-        <div className="settings-menu-panel surface--floating">
+        <Surface variant="floating" className="settings-menu-panel">
           <DisplaySettingsControl />
           <ImportExportControl importDisabled={importDisabled} />
           <DataResetControl onReset={onReset} />
-        </div>
+        </Surface>
       )}
     </div>
   )

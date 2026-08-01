@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
+import { Button } from '../atoms/Button'
+import { Dialog } from '../atoms/Dialog'
 import './ConfirmDialog.css'
 
-/** 3ボタン形(App の離脱確認等)用の中間アクション。キャンセルと確認ボタンの間に置く */
+/** 3ボタン形(離脱確認等)用の中間アクション。キャンセルと確認ボタンの間に置く */
 export interface ConfirmDialogExtraAction {
   label: string
   onSelect: () => void
@@ -35,19 +37,13 @@ export interface ConfirmDialogProps {
 }
 
 /**
- * ネイティブ`<dialog>` + `showModal()`ベースの共通確認ダイアログ(監査 高3)。
+ * 確認ダイアログ。モーダルの機構(`showModal` / Esc / フォーカス復元)は
+ * `atoms/Dialog` が持ち、ここは「見出し + 本文 + キャンセル/中間/確認の3ボタン」
+ * という確認の型だけを与える。
  *
- * 従来の「固定オーバーレイ + role="dialog"のdiv」は、フォーカストラップ・Escキー・
- * 背景のinert化をどれも持たず、開いている間もTabで背景のUIへ抜けられた。
- * showModal()はこれらをブラウザ標準の挙動として備える(トップレイヤ表示のため
- * z-indexの管理も不要)。ネストして開いても合法にスタックする。
- *
- * 開閉は呼び出し側の条件レンダリングで表現する(open状態のprops同期は持たない)。
- * - マウント時に showModal() し、アンマウント時に close() + トリガーへフォーカスを戻す。
- *   実ブラウザはclose()で「showModal時にフォーカスを持っていた要素」へ戻すが、
- *   Reactのアンマウント(DOMごと除去)ではこの復元が走らない環境があるため明示的に戻す。
- * - Esc(cancelイベント)は既定のcloseをpreventDefault()で抑止し、onCancelへ委譲する
- *   (DOM側が勝手に閉じてReactの状態とねじれるのを防ぐ)。
+ * 初期フォーカスは安全側(キャンセル)を既定とし、`confirmAutoFocus` を立てたときは
+ * 確認ボタンへ移す。本文に `[data-autofocus]`(確認フレーズ入力等)がある場合は
+ * `Dialog` 側がそれを優先して拾う。
  */
 export function ConfirmDialog({
   title,
@@ -64,98 +60,52 @@ export function ConfirmDialog({
   alertdialog = false,
   className,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
   const titleId = useId()
 
-  // cancelイベントはマウント時に一度だけ張るネイティブリスナのため、最新のpropsをrefで参照する
-  const onCancelRef = useRef(onCancel)
-  const cancelDisabledRef = useRef(cancelDisabled)
-  useEffect(() => {
-    onCancelRef.current = onCancel
-    cancelDisabledRef.current = cancelDisabled
-  })
-
-  const confirmAutoFocusRef = useRef(confirmAutoFocus)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    // showModal前にフォーカスを持っていた要素 = 開いたトリガー。閉じたらここへ戻す
-    const opener =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
-    if (!dialog.open) dialog.showModal()
-    // 初期フォーカスの明示制御(実ブラウザ・jsdomの双方で決定的にする)。
-    // 優先順: 確認ボタン指定 > 本文中の[data-autofocus](確認フレーズ入力等) > キャンセル(安全側)
-    const target = confirmAutoFocusRef.current
-      ? confirmButtonRef.current
-      : (dialog.querySelector<HTMLElement>('[data-autofocus]') ??
-        cancelButtonRef.current)
-    target?.focus()
-
-    const handleCancel = (e: Event) => {
-      // DOM側のcloseは走らせず、閉じるかどうかは呼び出し元の状態(条件レンダリング)に委ねる
-      e.preventDefault()
-      if (!cancelDisabledRef.current) onCancelRef.current()
-    }
-    dialog.addEventListener('cancel', handleCancel)
-
-    return () => {
-      dialog.removeEventListener('cancel', handleCancel)
-      if (dialog.open) dialog.close()
-      if (opener?.isConnected) opener.focus()
-    }
-  }, [])
+  const initialFocusRef = confirmAutoFocus ? confirmButtonRef : cancelButtonRef
+  const surfaceClass = 'confirm-dialog surface--floating'
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={
-        className
-          ? `confirm-dialog surface--floating ${className}`
-          : 'confirm-dialog surface--floating'
-      }
-      role={alertdialog ? 'alertdialog' : undefined}
-      aria-labelledby={titleId}
+    <Dialog
+      alertdialog={alertdialog}
+      ariaLabelledBy={titleId}
+      onCancel={onCancel}
+      cancelDisabled={cancelDisabled}
+      initialFocusRef={initialFocusRef}
+      className={className ? `${surfaceClass} ${className}` : surfaceClass}
     >
       <h2 id={titleId}>{title}</h2>
       {children}
       <div className="confirm-dialog-actions">
-        <button
-          type="button"
-          className="btn btn--outline"
+        <Button
+          variant="outline"
           ref={cancelButtonRef}
           onClick={onCancel}
           disabled={cancelDisabled}
         >
           {cancelLabel ?? 'キャンセル'}
-        </button>
+        </Button>
         {extraAction ? (
-          <button
-            type="button"
-            className={
-              extraAction.danger ? 'btn btn--danger' : 'btn btn--outline'
-            }
+          <Button
+            variant={extraAction.danger ? 'danger' : 'outline'}
             onClick={extraAction.onSelect}
           >
             {extraAction.label}
-          </button>
+          </Button>
         ) : null}
         {confirmLabel ? (
-          <button
-            type="button"
+          <Button
+            variant={confirmDanger ? 'danger' : 'primary'}
             ref={confirmButtonRef}
-            className={confirmDanger ? 'btn btn--danger' : 'btn btn--primary'}
             disabled={confirmDisabled}
             onClick={onConfirm}
           >
             {confirmLabel}
-          </button>
+          </Button>
         ) : null}
       </div>
-    </dialog>
+    </Dialog>
   )
 }

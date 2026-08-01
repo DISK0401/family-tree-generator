@@ -21,6 +21,7 @@ import { PersonNameFields } from '../../molecules/PersonNameFields'
 import { PersonPicker } from '../../molecules/PersonPicker'
 import { nameFromFields } from '../../molecules/person-name'
 import './PersonPanel.css'
+import { Button } from '../../atoms/Button'
 
 type RelationAction = 'spouse' | 'child' | 'parent'
 
@@ -284,31 +285,31 @@ export function PersonPanel({
         <h2 className="person-panel-name">{displayName(person)}</h2>
         {/* 狭幅画面ではパネルが全画面表示になり図に戻る手段がなくなるため、
             常時表示の閉じるボタンで図へ戻れるようにする */}
-        <button
-          type="button"
-          className="btn btn--outline person-panel-close"
+        <Button
+          variant="outline"
+          className="person-panel-close"
           onClick={onClose}
           aria-label="パネルを閉じる"
         >
           ✕
-        </button>
+        </Button>
       </div>
 
       {/* コアループ(図の上で家族を育てる)の導線を最上部に置く。
           フォームの下に埋もれると初見ユーザーが次の操作を見失うため(design.md D7) */}
       <div className="person-panel-actions">
         {(Object.keys(ACTION_LABEL) as RelationAction[]).map((action) => (
-          <button
+          <Button
+            variant="outline"
+            className="person-panel-action-button"
+            pressed={openAction === action}
             key={action}
-            type="button"
-            className="btn btn--outline person-panel-action-button"
-            aria-pressed={openAction === action}
             onClick={() =>
               openAction === action ? closeForm() : openForm(action)
             }
           >
             {ACTION_LABEL[action]}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -319,22 +320,20 @@ export function PersonPanel({
             role="group"
             aria-label="追加の方法"
           >
-            <button
-              type="button"
-              className="btn btn--outline"
-              aria-pressed={!useExisting}
+            <Button
+              variant="outline"
+              pressed={!useExisting}
               onClick={() => setUseExisting(false)}
             >
               新しく作る
-            </button>
-            <button
-              type="button"
-              className="btn btn--outline"
-              aria-pressed={useExisting}
+            </Button>
+            <Button
+              variant="outline"
+              pressed={useExisting}
               onClick={() => setUseExisting(true)}
             >
               既存の人物から選ぶ
-            </button>
+            </Button>
           </div>
 
           {useExisting ? (
@@ -354,13 +353,9 @@ export function PersonPanel({
                 </p>
               )}
               <div className="person-panel-relation-actions">
-                <button
-                  type="button"
-                  className="btn btn--outline"
-                  onClick={closeForm}
-                >
+                <Button variant="outline" onClick={closeForm}>
                   キャンセル
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -373,20 +368,16 @@ export function PersonPanel({
                 autoFocus
               />
               <div className="person-panel-relation-actions">
-                <button
-                  type="button"
-                  className="btn btn--outline"
-                  onClick={closeForm}
-                >
+                <Button variant="outline" onClick={closeForm}>
                   キャンセル
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary-soft"
                   type="submit"
-                  className="btn btn--primary-soft"
                   disabled={!canSubmit}
                 >
                   追加する
-                </button>
+                </Button>
               </div>
             </form>
           )}

@@ -237,6 +237,23 @@ README と本ドキュメントで役割を明記して区別する:
 2. **`layout/` の改名**: 本変更では行わない。`templates/` との紛らわしさが実際に混乱を生むかを運用で観察し、必要なら別 change として `pedigree-layout/` への改名を提案する。
 3. **`SettingsMenu` の層**: 依存ゼロの「器」であり `atoms/` の判定基準(`domain/` を import しない)を満たすが、実質は設定機能の入れ物である。本設計では機能への所属を優先して `organisms/settings/` に置く。この「依存はゼロだが機能に属する器」というケースが他にも現れた場合、判定基準に「機能固有の子部品を組み立てる器は organisms とする」旨を追記する必要がある。
 
+## 付録 C: `aria-pressed` を持つ 6 箇所の差分表(tasks 3.1 の成果物)
+
+| # | 箇所 | 外枠 | role / aria-label | 項目 | 排他性 | 判定 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `AppPage` 図/表 | `.segmented .segmented--framed` | `group` / 表示の切り替え | 2 | 常にどちらか 1 つ | **`SegmentedControl` へ統合** |
+| 2 | `PersonTableView` 閲覧/編集 | `.segmented .segmented--framed` | `group` / 表の操作モード | 2 | 常にどちらか 1 つ | **`SegmentedControl` へ統合** |
+| 3 | `FamilyTreeCanvas` 3 表示モード | `.segmented .segmented--stacked .surface--overlay` | `group` / 表示モード | 3 | 常にどれか 1 つ | **`SegmentedControl` へ統合**(縦積み) |
+| 4 | `PersonPanel` 関係アクション | `.person-panel-actions`(枠なし) | なし | 3 | **0 個押下も正当**(フォームを閉じた状態) | 統合しない — 個々のトグルボタン |
+| 5 | `PersonPanel` 新規/既存 | `.person-panel-relation-modes`(枠なし) | `group` / 追加の方法 | 2 | 常にどちらか 1 つ | 統合しない — 枠を持たず `.btn--outline` の語彙 |
+| 6 | `UnconnectedTray` チップ | `.unconnected-tray-list` | なし | 可変 | 人物の選択(朱) | 統合しない — 選択の意味が異なる(D 参照) |
+
+**統合するのは 1〜3 の 3 箇所**。「外枠でくるむ / 縦積みの操作面として束ねる」構造と「常にどれか 1 つが選ばれる」排他性を共有しており、`SegmentedControl` の 1 部品で表現できる。
+
+4・5 は見た目こそ `aria-pressed` で選択を示すが、**外枠を持たない独立したボタンの集まり**であり、4 は「どれも押されていない」が正当な状態でセグメント切替の意味論(常に 1 つ選択)を満たさない。無理に同じ部品へ寄せると props が増えるだけで読みにくくなるため、`Button` の `pressed` として扱う。
+
+`ZoomControls` は `.segmented--stacked` の見た目を使うが、子は拡大・縮小・画面に合わせるの**アクション**であり `aria-pressed` を持たない(切替ではないボタン群)。構造だけを共有し `SegmentedControl` は使わない。
+
 ## 付録 B: 視覚回帰の検証方法と結果
 
 ### 方法 — 計算後スタイルの突き合わせ

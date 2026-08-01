@@ -10,6 +10,7 @@ import type { FuzzyDate, Gender, Person } from '../../domain/types'
 import { PersonNameFields } from '../../molecules/PersonNameFields'
 import { WarekiDateInput } from '../../molecules/WarekiDateInput'
 import './PersonEditForm.css'
+import { Button } from '../../atoms/Button'
 
 interface PersonEditFormProps {
   person: Person
@@ -321,12 +322,13 @@ export function PersonEditForm({
         />
       </label>
 
-      <button
+      <Button
+        variant="primary-soft"
+        className="person-edit-form-submit"
         type="submit"
-        className="btn btn--primary-soft person-edit-form-submit"
       >
         確定
-      </button>
+      </Button>
     </form>
   )
 }

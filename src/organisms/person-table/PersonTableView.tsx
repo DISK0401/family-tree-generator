@@ -23,7 +23,9 @@ import {
 import { parseTsv, serializeTsv } from './tsv'
 import { useDisplaySettingsStore } from '../../store/display-settings-store'
 import { useTreeStore } from '../../store/tree-store'
+import { SegmentedControl } from '../../atoms/SegmentedControl'
 import './PersonTableView.css'
+import { Button } from '../../atoms/Button'
 
 export interface PersonTableViewProps {
   selectedPersonId: string | null
@@ -146,6 +148,12 @@ function comparePersons(
  * 編集はすべて `bulkUpsertPersons` を経由し(1操作=undo 1件・no-opは履歴に積まれない)、
  * 表専用のデータ経路を持たない(design.md D3)。
  */
+/** 閲覧 / 編集の切替の選択肢(描画のたびに作り直さないようモジュールスコープへ置く) */
+const MODE_ITEMS = [
+  { value: 'browse', label: '閲覧' },
+  { value: 'edit', label: '編集' },
+] as const
+
 export function PersonTableView({
   selectedPersonId,
   onSelectPerson,
@@ -637,39 +645,26 @@ export function PersonTableView({
           />
         </label>
         {hasActiveFilter ? (
-          <button
-            type="button"
-            className="btn btn--outline person-table-clear-filters"
+          <Button
+            variant="outline"
+            className="person-table-clear-filters"
             onClick={clearAllFilters}
           >
             絞り込みを解除
-          </button>
+          </Button>
         ) : null}
         <p className="person-table-count" aria-live="polite">
           {rows.length} / {Object.keys(doc.persons).length}人
         </p>
-        <div
-          className="segmented segmented--framed person-table-mode"
-          role="group"
-          aria-label="表の操作モード"
-        >
-          <button
-            type="button"
-            className="segmented-item"
-            aria-pressed={mode === 'browse'}
-            onClick={exitEditMode}
-          >
-            閲覧
-          </button>
-          <button
-            type="button"
-            className="segmented-item"
-            aria-pressed={mode === 'edit'}
-            onClick={enterEditMode}
-          >
-            編集
-          </button>
-        </div>
+        <SegmentedControl
+          label="表の操作モード"
+          items={MODE_ITEMS}
+          value={mode}
+          onChange={(next) =>
+            next === 'edit' ? enterEditMode() : exitEditMode()
+          }
+          className="person-table-mode"
+        />
       </div>
 
       {mode === 'edit' ? (
@@ -682,14 +677,14 @@ export function PersonTableView({
       {pasteSummary ? (
         <p className="person-table-paste-summary" role="status">
           {pasteSummary}
-          <button
-            type="button"
-            className="btn btn--text person-table-paste-summary-close"
+          <Button
+            variant="text"
+            className="person-table-paste-summary-close"
             aria-label="この通知を閉じる"
             onClick={() => setPasteSummary(null)}
           >
             ×
-          </button>
+          </Button>
         </p>
       ) : null}
 
@@ -716,9 +711,9 @@ export function PersonTableView({
                   data-column-id={column.id}
                 >
                   {column.sortable ? (
-                    <button
-                      type="button"
-                      className="btn btn--text person-table-sort-button"
+                    <Button
+                      variant="text"
+                      className="person-table-sort-button"
                       // 編集モード中は行順を固定する(design.md D5・D8)。
                       // ボタンを消すと「壊れた」と読めるため、無効化して理由を示す
                       disabled={mode === 'edit'}
@@ -735,7 +730,7 @@ export function PersonTableView({
                           ? ' ↑'
                           : ' ↓'
                         : ''}
-                    </button>
+                    </Button>
                   ) : (
                     column.label
                   )}

@@ -18,6 +18,7 @@ import {
 } from './fileIO'
 import { ConfirmDialog } from '../../molecules/ConfirmDialog'
 import './ImportExportControl.css'
+import { Button } from '../../atoms/Button'
 
 interface ImportSummaryInfo {
   peopleCount: number
@@ -249,13 +250,13 @@ export function ImportExportControl({
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn--menu-item import-export-trigger"
+      <Button
+        variant="menu-item"
+        className="import-export-trigger"
         onClick={openDialog}
       >
         GEDCOM/JSONの読み込み・書き出し
-      </button>
+      </Button>
       {open && (
         <ConfirmDialog
           title="GEDCOM/JSONの読み込み・書き出し"
@@ -398,6 +399,9 @@ export function ImportExportControl({
             <p className="import-export-notice">
               書き出したファイルには家族・親族の氏名や生年月日などの個人情報が含まれます。取り扱いにはご注意ください。
             </p>
+            {/* NOTE: この1つだけ基本形(.btn)を当てていない。元からクラスを持たず
+                UA既定の見た目で描かれており、当てると見た目が変わってしまうため
+                (design.md 付録A 注意3)。統一は別途判断する */}
             <button
               type="button"
               onClick={handleExport}

@@ -27,6 +27,7 @@ import { PersonPicker } from '../../molecules/PersonPicker'
 import { UnlinkRelationControl } from './UnlinkRelationControl'
 import { WarekiDateInput } from '../../molecules/WarekiDateInput'
 import './FamilyEventEditor.css'
+import { Button } from '../../atoms/Button'
 
 interface FamilyEventEditorProps {
   personId: PersonId
@@ -107,13 +108,13 @@ function FamilyDeleteControl({ family }: { family: Family }) {
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn--text family-event-editor-delete"
+      <Button
+        variant="text"
+        className="family-event-editor-delete"
         onClick={() => setOpen(true)}
       >
         この婚姻を削除
-      </button>
+      </Button>
       {open && (
         <ConfirmDialog
           title="この婚姻を削除しますか？"

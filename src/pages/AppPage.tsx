@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { SegmentedControl } from '../atoms/SegmentedControl'
 import { AppShell } from '../templates/AppShell'
 import './AppPage.css'
 import { ConfirmDialog } from '../molecules/ConfirmDialog'
@@ -13,6 +14,8 @@ import {
 import { FamilyTreeCanvas } from '../organisms/tree-canvas/FamilyTreeCanvas'
 import { useSampleLoader } from '../samples/use-sample-loader'
 import { useTreeStore } from '../store/tree-store'
+import { Button } from '../atoms/Button'
+import { Surface } from '../atoms/Surface'
 
 function saveStatusText(status: PersistenceStatus): string {
   switch (status.phase) {
@@ -39,6 +42,12 @@ function saveStatusText(status: PersistenceStatus): string {
       }
   }
 }
+
+/** 図 / 表の切替の選択肢(描画のたびに作り直さないようモジュールスコープへ置く) */
+const VIEW_ITEMS = [
+  { value: 'chart', label: '図' },
+  { value: 'table', label: '表' },
+] as const
 
 function AppPage() {
   const { status, resetAllData, retrySave, persistenceAtRisk } =
@@ -124,28 +133,13 @@ function AppPage() {
 
   const viewToggle =
     ready && !empty ? (
-      <div
-        className="segmented segmented--framed app-view-toggle"
-        role="group"
-        aria-label="表示の切り替え"
-      >
-        <button
-          type="button"
-          className="segmented-item"
-          aria-pressed={view === 'chart'}
-          onClick={() => requestViewChange('chart')}
-        >
-          図
-        </button>
-        <button
-          type="button"
-          className="segmented-item"
-          aria-pressed={view === 'table'}
-          onClick={() => requestViewChange('table')}
-        >
-          表
-        </button>
-      </div>
+      <SegmentedControl
+        label="表示の切り替え"
+        items={VIEW_ITEMS}
+        value={view}
+        onChange={requestViewChange}
+        className="app-view-toggle"
+      />
     ) : null
 
   const headerRight = (
@@ -155,9 +149,7 @@ function AppPage() {
           <span>
             保存できない間の変更は、設定メニューのエクスポートで退避できます。
           </span>
-          <button type="button" className="btn" onClick={retrySave}>
-            再試行
-          </button>
+          <Button onClick={retrySave}>再試行</Button>
         </div>
       ) : null}
       <p className="app-header-status" aria-live="polite">
@@ -170,26 +162,32 @@ function AppPage() {
   const canvas = (
     <>
       {editingHalted ? (
-        <div
-          className="app-blocked-message surface--notice surface--notice-danger"
+        <Surface
+          variant="notice-danger"
+          className="app-blocked-message surface--notice"
           role="alert"
         >
           <p>{saveStatusText(status)}</p>
           {status.phase === 'stale' ? (
-            <button
-              type="button"
-              className="btn btn--outline app-blocked-reload"
+            <Button
+              variant="outline"
+              className="app-blocked-reload"
               onClick={() => window.location.reload()}
             >
               再読み込み
-            </button>
+            </Button>
           ) : null}
-        </div>
+        </Surface>
       ) : null}
       {sampleError ? (
-        <p className="app-sample-error surface--notice" role="alert">
+        <Surface
+          variant="notice"
+          as="p"
+          className="app-sample-error"
+          role="alert"
+        >
           {sampleError}
-        </p>
+        </Surface>
       ) : null}
       {empty ? <EmptyStateGuide onAdded={setSelectedPersonId} /> : null}
       {ready && !empty && view === 'chart' ? (

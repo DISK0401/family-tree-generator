@@ -6,6 +6,7 @@ import { EmptyStateGhostPreview } from './EmptyStateGhostPreview'
 import { PersonNameFields } from '../../molecules/PersonNameFields'
 import { nameFromFields } from '../../molecules/person-name'
 import './EmptyStateGuide.css'
+import { Button } from '../../atoms/Button'
 
 interface EmptyStateGuideProps {
   /** 追加した人物を選択状態にするための通知(AddPersonControlのonAddedと同じ挙動。監査 低11) */
@@ -54,13 +55,9 @@ export function EmptyStateGuide({ onAdded }: EmptyStateGuideProps) {
             onGivenChange={setGiven}
             autoFocus
           />
-          <button
-            type="submit"
-            className="btn btn--primary"
-            disabled={!canSubmit}
-          >
+          <Button variant="primary" type="submit" disabled={!canSubmit}>
             最初の人物を追加
-          </button>
+          </Button>
         </form>
       </div>
     </div>

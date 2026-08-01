@@ -2,6 +2,7 @@ import { displayName } from '../../domain/helpers'
 import type { PersonId } from '../../domain/types'
 import { useTreeStore } from '../../store/tree-store'
 import './UnconnectedTray.css'
+import { Button } from '../../atoms/Button'
 
 interface UnconnectedTrayProps {
   /** 図に現れていない人物のID(`computeOffChartPersonIds`の結果) */
@@ -42,14 +43,14 @@ export function UnconnectedTray({
           if (!person) return null
           return (
             <li key={id}>
-              <button
-                type="button"
-                className="btn btn--tight unconnected-tray-chip"
-                aria-pressed={id === selectedPersonId}
+              <Button
+                tight
+                className="unconnected-tray-chip"
+                pressed={id === selectedPersonId}
                 onClick={() => onSelectPerson(id)}
               >
                 {displayName(person)}
-              </button>
+              </Button>
             </li>
           )
         })}

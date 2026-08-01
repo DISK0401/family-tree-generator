@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Field } from '../atoms/Field'
 import type { FuzzyDate } from '../domain/types'
 import { parseDateInput } from '../domain/parse-date'
 import {
@@ -51,7 +52,6 @@ export function WarekiDateInput({
   const [text, setText] = useState(value?.original ?? '')
   const [parsed, setParsed] = useState<FuzzyDate | undefined>(value)
   const [error, setError] = useState<string | null>(null)
-  const inputId = useId()
   /**
    * 最後にこの入力欄が扱った値(自分がonChangeで親へ渡した値、または最後に同期したvalue)。
    * 外部由来のvalue変化(undo/redo・保存後の同期。監査 高2/中4)だけを入力欄へ反映し、
@@ -92,43 +92,26 @@ export function WarekiDateInput({
   const counterpart = parsed ? counterpartLabel(parsed) : null
 
   return (
-    <div className="wareki-date-input field-label">
-      <label
-        htmlFor={inputId}
-        className={hideLabel ? 'visually-hidden' : undefined}
-      >
-        {label}
-      </label>
-      <input
-        id={inputId}
-        className="field"
-        type="text"
-        value={text}
-        onChange={(e) => handleChange(e.target.value)}
-        placeholder="昭和39年10月10日 / 1964-10-10"
-        aria-invalid={error ? 'true' : undefined}
-        aria-describedby={
-          error
-            ? `${inputId}-error`
-            : counterpart
-              ? `${inputId}-hint`
-              : undefined
-        }
-      />
-      {counterpart && (
-        <p id={`${inputId}-hint`} className="wareki-date-input-hint">
-          {counterpart}
-        </p>
+    <Field
+      label={label}
+      hideLabel={hideLabel}
+      className="wareki-date-input"
+      hint={counterpart ?? undefined}
+      hintClassName="wareki-date-input-hint"
+      error={error ?? undefined}
+      errorClassName="wareki-date-input-error"
+    >
+      {(fieldProps) => (
+        <input
+          {...fieldProps}
+          className="field"
+          type="text"
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder="昭和39年10月10日 / 1964-10-10"
+          aria-invalid={error ? 'true' : undefined}
+        />
       )}
-      {error && (
-        <p
-          id={`${inputId}-error`}
-          className="wareki-date-input-error"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
-    </div>
+    </Field>
   )
 }

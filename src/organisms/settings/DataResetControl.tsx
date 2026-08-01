@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { useTreeStore } from '../../store/tree-store'
 import { ConfirmDialog } from '../../molecules/ConfirmDialog'
 import './DataResetControl.css'
+import { Button } from '../../atoms/Button'
 
 const CONFIRM_PHRASE = '削除'
 
@@ -55,13 +56,13 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn--menu-item data-reset-trigger"
+      <Button
+        variant="menu-item"
+        className="data-reset-trigger"
         onClick={openDialog}
       >
         すべてのデータを削除
-      </button>
+      </Button>
       {open && (
         <ConfirmDialog
           title="すべてのデータを削除しますか？"

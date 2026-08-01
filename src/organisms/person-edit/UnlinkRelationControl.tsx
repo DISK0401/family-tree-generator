@@ -9,6 +9,7 @@ import type { FamilyId, PersonId } from '../../domain/types'
 import { useTreeStore } from '../../store/tree-store'
 import { ConfirmDialog } from '../../molecules/ConfirmDialog'
 import './UnlinkRelationControl.css'
+import { Button } from '../../atoms/Button'
 
 interface UnlinkRelationControlProps {
   familyId: FamilyId
@@ -63,13 +64,13 @@ export function UnlinkRelationControl({
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn--text unlink-relation-trigger"
+      <Button
+        variant="text"
+        className="unlink-relation-trigger"
         onClick={() => setOpen(true)}
       >
         {label}
-      </button>
+      </Button>
       {open && (
         <ConfirmDialog
           title={title}

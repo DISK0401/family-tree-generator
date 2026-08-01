@@ -5,6 +5,7 @@ import { useTreeStore } from '../../store/tree-store'
 import { PersonNameFields } from '../../molecules/PersonNameFields'
 import { nameFromFields } from '../../molecules/person-name'
 import './AddPersonControl.css'
+import { Button } from '../../atoms/Button'
 
 interface AddPersonControlProps {
   /** 追加した人物を選択状態にするための通知(spec tree-editor「関係を指定しない人物の追加」) */
@@ -45,14 +46,14 @@ export function AddPersonControl({ onAdded }: AddPersonControlProps) {
 
   return (
     <div className="add-person-control">
-      <button
-        type="button"
-        className="btn btn--tight surface--overlay add-person-trigger"
+      <Button
+        tight
+        className="surface--overlay add-person-trigger"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         人物を追加
-      </button>
+      </Button>
       {open && (
         <form
           onSubmit={handleSubmit}
@@ -69,20 +70,12 @@ export function AddPersonControl({ onAdded }: AddPersonControlProps) {
             autoFocus
           />
           <div className="add-person-actions">
-            <button
-              type="button"
-              className="btn btn--outline"
-              onClick={() => setOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setOpen(false)}>
               キャンセル
-            </button>
-            <button
-              type="submit"
-              className="btn btn--primary-soft"
-              disabled={!canSubmit}
-            >
+            </Button>
+            <Button variant="primary-soft" type="submit" disabled={!canSubmit}>
               追加する
-            </button>
+            </Button>
           </div>
         </form>
       )}

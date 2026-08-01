@@ -5,6 +5,7 @@ import type { PersonId } from '../../domain/types'
 import { useTreeStore } from '../../store/tree-store'
 import { ConfirmDialog } from '../../molecules/ConfirmDialog'
 import './DeletePersonControl.css'
+import { Button } from '../../atoms/Button'
 
 interface DeletePersonControlProps {
   personId: PersonId
@@ -36,13 +37,14 @@ export function DeletePersonControl({
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn--danger-outline btn--tight delete-person-trigger"
+      <Button
+        variant="danger-outline"
+        tight
+        className="delete-person-trigger"
         onClick={() => setOpen(true)}
       >
         この人物を削除
-      </button>
+      </Button>
       {open && (
         <ConfirmDialog
           title={`${displayName(person)}さんを削除しますか？`}

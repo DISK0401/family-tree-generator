@@ -34,16 +34,16 @@
 
 ## 3. 第3段: `atoms/` の適用(触るのは `*.tsx` の中身)
 
-- [ ] 3.1 現行 6 箇所のセグメント切替(`AppPage` の図/表・`PersonPanel` の関係アクションと新規/既存・`PersonTableView` の閲覧/編集・`FamilyTreeCanvas` の 3 表示モード)の `role` / `aria-label` / `aria-pressed` / フォーカス順の差分表を作る(完了条件: 6 箇所の属性とキーボード挙動の差異が一覧化され、統合可能な共通形と各箇所の差分が確定する)
-- [ ] 3.2 `src/atoms/Button.tsx` を実装する(`primitives.css` の `.btn` を使う薄いラッパ。バリアントと `type` の既定値を持つ)(完了条件: バリアントごとのクラス付与と `type="button"` 既定のテストが通る)
-- [ ] 3.3 `src/atoms/Field.tsx` を実装する(ラベル・入力・補助文/エラーの関連付けを `useId` で行う)(完了条件: `getByLabelText` で入力が取得でき、補助文が `aria-describedby` で関連付くテストが通る)
-- [ ] 3.4 `src/atoms/Surface.tsx` を実装する(完了条件: 面のバリアント指定がクラスへ反映されるテストが通る)
-- [ ] 3.5 `src/atoms/Dialog.tsx` を実装し、`molecules/ConfirmDialog` をその上に組み直す(完了条件: `ConfirmDialog` の既存テスト(フォーカス・`alertdialog`・追加アクション)が変更なしで通る)
-- [ ] 3.6 `src/atoms/SegmentedControl.tsx` を 3.1 の差分表に基づいて実装する(完了条件: 差分表の 6 パターンすべてを表現でき、各パターンの `aria-pressed` とキーボード操作のテストが通る)
-- [ ] 3.7 6 箇所のセグメント切替を `SegmentedControl` へ置き換える(完了条件: 6 箇所の既存テストが `getByRole` ベースのまま変更なしで通り、アクセシビリティ名も変わらない)
-- [ ] 3.8 `Button` / `Field` / `Surface` を各層のコンポーネントへ適用する(完了条件: 適用後も全テストが通り、視覚回帰がない)
-- [ ] 3.9 ライト/ダーク両テーマで主要画面の視覚回帰がないことを目視確認する(完了条件: 第1段 1.13 と同じ画面一覧で差異がない)
-- [ ] 3.10 第3段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
+- [x] 3.1 現行 6 箇所のセグメント切替(`AppPage` の図/表・`PersonPanel` の関係アクションと新規/既存・`PersonTableView` の閲覧/編集・`FamilyTreeCanvas` の 3 表示モード)の `role` / `aria-label` / `aria-pressed` / フォーカス順の差分表を作る(完了条件: 6 箇所の属性とキーボード挙動の差異が一覧化され、統合可能な共通形と各箇所の差分が確定する)
+- [x] 3.2 `src/atoms/Button.tsx` を実装する(`primitives.css` の `.btn` を使う薄いラッパ。バリアントと `type` の既定値を持つ)(完了条件: バリアントごとのクラス付与と `type="button"` 既定のテストが通る)
+- [x] 3.3 `src/atoms/Field.tsx` を実装する(ラベル・入力・補助文/エラーの関連付けを `useId` で行う)(完了条件: `getByLabelText` で入力が取得でき、補助文が `aria-describedby` で関連付くテストが通る)
+- [x] 3.4 `src/atoms/Surface.tsx` を実装する(完了条件: 面のバリアント指定がクラスへ反映されるテストが通る)
+- [x] 3.5 `src/atoms/Dialog.tsx` を実装し、`molecules/ConfirmDialog` をその上に組み直す(完了条件: `ConfirmDialog` の既存テスト(フォーカス・`alertdialog`・追加アクション)が変更なしで通る)
+- [x] 3.6 `src/atoms/SegmentedControl.tsx` を 3.1 の差分表に基づいて実装する(完了条件: 差分表の 6 パターンすべてを表現でき、各パターンの `aria-pressed` とキーボード操作のテストが通る)
+- [x] 3.7 6 箇所のセグメント切替を `SegmentedControl` へ置き換える(完了条件: 6 箇所の既存テストが `getByRole` ベースのまま変更なしで通り、アクセシビリティ名も変わらない)
+- [x] 3.8 `Button` / `Field` / `Surface` を各層のコンポーネントへ適用する(完了条件: 適用後も全テストが通り、視覚回帰がない)
+- [x] 3.9 ライト/ダーク両テーマで主要画面の視覚回帰がないことを目視確認する(完了条件: 第1段 1.13 と同じ画面一覧で差異がない)
+- [x] 3.10 第3段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
 
 ## 4. 第4段: 規律の機械検証で固定する
 

@@ -27,8 +27,10 @@ import {
   type FamilyChartDatum,
   type HiddenNeighborInfo,
 } from './to-family-chart-data'
+import { SegmentedControl } from '../../atoms/SegmentedControl'
 import './person-card.css'
 import './FamilyTreeCanvas.css'
+import { Button } from '../../atoms/Button'
 
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
 type ChartInstance = ReturnType<typeof f3.createChart>
@@ -163,6 +165,26 @@ function sameEntityIds(
  * TreeDocumentの変更を購読し、toFamilyChartDataで射影した結果のみで再描画する
  * (family-chart側のデータを保存・編集の正本にしない。design.md D1/D2)。
  */
+/** 表示モードの選択肢(描画のたびに作り直さないようモジュールスコープへ置く)。
+    文言が長いので折り返さない指定を項目クラスで与える */
+const VIEW_MODE_ITEMS = [
+  {
+    value: 'collapsed',
+    label: '折りたたみ表示',
+    className: 'tree-show-all-toggle',
+  },
+  {
+    value: 'full',
+    label: '全体表示(家系ごと)',
+    className: 'tree-show-all-toggle',
+  },
+  {
+    value: 'connected',
+    label: 'つながった全体表示',
+    className: 'tree-show-all-toggle',
+  },
+] as const
+
 export function FamilyTreeCanvas({
   selectedPersonId,
   onSelectPerson,
@@ -634,45 +656,23 @@ export function FamilyTreeCanvas({
           <AddPersonControl onAdded={(personId) => onSelectPerson(personId)} />
           {/* カード自体はfamily-chartが管理するDOMでフォーカス経路を持たないため、
             キーボードで人物を選択できる唯一の経路としてモーダルの検索を置く(監査 高4) */}
-          <button
-            type="button"
-            className="btn btn--tight surface--overlay tree-person-search-trigger"
+          <Button
+            tight
+            className="surface--overlay tree-person-search-trigger"
             onClick={() => setSearchOpen(true)}
           >
             人物を探す
-          </button>
+          </Button>
           {/* 表示モードの3値切り替え(design.md D7)。現在の表示はaria-pressedと
-            (既存の).tree-show-all-toggle[aria-pressed='true']の配色で判別できる */}
-          <div
-            className="segmented segmented--stacked surface--overlay tree-view-mode-toggle"
-            role="group"
-            aria-label="表示モード"
-          >
-            <button
-              type="button"
-              className="segmented-item tree-show-all-toggle"
-              aria-pressed={mode === 'collapsed'}
-              onClick={() => setMode('collapsed')}
-            >
-              折りたたみ表示
-            </button>
-            <button
-              type="button"
-              className="segmented-item tree-show-all-toggle"
-              aria-pressed={mode === 'full'}
-              onClick={() => setMode('full')}
-            >
-              全体表示(家系ごと)
-            </button>
-            <button
-              type="button"
-              className="segmented-item tree-show-all-toggle"
-              aria-pressed={mode === 'connected'}
-              onClick={() => setMode('connected')}
-            >
-              つながった全体表示
-            </button>
-          </div>
+            .tree-show-all-toggle[aria-pressed='true']の配色で判別できる */}
+          <SegmentedControl
+            label="表示モード"
+            items={VIEW_MODE_ITEMS}
+            value={mode}
+            onChange={setMode}
+            arrangement="stacked"
+            className="surface--overlay tree-view-mode-toggle"
+          />
           {/* 凡例。モバイルでは初期折りたたみでコントロール群の占有を抑える(監査 中12) */}
           <details
             className="tree-legend surface--overlay"
