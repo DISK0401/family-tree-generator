@@ -1,0 +1,76 @@
+/* エディタ画面の中身(表示切替・保存状態・エラー通知)。
+   骨組みは templates/AppShell.css、操作要素と面の基本形は styles/primitives.css にある */
+
+/* 図 / 表のビュー切替(design.md D1)。キャンバス左下の表示モード群とは役割が異なる
+   (あちらは「図の描き方」、こちらは「何で見るか」)ため、ヘッダー側に置いて区別する。
+   marginで左寄せの見出しから離し、右側のステータス群とも独立させる */
+.app-view-toggle {
+  margin-right: auto;
+}
+
+.app-view-toggle button {
+  min-width: 3.5em;
+}
+
+/* 保存状態はピル型のステータスバッジとして常時掲示する(「この端末にのみ保存」が製品の約束のため) */
+.app-header-status {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  margin: 0;
+  padding: 2px var(--space-3);
+  background: var(--paper-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+}
+
+/* 保存失敗時の再試行導線。ステータスピルの隣で控えめに、しかし見落とされないように */
+.app-save-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.app-save-error button {
+  font-size: var(--text-xs);
+  padding: 2px var(--space-3);
+  border-color: var(--danger);
+  border-radius: var(--radius-pill);
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+/* 永続ストレージが保証されない環境向けの控えめな注意(監査: persistenceAtRisk) */
+.app-persistence-note {
+  grid-area: notice;
+  margin: 0;
+  padding: var(--space-1) var(--header-padding-x);
+  font-size: var(--text-xs);
+  color: var(--warn);
+  background: var(--warn-wash);
+  border-bottom: 1px solid var(--line);
+}
+
+.app-blocked-message {
+  max-width: 32em;
+  margin: var(--space-6) auto;
+  padding: var(--space-4);
+  font-size: var(--text-md);
+}
+
+.app-blocked-message .app-blocked-reload {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+/* サンプル読み込み失敗のインライン通知(use-sample-loaderのsampleError) */
+.app-sample-error {
+  max-width: 32em;
+  margin: var(--space-4) auto 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+}

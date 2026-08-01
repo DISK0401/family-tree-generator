@@ -11,7 +11,7 @@ import { createTreeDocument } from './helpers'
 import {
   computeOffChartPersonIds,
   toFamilyChartData,
-} from '../rendering/to-family-chart-data'
+} from '../organisms/tree-canvas/to-family-chart-data'
 import type { TreeDocument } from './types'
 
 /**

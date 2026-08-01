@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import App from '../App'
+import App from '../pages/AppPage'
 import { createTreeDocument } from '../domain/helpers'
 import type { TreeDocument } from '../domain/types'
 import { clearTreeDocument, saveTreeDocument } from '../persistence/db'
