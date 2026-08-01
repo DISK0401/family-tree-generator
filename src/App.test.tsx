@@ -232,3 +232,119 @@ describe('App: 未保存の変更がある状態での移動確認(監査 中13)
     expect(screen.queryByRole('heading', { name: 'B' })).not.toBeInTheDocument()
   })
 })
+
+describe('図 / 表のビュー切替(spec person-table-editor「表形式ビューと図の切り替え」)', () => {
+  function docWithPersons(): TreeDocument {
+    const doc = createTreeDocument()
+    doc.persons['a'] = {
+      id: 'a',
+      name: { surname: '山田', given: '太郎' },
+      gender: 'male',
+    }
+    doc.persons['b'] = {
+      id: 'b',
+      name: { surname: '佐藤', given: '花子' },
+      gender: 'female',
+    }
+    return doc
+  }
+
+  it('表へ切り替えると人物一覧が表示され、データは変化しない', async () => {
+    useTreeStore.getState().replace(docWithPersons())
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '表' })).toBeInTheDocument()
+    })
+    const before = useTreeStore.getState().document
+
+    fireEvent.click(screen.getByRole('button', { name: '表' }))
+
+    expect(screen.getByRole('grid', { name: '人物の一覧' })).toBeInTheDocument()
+    expect(screen.getByRole('main', { name: '人物一覧' })).toBeInTheDocument()
+    expect(useTreeStore.getState().document).toBe(before)
+  })
+
+  it('表モードでは編集パネルを表示しない(属性編集は表が担う)', async () => {
+    useTreeStore.getState().replace(docWithPersons())
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '表' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '表' }))
+
+    // 行を選んでもパネル(complementary)は現れない
+    fireEvent.click(screen.getAllByRole('gridcell')[0])
+    const panel = screen.getByLabelText('編集パネル')
+    expect(panel).toHaveAttribute('hidden')
+  })
+
+  it('人物ゼロの状態ではビュー切替を出さない(表にする対象がない)', async () => {
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText(/この端末にのみ保存されます/)).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: '表' })).not.toBeInTheDocument()
+  })
+
+  it('保存できない状態では表・ビュー切替を表示しない(spec「既存の編集経路との等価性」)', async () => {
+    // 読み込み失敗(unavailable)を注入する。blocked / stale も同じく ready ではないため
+    // 表・図・パネルはいずれも描画されない(Appの ready ゲートで一括して守られる)
+    vi.mocked(loadTreeDocument).mockRejectedValueOnce(new Error('boom'))
+    useTreeStore.getState().replace(docWithPersons())
+    render(<App />)
+
+    await waitFor(() => {
+      // 同じ文言はヘッダーの状態表示と本文の警告の2箇所に出る(既存仕様)
+      expect(
+        screen.getAllByText(/保存データを読み込めませんでした/).length,
+      ).toBeGreaterThan(0)
+    })
+    expect(screen.queryByRole('button', { name: '表' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('grid', { name: '人物の一覧' }),
+    ).not.toBeInTheDocument()
+  })
+})
+
+describe('表の編集が自動保存に乗る(spec person-table-editor「既存の編集経路との等価性」)', () => {
+  it('セル編集の確定で保存済みになり、リロード相当の再マウントで復元される', async () => {
+    const doc = createTreeDocument()
+    doc.persons['a'] = {
+      id: 'a',
+      name: { surname: '山田', given: '太郎' },
+      gender: 'male',
+    }
+    useTreeStore.getState().replace(doc)
+    const { unmount } = render(<App />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '表' })).toBeInTheDocument()
+    })
+
+    // 表の編集モードで姓を書き換える
+    fireEvent.click(screen.getByRole('button', { name: '表' }))
+    fireEvent.click(screen.getByRole('button', { name: '編集' }))
+    fireEvent.doubleClick(screen.getByRole('gridcell', { name: '山田' }))
+    const input = screen.getByRole('textbox', { name: '姓' })
+    fireEvent.change(input, { target: { value: '渡辺' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    // 自動保存(デバウンス)の完了がヘッダーに現れる
+    await waitFor(() => {
+      expect(screen.getByText(/保存済み/)).toBeInTheDocument()
+    })
+
+    // リロード相当: ストアを空にしてから再マウントし、IndexedDBから復元されることを見る
+    unmount()
+    useTreeStore.getState().replace(createTreeDocument())
+    render(<App />)
+
+    await waitFor(() => {
+      expect(
+        Object.values(useTreeStore.getState().document.persons).some(
+          (p) => p.name.surname === '渡辺',
+        ),
+      ).toBe(true)
+    })
+  })
+})

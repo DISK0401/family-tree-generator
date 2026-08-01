@@ -29,6 +29,38 @@
   letter-spacing: 0.2em;
 }
 
+/* 図 / 表のビュー切替(design.md D1)。キャンバス左下の表示モード群とは役割が異なる
+   (あちらは「図の描き方」、こちらは「何で見るか」)ため、ヘッダー側に置いて区別する。
+   marginで左寄せの見出しから離し、右側のステータス群とも独立させる */
+.app-view-toggle {
+  display: flex;
+  margin-right: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.app-view-toggle button {
+  font: inherit;
+  font-size: var(--text-sm);
+  min-width: 3.5em;
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.app-view-toggle button + button {
+  border-left: 1px solid var(--line-strong);
+}
+
+.app-view-toggle button[aria-pressed='true'] {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  font-weight: 600;
+}
+
 .app-header-right {
   display: flex;
   align-items: center;
