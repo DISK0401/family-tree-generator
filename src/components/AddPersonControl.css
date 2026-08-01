@@ -1,6 +1,9 @@
 /*
  * 関係を指定しない人物の追加(spec tree-editor)。
- * 凡例・全体表示トグルと同じ「図の上に浮かぶ操作面」の流儀で描く。
+ * 凡例・全体表示トグルと同じ「図の上に浮かぶ操作面」(.surface--overlay)の流儀で描く。
+ *
+ * 見た目の基本形(.btn / .btn--outline / .btn--primary-soft / .surface--overlay /
+ * .surface--raised)は styles/primitives.css にある。
  */
 .add-person-control {
   display: flex;
@@ -10,16 +13,12 @@
 }
 
 .add-person-trigger {
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--line);
+  /* 他の浮かぶ操作面(凡例・表示モード)より小さな単体のボタンなので、
+     面の角丸(--radius-lg)ではなく操作要素の角丸に留める */
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: var(--shadow-raised);
+  padding: var(--space-2) var(--space-3);
   color: var(--ink);
   font-size: var(--text-sm);
-  cursor: pointer;
 }
 
 .add-person-trigger:hover {
@@ -31,10 +30,6 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper-raised);
-  box-shadow: var(--shadow-raised);
 }
 
 .add-person-hint {
@@ -44,9 +39,8 @@
   color: var(--ink-soft);
 }
 
-/* ボタンはPersonPanelの関係フォーム(.person-panel-relation-actions)と同じ語彙で描く:
-   確定(submit)=藍のwash、キャンセル(button)=紙+線。素の<button>のままだと
-   ブラウザ既定の見た目になり、アプリ内の他のボタンと不揃いになる */
+/* ボタンはPersonPanelの関係フォーム(.person-panel-relation-actions)と同じ語彙:
+   確定(submit)=藍のwash、キャンセル(button)=紙+線 */
 .add-person-actions {
   display: flex;
   justify-content: flex-end;
@@ -54,26 +48,6 @@
 }
 
 .add-person-actions button {
-  font: inherit;
   font-size: var(--text-sm);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.add-person-actions button[type='submit'] {
-  border: 1px solid var(--ai);
-  background: var(--ai-wash);
-  color: var(--ai-strong);
-}
-
-.add-person-actions button[type='submit']:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.add-person-actions button[type='button'] {
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  color: var(--ink-soft);
 }

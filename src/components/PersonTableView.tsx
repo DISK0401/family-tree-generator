@@ -629,6 +629,7 @@ export function PersonTableView({
         <label className="person-table-filter">
           氏名で検索
           <input
+            className="field field--sm"
             type="search"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -638,7 +639,7 @@ export function PersonTableView({
         {hasActiveFilter ? (
           <button
             type="button"
-            className="person-table-clear-filters"
+            className="btn btn--outline person-table-clear-filters"
             onClick={clearAllFilters}
           >
             絞り込みを解除
@@ -648,7 +649,7 @@ export function PersonTableView({
           {rows.length} / {Object.keys(doc.persons).length}人
         </p>
         <div
-          className="person-table-mode"
+          className="segmented segmented--framed person-table-mode"
           role="group"
           aria-label="表の操作モード"
         >
@@ -681,7 +682,7 @@ export function PersonTableView({
           {pasteSummary}
           <button
             type="button"
-            className="person-table-paste-summary-close"
+            className="btn btn--text person-table-paste-summary-close"
             aria-label="この通知を閉じる"
             onClick={() => setPasteSummary(null)}
           >
@@ -715,7 +716,7 @@ export function PersonTableView({
                   {column.sortable ? (
                     <button
                       type="button"
-                      className="person-table-sort-button"
+                      className="btn btn--text person-table-sort-button"
                       // 編集モード中は行順を固定する(design.md D5・D8)。
                       // ボタンを消すと「壊れた」と読めるため、無効化して理由を示す
                       disabled={mode === 'edit'}
@@ -746,6 +747,7 @@ export function PersonTableView({
                 <td key={column.id} data-column-id={column.id}>
                   {column.filterKind === 'select' ? (
                     <select
+                      className="field field--xs field--block"
                       aria-label={`${column.label}で絞り込み`}
                       value={columnFilters[column.id] ?? ''}
                       onChange={(e) =>
@@ -764,6 +766,7 @@ export function PersonTableView({
                     </select>
                   ) : (
                     <input
+                      className="field field--xs field--block"
                       type="search"
                       aria-label={`${column.label}で絞り込み`}
                       value={columnFilters[column.id] ?? ''}

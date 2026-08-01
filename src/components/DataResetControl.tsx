@@ -55,7 +55,11 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
 
   return (
     <>
-      <button type="button" className="data-reset-trigger" onClick={openDialog}>
+      <button
+        type="button"
+        className="btn btn--menu-item data-reset-trigger"
+        onClick={openDialog}
+      >
         すべてのデータを削除
       </button>
       {open && (
@@ -81,6 +85,7 @@ export function DataResetControl({ onReset }: DataResetControlProps) {
           </label>
           <input
             id={inputId}
+            className="field field--sunken"
             type="text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}

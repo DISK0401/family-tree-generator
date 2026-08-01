@@ -77,7 +77,7 @@ function SpouseLinkField({
   if (candidates.length === 0) return null
 
   return (
-    <label htmlFor={pickerId} className="family-event-editor-link">
+    <label htmlFor={pickerId} className="family-event-editor-link field-label">
       配偶者に既存の人物を設定
       <PersonPicker
         id={pickerId}
@@ -105,7 +105,7 @@ function FamilyDeleteControl({ family }: { family: Family }) {
     <>
       <button
         type="button"
-        className="family-event-editor-delete"
+        className="btn btn--text family-event-editor-delete"
         onClick={() => setOpen(true)}
       >
         この婚姻を削除
@@ -224,7 +224,7 @@ function EventFields({
 
   return (
     <fieldset
-      className="family-event-editor-event"
+      className="family-event-editor-event surface--fieldset"
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
     >
@@ -235,10 +235,14 @@ function EventFields({
         value={date}
         onChange={setDate}
       />
-      <label htmlFor={placeId} className="family-event-editor-field">
+      <label
+        htmlFor={placeId}
+        className="family-event-editor-field field-label"
+      >
         場所
         <input
           id={placeId}
+          className="field field--block"
           type="text"
           value={place}
           onChange={(e) => setPlace(e.target.value)}

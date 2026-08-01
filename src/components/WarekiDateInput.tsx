@@ -92,7 +92,7 @@ export function WarekiDateInput({
   const counterpart = parsed ? counterpartLabel(parsed) : null
 
   return (
-    <div className="wareki-date-input">
+    <div className="wareki-date-input field-label">
       <label
         htmlFor={inputId}
         className={hideLabel ? 'visually-hidden' : undefined}
@@ -101,6 +101,7 @@ export function WarekiDateInput({
       </label>
       <input
         id={inputId}
+        className="field"
         type="text"
         value={text}
         onChange={(e) => handleChange(e.target.value)}

@@ -80,7 +80,9 @@ function FeatureCard({
   return (
     <article
       className={
-        comingSoon ? 'feature-card feature-card-coming-soon' : 'feature-card'
+        comingSoon
+          ? 'feature-card surface--raised feature-card-coming-soon'
+          : 'feature-card surface--raised'
       }
     >
       <div className="feature-card-head">
@@ -129,7 +131,7 @@ export default function LandingPage() {
               登録不要・インストール不要・無料
             </p>
           </div>
-          <div className="landing-hero-figure">
+          <div className="landing-hero-figure surface--floating">
             <TreeFigure
               figure={heroFigure}
               title="家系図のイメージ(架空の家族の例)"

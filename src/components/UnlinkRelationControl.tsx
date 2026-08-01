@@ -65,7 +65,7 @@ export function UnlinkRelationControl({
     <>
       <button
         type="button"
-        className="unlink-relation-trigger"
+        className="btn btn--text unlink-relation-trigger"
         onClick={() => setOpen(true)}
       >
         {label}

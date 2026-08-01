@@ -1,3 +1,5 @@
+/* 見た目の基本形(.btn--ghost / .surface--floating)は styles/primitives.css にある */
+
 .settings-menu {
   position: relative;
 }
@@ -6,14 +8,9 @@
   font-size: var(--text-lg);
   line-height: 1;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: none;
-  color: var(--ink-soft);
-  cursor: pointer;
 }
 
-.settings-menu-trigger:hover,
+/* 開いている間もホバーと同じ「枠が現れた」状態に留める */
 .settings-menu-trigger[aria-expanded='true'] {
   border-color: var(--line-strong);
   color: var(--ink);
@@ -25,9 +22,5 @@
   right: 0;
   min-width: 12em;
   padding: var(--space-2);
-  background: var(--paper-raised);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-floating);
   z-index: 5;
 }

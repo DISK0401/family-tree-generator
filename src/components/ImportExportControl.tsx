@@ -251,7 +251,7 @@ export function ImportExportControl({
     <>
       <button
         type="button"
-        className="import-export-trigger"
+        className="btn btn--menu-item import-export-trigger"
         onClick={openDialog}
       >
         GEDCOM/JSONの読み込み・書き出し
@@ -266,7 +266,10 @@ export function ImportExportControl({
           <section className="import-export-section">
             <h3>読み込む</h3>
             {importDisabled && (
-              <p className="import-export-disabled-note" role="status">
+              <p
+                className="import-export-disabled-note surface--notice"
+                role="status"
+              >
                 この状態では読み込んでも保存されません。保存の問題を解消してから読み込んでください。
               </p>
             )}

@@ -113,7 +113,11 @@ export function ConfirmDialog({
   return (
     <dialog
       ref={dialogRef}
-      className={className ? `confirm-dialog ${className}` : 'confirm-dialog'}
+      className={
+        className
+          ? `confirm-dialog surface--floating ${className}`
+          : 'confirm-dialog surface--floating'
+      }
       role={alertdialog ? 'alertdialog' : undefined}
       aria-labelledby={titleId}
     >
@@ -122,6 +126,7 @@ export function ConfirmDialog({
       <div className="confirm-dialog-actions">
         <button
           type="button"
+          className="btn btn--outline"
           ref={cancelButtonRef}
           onClick={onCancel}
           disabled={cancelDisabled}
@@ -132,7 +137,7 @@ export function ConfirmDialog({
           <button
             type="button"
             className={
-              extraAction.danger ? 'confirm-dialog-danger-button' : undefined
+              extraAction.danger ? 'btn btn--danger' : 'btn btn--outline'
             }
             onClick={extraAction.onSelect}
           >
@@ -143,11 +148,7 @@ export function ConfirmDialog({
           <button
             type="button"
             ref={confirmButtonRef}
-            className={
-              confirmDanger
-                ? 'confirm-dialog-danger-button'
-                : 'confirm-dialog-primary-button'
-            }
+            className={confirmDanger ? 'btn btn--danger' : 'btn btn--primary'}
             disabled={confirmDisabled}
             onClick={onConfirm}
           >

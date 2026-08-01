@@ -1,0 +1,211 @@
+/*
+ * 人物カードの見た目。マークアップは`person-card.ts`がHTML文字列として生成し、
+ * 2つの描画系(family-chartのキャンバスと`PedigreeCanvas`のforeignObject)が
+ * それを共有する(design.md D3: 見た目の一致はマークアップごと共有して保証する)。
+ *
+ * そのため、このCSSは**カードを描く両方のコンポーネントから明示的にimportする**
+ * (`FamilyTreeCanvas.tsx` / `PedigreeCanvas.tsx`)。以前は`FamilyTreeCanvas.css`に
+ * 同居しており、`PedigreeCanvas`は同一チャンクに相手のCSSが含まれることに
+ * 暗黙に依存していた。
+ *
+ * 造形は「机上に浮かぶ紙のカード」: 角丸+多層の柔らかい影+ホバーで浮き上がる。
+ * NOTE: 面の表現は`styles/primitives.css`の`.surface--raised`と同一だが、
+ * カードのクラスはHTML文字列側の定数であり、`person-card.test.ts`が完全一致で
+ * 検証しているためクラスの付け替えは行っていない(値はトークンで揃えている)。
+ */
+
+/*
+ * 人物カード: 「帳簿・系譜の紙の世界」を現代化するデザイン言語の核となる一手。
+ * 氏名は縦書き(vertical-rl)・明朝系で表示し、家系図・系譜の伝統的な佇まいを
+ * 画面の第一印象で成立させる(design.md D6)。
+ */
+.tree-card {
+  position: relative;
+  box-sizing: border-box;
+  /* setCardInnerHtmlCreator使用時はfamily-chart側のカードサイズCSSが適用されないため、
+     コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
+  width: var(--tree-card-w, 104px);
+  height: var(--tree-card-h, 116px);
+  padding: var(--space-2) var(--space-1) var(--space-1);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-1);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    translate 0.15s ease;
+}
+
+/* 折りたたみ時、この人物の先に隠れている人数を示すバッジ(design.md D6) */
+/* クリックすると、隠れている人物側へ視点を追従させる(design.md リスク
+   「養子縁組を持つ人物からもう一方の親族側へ戻れない」への対応) */
+.tree-card-hidden-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--ai);
+  color: var(--paper);
+  font-family: var(--font-gothic);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--paper-raised);
+  cursor: pointer;
+}
+
+/* 視覚上の18pxはそのままに、クリック/タップのヒット領域を擬似要素で30px(24px以上)へ
+   広げる(監査 低8)。擬似要素上のイベントもe.targetはバッジ本体になるため、
+   クリックハンドラのclosest('.tree-card-hidden-badge')判定はそのまま働く */
+.tree-card-hidden-badge::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.tree-card-hidden-badge:hover {
+  background: var(--ai-strong);
+}
+
+.tree-card:hover {
+  border-color: var(--line-strong);
+  translate: 0 -2px;
+  box-shadow: var(--shadow-hover);
+}
+
+/* 故人の印は右上の「†」(.tree-card-deceased-mark)に一本化する。
+   以前は左上に小さな輪(::before)も重ねていたが、同じ位置の性別インジケーターと
+   重なって「ずれた二重描画」に見えるだけで、†と情報が重複していたため廃止した */
+
+/* 故人カードは面を一段沈める(古びた頁の趣) */
+.tree-card.deceased {
+  background: color-mix(in srgb, var(--paper-raised) 55%, var(--paper-sunken));
+}
+
+/* 選択状態は朱で表す(性別インジケーターとは別配色。design.md D7) */
+.tree-card.selected {
+  border-color: var(--shu);
+  border-width: 2px;
+  padding: calc(var(--space-2) - 1px) calc(var(--space-1) - 1px)
+    calc(var(--space-1) - 1px);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--shu) 22%, transparent),
+    var(--shadow-raised);
+}
+
+.tree-card-name-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.tree-card-surname,
+.tree-card-given {
+  writing-mode: vertical-rl;
+  /* 折り返すと縦書きの列が増え、文字の並び順が崩れて見える(design.md D1)。
+     姓・名は必ず1列で描き、収まらない場合は列を増やさずフォントサイズを縮小する(D2) */
+  white-space: nowrap;
+  font-family: var(--font-mincho);
+  font-weight: 500;
+  font-size: var(--text-md);
+  letter-spacing: 0.15em;
+  color: var(--ink);
+}
+
+/*
+ * 性別インジケーター(design.md D7)。色のみに依存せず形状でも判別できるよう、
+ * 男=四角・女=丸・不明=破線ひし形(推測しないことを示す)を使い分ける。
+ * 選択強調の「朱」とは別トークン(--gender-male/--gender-female)を使う
+ */
+.tree-card-gender {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  width: 10px;
+  height: 10px;
+}
+
+.tree-card-gender-male {
+  background: var(--gender-male);
+}
+
+.tree-card-gender-female {
+  background: var(--gender-female);
+  border-radius: 50%;
+}
+
+.tree-card-gender-unknown {
+  background: transparent;
+  border: 1.5px dashed var(--ink-faint);
+  transform: rotate(45deg);
+}
+
+/*
+ * 故人マーカー。以前は氏名の縦書き列内に文字として埋め込んでいたが、ふりがな・
+ * 生没地等の追加表示項目で列の高さが狭まると意図しない列へ折り返され、名前の
+ * 前に浮いて見える不具合があったため、性別インジケーターと対になる固定位置の
+ * バッジとして独立させた(表示項目が何個有効でも位置が揺れない)
+ */
+.tree-card-deceased-mark {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+/* 生没年は氏名に次いで重要な情報のため、横書きで常に読める大きさ・向きで表示する */
+.tree-card-years {
+  font-family: var(--font-gothic);
+  font-size: 0.6875rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+/* ふりがな・生没地は表示設定でオンにした場合のみ現れる補助情報(design.md D8)。
+   カード寸法が限られるため、氏名・生没年より控えめな大きさで表示する */
+.tree-card-kana {
+  font-family: var(--font-gothic);
+  font-size: 0.5625rem;
+  color: var(--ink-faint);
+  text-align: center;
+  /* ふりがな未入力の人物はこの要素の中身が空文字になる(person-card.ts参照)。
+     min-heightを明示しないと、ブラウザや親要素の状況によって空の行の高さが0になりかねず、
+     ふりがな入力済みの人物との間で氏名列の開始位置がずれる。line-height基準で高さを固定する */
+  line-height: 1.2;
+  min-height: 1.2em;
+}
+
+.tree-card-places {
+  font-family: var(--font-gothic);
+  font-size: 0.5625rem;
+  color: var(--ink-faint);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 全体表示モードの仮想ルート自身のカードは、レイアウト計算のためだけに存在する実体のない
+   ノードのため、見た目に何も表示しない */
+.tree-card-virtual-root {
+  visibility: hidden;
+}

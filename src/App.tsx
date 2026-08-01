@@ -127,7 +127,7 @@ function App() {
         <h1 className="app-title">家系図帖</h1>
         {ready && !empty ? (
           <div
-            className="app-view-toggle"
+            className="segmented segmented--framed app-view-toggle"
             role="group"
             aria-label="表示の切り替え"
           >
@@ -153,7 +153,7 @@ function App() {
               <span>
                 保存できない間の変更は、設定メニューのエクスポートで退避できます。
               </span>
-              <button type="button" onClick={retrySave}>
+              <button type="button" className="btn" onClick={retrySave}>
                 再試行
               </button>
             </div>
@@ -174,12 +174,15 @@ function App() {
         aria-label={view === 'table' ? '人物一覧' : '家系図キャンバス'}
       >
         {editingHalted ? (
-          <div className="app-blocked-message" role="alert">
+          <div
+            className="app-blocked-message surface--notice surface--notice-danger"
+            role="alert"
+          >
             <p>{saveStatusText(status)}</p>
             {status.phase === 'stale' ? (
               <button
                 type="button"
-                className="app-blocked-reload"
+                className="btn btn--outline app-blocked-reload"
                 onClick={() => window.location.reload()}
               >
                 再読み込み
@@ -188,7 +191,7 @@ function App() {
           </div>
         ) : null}
         {sampleError ? (
-          <p className="app-sample-error" role="alert">
+          <p className="app-sample-error surface--notice" role="alert">
             {sampleError}
           </p>
         ) : null}

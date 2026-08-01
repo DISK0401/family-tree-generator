@@ -1,3 +1,6 @@
+/* 見た目の基本形(.surface--fieldset / .field-label / .field / .btn--text)は
+   styles/primitives.css にある。ここは配置と固有の差分のみ */
+
 .family-event-editor {
   display: flex;
   flex-direction: column;
@@ -32,36 +35,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-
-.family-event-editor-event legend {
-  font-family: var(--font-gothic);
-  font-size: var(--text-xs);
-  color: var(--ink-faint);
-  padding: 0 var(--space-1);
-}
-
-.family-event-editor-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
-.family-event-editor-field input {
-  box-sizing: border-box;
-  width: 100%;
-  font: inherit;
-  font-size: var(--text-md);
-  padding: var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
 }
 
 .family-event-editor-note {
@@ -70,27 +43,19 @@
 }
 
 /* 配偶者が登録されていない家族へ既存人物を紐づける選択欄(PersonPicker)。
-   旧<select>向けのスタイルはPersonPickerへの置き換えに伴い削除した(監査 低4) */
+   本文より一段控えめな見出しにして、主たる入力(日付)と競合させない */
 .family-event-editor-link {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
   font-size: var(--text-xs);
   color: var(--ink-faint);
 }
 
 /* 破壊的操作なので日付入力欄とは明確に区別する。ただし人物削除より従属的な操作のため、
-   枠線を持たない控えめな見た目にとどめる */
+   枠線を持たない控えめな見た目(.btn--text)にとどめる */
 .family-event-editor-delete {
   align-self: flex-start;
-  font: inherit;
   font-size: var(--text-xs);
   color: var(--danger);
-  background: none;
-  border: none;
-  border-radius: var(--radius);
   padding: var(--space-1) var(--space-2);
-  cursor: pointer;
 }
 
 .family-event-editor-delete:hover {

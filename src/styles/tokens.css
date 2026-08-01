@@ -106,9 +106,13 @@
   --header-min-height: 66px;
 
   /* 造形 — 紙のカードが机上に浮かぶ現代的な佇まい。
-     角丸は操作要素(--radius)と面(--radius-lg)の2段、影は接地(raised)と浮遊(floating)の2段 */
+     角丸は操作要素(--radius)・面(--radius-lg)・丸型(--radius-pill)の3段、
+     影は接地(raised)と浮遊(floating)の2段 */
   --radius: 6px;
   --radius-lg: 12px;
+  /* ピル型・バッジ。「登録不要ですぐ始められる」軽さを形でも示す主要CTAと、
+     状態を示すバッジ・チップに使う */
+  --radius-pill: 999px;
   --shadow-raised:
     0 1px 2px rgb(33 29 22 / 0.08), 0 4px 12px rgb(33 29 22 / 0.07);
   --shadow-floating:

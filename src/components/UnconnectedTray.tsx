@@ -44,7 +44,7 @@ export function UnconnectedTray({
             <li key={id}>
               <button
                 type="button"
-                className="unconnected-tray-chip"
+                className="btn btn--tight unconnected-tray-chip"
                 aria-pressed={id === selectedPersonId}
                 onClick={() => onSelectPerson(id)}
               >

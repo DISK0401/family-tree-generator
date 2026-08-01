@@ -54,7 +54,11 @@ export function EmptyStateGuide({ onAdded }: EmptyStateGuideProps) {
             onGivenChange={setGiven}
             autoFocus
           />
-          <button type="submit" disabled={!canSubmit}>
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={!canSubmit}
+          >
             最初の人物を追加
           </button>
         </form>

@@ -1,14 +1,7 @@
+/* 見た目の基本形(.btn--menu-item / .surface--notice)は styles/primitives.css にある */
+
 .import-export-trigger {
-  display: block;
-  width: 100%;
-  font-size: var(--text-sm);
-  text-align: left;
   color: var(--ink-soft);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-2);
-  border-radius: var(--radius);
 }
 
 .import-export-trigger:hover {
@@ -65,10 +58,6 @@
 
 .import-export-disabled-note {
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--warn);
-  background: var(--warn-wash);
-  border-radius: var(--radius);
-  color: var(--ink);
   font-size: var(--text-sm);
 }
 
@@ -78,16 +67,6 @@
 
 .import-export-error {
   color: var(--danger);
-}
-
-.import-export-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--warn);
-  background: var(--warn-wash);
-  border-radius: var(--radius);
 }
 
 .import-export-summary {

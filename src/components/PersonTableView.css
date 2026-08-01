@@ -2,6 +2,10 @@
  * 人物一覧の表形式ビュー(spec person-table-editor、design.md D1)。
  * 帳簿の「台帳の頁」の趣で、紙の面(--paper-raised)に細い罫線(--line)を引く。
  * 色はすべてトークン経由(ライト/ダーク両テーマ追従)。
+ *
+ * 見た目の基本形(.btn / .field / .segmented)は styles/primitives.css にある。
+ * セルエディタ(tbody内のinput/select)だけは基本形を当てていない:
+ * font-sizeを表(--text-sm)から継承する必要があり、.field の既定(--text-md)とは異なる。
  */
 .person-table-view {
   height: 100%;
@@ -28,12 +32,6 @@
 }
 
 .person-table-filter input {
-  font: inherit;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
   min-width: 200px;
 }
 
@@ -45,30 +43,6 @@
 
 .person-table-mode {
   margin-left: auto;
-  display: flex;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.person-table-mode button {
-  font: inherit;
-  font-size: var(--text-sm);
-  padding: var(--space-1) var(--space-3);
-  border: none;
-  background: var(--paper);
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.person-table-mode button + button {
-  border-left: 1px solid var(--line-strong);
-}
-
-.person-table-mode button[aria-pressed='true'] {
-  background: var(--ai-wash);
-  color: var(--ai-strong);
-  font-weight: 600;
 }
 
 .person-table-edit-hint {
@@ -92,11 +66,7 @@
 
 .person-table-paste-summary-close {
   margin-left: auto;
-  font: inherit;
-  border: none;
-  background: none;
   color: inherit;
-  cursor: pointer;
   padding: 0 var(--space-1);
 }
 
@@ -127,12 +97,7 @@
 }
 
 .person-table-sort-button {
-  font: inherit;
-  font-weight: inherit;
   color: inherit;
-  border: none;
-  background: none;
-  cursor: pointer;
   padding: 0;
 }
 
@@ -159,17 +124,7 @@
 
 .person-table-filter-row input,
 .person-table-filter-row select {
-  font: inherit;
-  font-size: var(--text-xs);
-  width: 100%;
   min-width: 5em;
-  box-sizing: border-box;
-  padding: 2px var(--space-1);
-  /* 入力できる欄であることが一目で分かる強さの枠にする(面が紙色で近いため) */
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
 }
 
 .person-table-filter-row input::placeholder {
@@ -182,14 +137,8 @@
 }
 
 .person-table-clear-filters {
-  font: inherit;
   font-size: var(--text-xs);
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper);
-  color: var(--ink-soft);
-  cursor: pointer;
 }
 
 .person-table-clear-filters:hover {

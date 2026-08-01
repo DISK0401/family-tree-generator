@@ -30,7 +30,7 @@
   justify-content: center;
   min-width: 1.5em;
   padding: 0 0.35em;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--line);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
@@ -46,15 +46,16 @@
   overflow-x: auto;
 }
 
+/* 図に現れていない人物のチップ。基本形(.btn)の上で、破線の丸型という
+   「まだ図に繋がっていない」ことを表す形だけを差分として持つ */
 .unconnected-tray-chip {
   padding: var(--space-1) var(--space-3);
   border: 1px dashed var(--line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--paper);
   color: var(--ink);
   font-size: var(--text-sm);
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .unconnected-tray-chip:hover {

@@ -72,7 +72,7 @@ export function DisplaySettingsControl() {
       <p className="display-settings-control-heading">カードの表示</p>
       <label
         htmlFor={calendarModeId}
-        className="display-settings-control-field"
+        className="display-settings-control-field field-label field-label--row"
       >
         表示形式
         <select
@@ -87,7 +87,10 @@ export function DisplaySettingsControl() {
           ))}
         </select>
       </label>
-      <label htmlFor={birthId} className="display-settings-control-field">
+      <label
+        htmlFor={birthId}
+        className="display-settings-control-field field-label field-label--row"
+      >
         生年月日
         <select
           id={birthId}
@@ -103,7 +106,10 @@ export function DisplaySettingsControl() {
           ))}
         </select>
       </label>
-      <label htmlFor={deathId} className="display-settings-control-field">
+      <label
+        htmlFor={deathId}
+        className="display-settings-control-field field-label field-label--row"
+      >
         没年月日
         <select
           id={deathId}

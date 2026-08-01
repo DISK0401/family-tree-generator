@@ -130,6 +130,7 @@ export function PersonPicker({
     >
       <input
         id={id}
+        className="field field--sm field--block"
         type="text"
         role="combobox"
         aria-expanded={listVisible}
@@ -150,7 +151,11 @@ export function PersonPicker({
         onKeyDown={handleKeyDown}
       />
       {listVisible && (
-        <ul id={listId} role="listbox" className="person-picker-list">
+        <ul
+          id={listId}
+          role="listbox"
+          className="person-picker-list surface--floating"
+        >
           {filtered.length === 0 ? (
             <li className="person-picker-empty">該当する人物がいません</li>
           ) : (

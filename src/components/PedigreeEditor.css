@@ -1,3 +1,5 @@
+/* 見た目の基本形(.field-label--row / .field)は styles/primitives.css にある */
+
 .pedigree-editor {
   display: flex;
   flex-direction: column;
@@ -10,30 +12,11 @@
   letter-spacing: 0.05em;
 }
 
-.pedigree-editor-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
 .pedigree-editor-parents {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pedigree-editor-row select {
-  font: inherit;
-  font-size: var(--text-sm);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
 }
 
 .pedigree-editor-family {

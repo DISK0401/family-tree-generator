@@ -1,5 +1,8 @@
 /* ConfirmDialog(ネイティブ<dialog> + showModal)で共有するスタイル。
-   トップレイヤ表示のためz-index管理は不要。中央寄せはUA既定(margin: auto)を活かす */
+   トップレイヤ表示のためz-index管理は不要。中央寄せはUA既定(margin: auto)を活かす。
+
+   見た目の基本形(.surface--floating / .btn / .btn--outline / .btn--primary /
+   .btn--danger)は styles/primitives.css にある */
 .confirm-dialog {
   box-sizing: border-box;
   flex-direction: column;
@@ -8,11 +11,7 @@
   max-width: min(28em, calc(100% - 2 * var(--space-4)));
   max-height: calc(100% - 2 * var(--space-4));
   padding: var(--space-5);
-  background: var(--paper-raised);
   color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-floating);
 }
 
 /* display:flexを無条件に当てるとUAの dialog:not([open]) { display: none } を打ち消して
@@ -41,15 +40,6 @@
   font-size: var(--text-sm);
 }
 
-.confirm-dialog input {
-  font: inherit;
-  padding: var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper);
-  color: var(--ink);
-}
-
 .confirm-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -58,40 +48,5 @@
 }
 
 .confirm-dialog-actions button {
-  font: inherit;
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper);
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.confirm-dialog-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-/* 破壊的操作であることが一目で分かるよう、キャンセルより強い(ソリッドの)見た目にする。
-   「安全側のボタンを目立たせる」より「押す前に一拍おいて認識させる」ことを優先する。
-   文字色は --paper: ライト/ダークで明暗が反転するためどちらのテーマでも十分なコントラストになる */
-.confirm-dialog-actions .confirm-dialog-danger-button {
-  border: 1px solid var(--danger);
-  background: var(--danger);
-  color: var(--paper);
-}
-
-.confirm-dialog-actions .confirm-dialog-danger-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 85%, black);
-}
-
-/* 推奨アクション(データを失わない選択肢)を「藍」で強調する */
-.confirm-dialog-actions .confirm-dialog-primary-button {
-  border: 1px solid var(--ai);
-  background: var(--ai);
-  color: var(--paper);
-}
-
-.confirm-dialog-actions .confirm-dialog-primary-button:hover:not(:disabled) {
-  background: var(--ai-strong);
 }

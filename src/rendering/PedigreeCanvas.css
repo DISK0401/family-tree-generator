@@ -1,6 +1,6 @@
 /*
  * つながった全体表示(design.md D1〜D7, tasks.md 7群)。
- * カード自体(.tree-card系)のスタイルはFamilyTreeCanvas.cssのものをそのまま流用する
+ * カード自体(.tree-card系)のスタイルはperson-card.cssを明示的にimportして共有する
  * (design.md D3: 見た目の一致はマークアップごと共有することで保証する)。
  * ここでは系線・パン/ズーム・キャンバスの土台だけを持つ
  */

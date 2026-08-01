@@ -1,25 +1,17 @@
+/* 見た目の基本形(.field-label / .field)は styles/primitives.css にある。
+   ここは姓名2欄の並びと、氏名欄だけの幅の差分に限る */
+
 .person-name-fields {
   display: flex;
   gap: var(--space-3);
   justify-content: center;
 }
 
+/* 空状態ガイドでは中央寄せの本文内に置かれるため、ラベルだけ左揃えへ戻す */
 .person-name-fields label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
   text-align: left;
 }
 
 .person-name-fields input {
-  font: inherit;
-  font-size: var(--text-md);
-  padding: var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
   width: 8em;
 }

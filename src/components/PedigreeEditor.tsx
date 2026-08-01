@@ -47,12 +47,16 @@ export function PedigreeEditor({ personId }: PedigreeEditorProps) {
         const selectId = `pedigree-${family.id}`
         return (
           <div key={family.id} className="pedigree-editor-family">
-            <label htmlFor={selectId} className="pedigree-editor-row">
+            <label
+              htmlFor={selectId}
+              className="pedigree-editor-row field-label field-label--row"
+            >
               <span className="pedigree-editor-parents">
                 {parentNames(document, family.spouseIds)}
               </span>
               <select
                 id={selectId}
+                className="field field--sm"
                 value={link.pedigree}
                 onChange={(e) =>
                   apply((doc) =>

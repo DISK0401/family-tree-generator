@@ -190,9 +190,10 @@ README と本ドキュメントで役割を明記して区別する:
 各段で **diff の性質を混ぜない**ことを原則とする。段ごとに独立した PR とし、`develop` へのマージは段の完了時のみ行う。
 
 ```
-第1段  基本形 CSS の新設        触るファイル: *.css のみ(tsx ゼロ)
-       styles/primitives.css     レビュー観点: 見た目の視覚確認
-       各CSSから重複宣言を削除   これ単独で Goal 1 を達成する
+第1段  基本形の新設と適用        触る内容: primitives.css の新設、各コンポーネントの
+       styles/primitives.css     className への基本形クラス付与、各CSSの差分化
+       + className 付与          レビュー観点: 見た目の視覚確認
+       + 各CSSを差分のみへ       これ単独で Goal 1 を達成する
               ↓
 第2段  層への移動               触る内容: ファイル移動と import パスのみ
        atoms/ molecules/         レビュー観点: パスの正しさ(見た目ゼロ変更)
@@ -207,7 +208,9 @@ README と本ドキュメントで役割を明記して区別する:
        ESLint + 検証テスト       README のアーキテクチャ節を更新
 ```
 
-**順序の理由**: 第 1 段(CSS)は tsx を触らないため diff が独立し、視覚確認だけでレビューできる。第 2 段(移動)は見た目を一切変えないため機械的にレビューできる。両者を逆順にすると、移動直後に再び全ファイルの CSS を触ることになり 2 度手間になる。第 3 段は構造が確定した上で行う。
+**順序の理由**: 第 1 段は「見た目に触る唯一の段」であり、レビューは視覚確認に集中できる。第 2 段(移動)は見た目を一切変えないため機械的にレビューできる。両者を逆順にすると、移動直後に再び全ファイルの CSS を触ることになり 2 度手間になる。第 3 段は構造が確定した上で行う。
+
+**第 1 段が `*.tsx` にも及ぶ理由**: 素の CSS には mixin がないため、集約した基本形を効かせるには (a) 各コンポーネントの `className` に基本形クラスを付ける、(b) `primitives.css` 側に既存クラス名を列挙したセレクタリストを書く、のいずれかが必要になる。(b) は共通ファイルが全コンポーネントのクラス名を知ることになり依存が逆流するため、(a) を採る。したがって第 1 段は `*.css` に加えて各コンポーネントの `className` を変更する。テストは `getByRole` / `ByLabelText` ベース(`toHaveClass` は 0 箇所)のため、クラス付与による影響を受けない。
 
 **ロールバック**: データ移行・スキーマ変更を含まないため、任意の段を revert しても利用者データへの影響はない。第 1 段のみで重複解消という主目的は達成されるため、以降の段で問題が生じた場合は第 1 段までで打ち切る判断が可能。
 
@@ -219,7 +222,7 @@ README と本ドキュメントで役割を明記して区別する:
 
 | リスク | 影響 | 緩和策 |
 | --- | --- | --- |
-| diff が巨大(実装 8,355 行 + テスト 7,044 行が影響圏)でレビュー不能になる | レビュー品質の低下・見落とし | 4 段階に分割し、各段で触るファイルの**種類**を限定する(第 1 段は CSS のみ、第 2 段は import パスのみ) |
+| diff が巨大(実装 8,355 行 + テスト 7,044 行が影響圏)でレビュー不能になる | レビュー品質の低下・見落とし | 4 段階に分割し、各段で**変更の性質**を限定する(第 1 段は見た目の集約のみ・機能変更なし、第 2 段はファイル配置と import パスのみ・見た目ゼロ変更) |
 | CSS の上書き順序が壊れ、見た目が退行する | 視覚回帰 | D4 の読み込み順を守る。第 1 段の完了条件に主要画面の視覚確認を含める。既存テスト一式(`getByRole` 361 箇所)は構造非依存のため退行検知の一部を担う |
 | ファイル移動でテストが壊れる | CI 赤化 | 実測でリスクは低い(`toHaveClass` 0 箇所、クラス名依存 `querySelector` 19 箇所のみ)。テストは対応する実装と同じ層へ同時移動し、19 箇所は個別に確認する |
 | `App.tsx` 分離でコード分割が壊れ、ランディングが family-chart を読み込む | ランディングの初回描画が劣化 | D9。完了条件にビルド後のチャンク構成確認を含める |
@@ -233,3 +236,92 @@ README と本ドキュメントで役割を明記して区別する:
 1. **`person-card.ts` の React 化**: 本変更では判断を保留する(D3 により保留したまま完結できる)。将来 React 化する場合、`primitives.css` の基本形はそのまま再利用でき、`atoms/Surface` の上にカードを組み直す形になる。判断時期は有償版の OCR 校正 UI を設計するタイミングが自然。
 2. **`layout/` の改名**: 本変更では行わない。`templates/` との紛らわしさが実際に混乱を生むかを運用で観察し、必要なら別 change として `pedigree-layout/` への改名を提案する。
 3. **`SettingsMenu` の層**: 依存ゼロの「器」であり `atoms/` の判定基準(`domain/` を import しない)を満たすが、実質は設定機能の入れ物である。本設計では機能への所属を優先して `organisms/settings/` に置く。この「依存はゼロだが機能に属する器」というケースが他にも現れた場合、判定基準に「機能固有の子部品を組み立てる器は organisms とする」旨を追記する必要がある。
+
+## 付録 A: 基本形と差分の分類(tasks 1.1 の成果物)
+
+`src/` 配下の CSS 全 25 ファイル・2,926 行を読み、操作要素(ボタン・入力)・面・セグメント切替に関わる全宣言を「基本形へ集約」と「各コンポーネントに残す差分」へ分類した。
+
+分類対象外のファイル: `tokens.css`(トークン定義そのもの)、`index.css`(要素セレクタのリセット。基本形の土台)、`PedigreeCanvas.css`(系線・キャンバス土台のみで操作要素・面を持たない)。
+
+### A-1. ボタン — `.btn` とバリアント
+
+基本形(全バリアント共通): `font: inherit` / `cursor: pointer` / `border-radius: var(--radius)` / `border: 1px solid transparent` / `background: none`
+
+| バリアント | 基本形へ集約する宣言 | 該当セレクタ(ファイル) | 各所に残す差分 |
+| --- | --- | --- | --- |
+| `.btn--outline` | `border-color: var(--line-strong)` `background: var(--paper)` `color: var(--ink-soft)` | `.person-panel-close` `.person-panel-action-button` `.person-panel-relation-modes button` `.person-panel-relation-actions button[type=button]`(PersonPanel) / `.add-person-actions button[type=button]`(AddPersonControl) / `.confirm-dialog-actions button`(confirm-dialog) / `.app-blocked-reload`(App) / `.person-table-clear-filters`(PersonTableView) | `font-size` `padding` / hover 色(藍 or 墨) / `color: var(--ink)`(action-button) / `background: var(--paper-raised)`(app-blocked-reload) / `flex` `min-width` `align-self` |
+| `.btn--primary-soft` | `border-color: var(--ai)` `background: var(--ai-wash)` `color: var(--ai-strong)` | `.person-panel-relation-actions button[type=submit]`(PersonPanel) / `.add-person-actions button[type=submit]`(AddPersonControl) / `.person-edit-form-submit`(PersonEditForm) | `font-size` `padding` `align-self` / hover の `border-color` |
+| `.btn--primary` | `border-color: var(--ai)` `background: var(--ai)` `color: var(--paper)` + hover `background: var(--ai-strong)` | `.confirm-dialog-primary-button`(confirm-dialog) / `.empty-state-guide-form button`(EmptyStateGuide) | `padding` / `border-radius: 999px`(ピル形) / disabled の淡色化 |
+| `.btn--danger` | `border-color: var(--danger)` `background: var(--danger)` `color: var(--paper)` | `.confirm-dialog-danger-button`(confirm-dialog) | hover の `color-mix` |
+| `.btn--danger-outline` | `border-color: var(--danger)` `color: var(--danger)` + hover `background: var(--danger-wash)` | `.delete-person-trigger`(DeletePersonControl) | `font-size` `padding` `align-self` |
+| `.btn--text` | `border: none` + hover 背景のみ利用側で指定 | `.unlink-relation-trigger`(UnlinkRelationControl) / `.family-event-editor-delete`(FamilyEventEditor) / `.person-table-paste-summary-close` `.person-table-sort-button`(PersonTableView) | `color`(墨 / 朱 / `inherit`) / `padding` / hover 背景 / `font-weight: inherit` `padding: 0`(sort-button) |
+| `.btn--menu-item` | `.btn--text` + `display: block` `width: 100%` `text-align: left` `padding: var(--space-2)` | `.data-reset-trigger`(DataResetControl) / `.import-export-trigger`(ImportExportControl) | `color`(朱 / 墨) / hover 背景(`--danger-wash` / `--ai-wash`) |
+| `.btn--ghost` | `border-color: transparent` `color: var(--ink-soft)` + hover `border-color: var(--line-strong)` | `.settings-menu-trigger`(SettingsMenu) | `font-size` `line-height: 1` `padding` / `[aria-expanded=true]` の扱い |
+| `.btn:disabled` | `opacity: 0.5` `cursor: not-allowed` | `.add-person-actions button[type=submit]` / `.person-panel-relation-actions button[type=submit]` / `.confirm-dialog-actions button` / `.person-table-sort-button`(`opacity: 0.6`) | `opacity: 0.6`(sort-button のみ) / disabled 時の配色変更(EmptyStateGuide) |
+
+`index.css` の `button { transition: ... }` が全ボタンに効いているため、`.zoom-controls button` と `.tree-show-all-toggle` が個別に持つ `transition`(グローバル指定の部分集合)は**冗長であり削除する**。
+
+### A-2. 入力欄 — `.field` とサイズバリアント
+
+基本形: `font: inherit` / `border: 1px solid var(--line-strong)` / `border-radius: var(--radius)` / `background: var(--paper-raised)` / `color: var(--ink)`
+
+| バリアント | 基本形へ集約する宣言 | 該当セレクタ(ファイル) | 各所に残す差分 |
+| --- | --- | --- | --- |
+| `.field`(既定 = `--text-md`) | 上記 + `font-size: var(--text-md)` `padding: var(--space-2)` | `.person-name-fields input`(PersonNameFields) / `.wareki-date-input input`(WarekiDateInput) / `.family-event-editor-field input`(FamilyEventEditor) / `.person-edit-form-*` の `input` `select` `textarea`(PersonEditForm) | `width: 8em`(氏名) / `box-sizing` `width: 100%` / `select` の `appearance: none` と矢印の背景画像 |
+| `.field--sm` | `font-size: var(--text-sm)` `padding: var(--space-1) var(--space-2)` | `.person-picker input`(PersonPicker) / `.pedigree-editor-row select`(PedigreeEditor) / `.person-table-filter input`(PersonTableView) | `width: 100%` `box-sizing` / `min-width: 200px`(横断検索) |
+| `.field--xs` | `font-size: var(--text-xs)` `padding: 2px var(--space-1)` | `.person-table-filter-row input` `select`(PersonTableView) | `width: 100%` `min-width: 5em` `box-sizing` / `::placeholder` の色 / `:focus-visible` の `border-color` |
+| `.field--sunken` | `background: var(--paper)`(面が `--paper-raised` の中に置く入力) | `.confirm-dialog input`(confirm-dialog) | `padding` |
+| `.field--bare` | `border: none` `padding: 0` `background: var(--paper-raised)` | `.person-table tbody td input` `select`(PersonTableView) | `width: 100%` `min-width: 8em` `box-sizing` / `:focus-visible { outline: none }` |
+
+`.wareki-date-input input[aria-invalid='true'] { border-color: var(--danger) }` は基本形へ `.field[aria-invalid='true']` として集約する(和暦入力の解釈失敗表示。他の入力にも同じ規則を適用したい性質のため)。
+
+### A-3. 面 — `.surface` とバリアント
+
+| バリアント | 基本形へ集約する宣言 | 該当セレクタ(ファイル) | 各所に残す差分 |
+| --- | --- | --- | --- |
+| `.surface--floating` | `background: var(--paper-raised)` `border: 1px solid var(--line-strong)` `border-radius: var(--radius-lg)` `box-shadow: var(--shadow-floating)` | `.settings-menu-panel`(SettingsMenu) / `.confirm-dialog`(confirm-dialog) / `.person-picker-list`(PersonPicker) / `.landing-hero-figure`(LandingPage) | `padding` / `min-width` `max-width` `max-height` / `border-radius: var(--radius)`(picker-list) / `border-color: var(--line)`(hero-figure) / 位置指定 |
+| `.surface--raised` | `background: var(--paper-raised)` `border: 1px solid var(--line)` `border-radius: var(--radius-lg)` `box-shadow: var(--shadow-raised)` | `.add-person-form`(AddPersonControl) / `.feature-card` `.sample-gallery-panel`(LandingPage) / **`.tree-card`**(FamilyTreeCanvas) | `padding` / hover の浮き上がり / カード寸法(`--tree-card-w/h`)・選択・故人の各状態 |
+| `.surface--sunken` | `background: var(--paper-sunken)` `border: 1px solid var(--line)` `border-radius: var(--radius)` `padding: var(--space-3)` | `.person-edit-form`(PersonEditForm) / `.person-panel-relation-form`(PersonPanel) | なし(2 箇所は完全一致) |
+| `.surface--overlay` | `border: 1px solid var(--line)` `border-radius: var(--radius-lg)` `background: color-mix(in srgb, var(--paper-raised) 88%, transparent)` `backdrop-filter: blur(8px)` `-webkit-backdrop-filter: blur(8px)` `box-shadow: var(--shadow-raised)` | `.zoom-controls`(ZoomControls) / `.tree-legend` `.tree-view-mode-toggle` `.tree-person-search-trigger`(FamilyTreeCanvas) / `.add-person-trigger`(AddPersonControl) | `border-radius: var(--radius)`(add-person-trigger のみ) / 位置・`z-index` / `overflow: hidden` |
+| `.surface--notice` | `border: 1px solid` `border-radius: var(--radius)` `color: var(--ink)` | `.import-export-disabled-note` `.import-export-confirm`(ImportExportControl) / `.app-sample-error` `.app-blocked-message`(App) | 色の別(`--warn` / `--danger` と対応する `-wash`) / `padding` `font-size` `max-width` `margin` |
+| `.surface--fieldset` | `border: 1px solid var(--line)` `border-radius: var(--radius)` `padding: var(--space-2) var(--space-3) var(--space-3)` + `legend` の `font-family: var(--font-gothic)` `font-size: var(--text-xs)` `color: var(--ink-faint)` `padding: 0 var(--space-1)` | `.person-edit-form-event`(PersonEditForm) / `.family-event-editor-event`(FamilyEventEditor) | なし(2 箇所は完全一致) |
+
+`.tree-card` を `.surface--raised` の上に載せることで、`PedigreeCanvas` が `FamilyTreeCanvas.css` へ暗黙依存している問題(D3)の解消と同時に、カードの面表現がアプリの他の面と一致することが構造的に保証される。
+
+### A-4. セグメント切替 — `.segmented`
+
+| バリアント | 基本形へ集約する宣言 | 該当セレクタ(ファイル) | 各所に残す差分 |
+| --- | --- | --- | --- |
+| `.segmented`(横並び) | 外枠: `display: flex` `border: 1px solid var(--line-strong)` `border-radius: var(--radius)` `overflow: hidden`。子ボタン: `font: inherit` `font-size: var(--text-sm)` `padding: var(--space-1) var(--space-3)` `border: none` `background: var(--paper)` `color: var(--ink-soft)` `cursor: pointer`。区切り: `button + button { border-left: 1px solid var(--line-strong) }`。選択: `[aria-pressed='true'] { background: var(--ai-wash); color: var(--ai-strong); font-weight: 600 }` | `.app-view-toggle`(App) / `.person-table-mode`(PersonTableView) | `min-width: 3.5em`(view-toggle) / `margin-right: auto` `margin-left: auto` の配置 |
+| `.segmented--stacked`(縦積み) | 外枠は `.surface--overlay` + `flex-direction: column` `overflow: hidden`。子: `border: none` `border-bottom: 1px solid var(--line)` `background: transparent` `color: var(--ink-soft)` `cursor: pointer` + `:last-child { border-bottom: none }`。選択: `[aria-pressed='true'] { background: var(--ai-wash); color: var(--ai-strong); font-weight: 600 }` | `.tree-view-mode-toggle` + `.tree-show-all-toggle`(FamilyTreeCanvas) / `.zoom-controls` + `button`(ZoomControls) | `padding` `font-size` `text-align` `white-space`(表示モード) / `width/height: 36px`・モバイル 44px(ズーム) / `border-radius: 0` |
+| `.segmented--buttons`(枠付きボタン群の選択状態) | `[aria-pressed='true'] { border-color: var(--ai); background: var(--ai-wash); color: var(--ai-strong) }` | `.person-panel-action-button` `.person-panel-relation-modes button`(PersonPanel) | なし(2 箇所は完全一致) |
+
+**基本形へ集約しないもの**(選択の意味が異なるため各所に残す):
+
+- `.unconnected-tray-chip[aria-pressed='true']`(UnconnectedTray): 朱(`--shu`)で選択を示す。朱は「選択中の人物」の一意な印であり、藍のセグメント選択とは意味が異なる
+- `.sample-gallery-tab[aria-selected='true']`(LandingPage): `role="tab"` の選択で、朱の下線。D10 によりランディングは共通層へ引き上げない
+
+### A-5. 形状トークンの追加
+
+`border-radius: 999px`(ピル形)が **9 箇所**にハードコードされている: `.app-header-status` `.app-save-error button`(App) / `.unconnected-tray-chip` `.unconnected-tray-count`(UnconnectedTray) / `.tree-card-hidden-badge`(FamilyTreeCanvas) / `.empty-state-guide-form button`(EmptyStateGuide) / `.landing-header-app-link` `.landing-cta` `.landing-cta-secondary`(LandingPage)。
+
+`tokens.css` へ `--radius-pill: 999px` を追加し、全箇所をトークン参照へ置き換える(造形の 2 段構成 `--radius` / `--radius-lg` に 3 つ目として加える)。
+
+### A-6. 視覚回帰を防ぐための注意点(実装時に必ず守る)
+
+**注意 1 — `font: inherit` の line-height 副作用**
+
+`font: inherit` はショートハンドのため `line-height` も継承値(`:root` の `1.6`)へ変える。現状、操作要素は 2 群に分かれている。
+
+- **A 群(`font: inherit` あり)**: `line-height` は `1.6`。ボタン 12 箇所・入力 11 箇所
+- **B 群(`font: inherit` なし)**: UA の `font` ショートハンドが効いて `line-height: normal`(約 1.2)
+
+基本形に `font: inherit` を置くと B 群のボタンが縦に約 5px 高くなる。B 群のうち `line-height: 1` を明示している 2 箇所(`.settings-menu-trigger` / `.zoom-controls button`)は影響を受けないが、残る 5 箇所には**現行の見た目を保つため `line-height: normal` を明示的に残す**:
+
+`.delete-person-trigger`(DeletePersonControl) / `.data-reset-trigger`(DataResetControl) / `.import-export-trigger`(ImportExportControl) / `.add-person-trigger`(AddPersonControl) / `.tree-show-all-toggle` `.tree-person-search-trigger`(FamilyTreeCanvas)
+
+**注意 2 — `.display-settings-control-field select` は現在システム書体で描かれている**
+
+`index.css` は `button { font-family: var(--font-gothic) }` のみを指定し、`input` / `select` / `textarea` には書体を与えていない。アプリ内の入力欄はすべて `font: inherit` を自前で持つためゴシックで描かれるが、**`.display-settings-control-field select`(DisplaySettingsControl)だけは `font-size` のみの指定で、書体は UA 既定(システム書体)のまま**である。
+
+これは既存の見た目の不統一だが、本変更の完了条件は視覚回帰ゼロであるため、この 1 箇所は `.field` の書体部分を適用せず**現行の見た目を保つ**。統一するかどうかは別 change の判断とする(統一する場合は `.field--sm` を当てるだけで済む)。

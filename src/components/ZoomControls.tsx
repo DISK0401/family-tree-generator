@@ -18,7 +18,11 @@ export function ZoomControls({
   onFit,
 }: ZoomControlsProps) {
   return (
-    <div className="zoom-controls" role="group" aria-label="表示倍率">
+    <div
+      className="segmented segmented--stacked surface--overlay zoom-controls"
+      role="group"
+      aria-label="表示倍率"
+    >
       <button type="button" onClick={onZoomIn} aria-label="拡大">
         +
       </button>

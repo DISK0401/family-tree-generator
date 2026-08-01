@@ -21,10 +21,11 @@ export function PersonNameFields({
   const givenId = useId()
   return (
     <div className="person-name-fields">
-      <label htmlFor={surnameId}>
+      <label htmlFor={surnameId} className="field-label">
         姓
         <input
           id={surnameId}
+          className="field"
           type="text"
           value={surname}
           onChange={(e) => onSurnameChange(e.target.value)}
@@ -32,10 +33,11 @@ export function PersonNameFields({
           autoFocus={autoFocus}
         />
       </label>
-      <label htmlFor={givenId}>
+      <label htmlFor={givenId} className="field-label">
         名
         <input
           id={givenId}
+          className="field"
           type="text"
           value={given}
           onChange={(e) => onGivenChange(e.target.value)}

@@ -1,3 +1,6 @@
+/* エディタ画面の骨組み(ヘッダ・キャンバス・パネルのグリッド)。
+   操作要素・面・切替の基本形は styles/primitives.css にある */
+
 .app-frame {
   display: grid;
   grid-template-areas:
@@ -33,32 +36,11 @@
    (あちらは「図の描き方」、こちらは「何で見るか」)ため、ヘッダー側に置いて区別する。
    marginで左寄せの見出しから離し、右側のステータス群とも独立させる */
 .app-view-toggle {
-  display: flex;
   margin-right: auto;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  overflow: hidden;
 }
 
 .app-view-toggle button {
-  font: inherit;
-  font-size: var(--text-sm);
   min-width: 3.5em;
-  padding: var(--space-1) var(--space-3);
-  border: none;
-  background: var(--paper);
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-
-.app-view-toggle button + button {
-  border-left: 1px solid var(--line-strong);
-}
-
-.app-view-toggle button[aria-pressed='true'] {
-  background: var(--ai-wash);
-  color: var(--ai-strong);
-  font-weight: 600;
 }
 
 .app-header-right {
@@ -75,7 +57,7 @@
   padding: 2px var(--space-3);
   background: var(--paper-sunken);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 /* 保存失敗時の再試行導線。ステータスピルの隣で控えめに、しかし見落とされないように */
@@ -88,14 +70,12 @@
 }
 
 .app-save-error button {
-  font: inherit;
   font-size: var(--text-xs);
   padding: 2px var(--space-3);
-  border: 1px solid var(--danger);
-  border-radius: 999px;
+  border-color: var(--danger);
+  border-radius: var(--radius-pill);
   background: var(--danger-wash);
   color: var(--danger);
-  cursor: pointer;
 }
 
 /* 永続ストレージが保証されない環境向けの控えめな注意(監査: persistenceAtRisk) */
@@ -113,23 +93,15 @@
   max-width: 32em;
   margin: var(--space-6) auto;
   padding: var(--space-4);
-  border: 1px solid var(--danger);
-  background: var(--danger-wash);
-  color: var(--ink);
-  border-radius: var(--radius);
   font-size: var(--text-md);
 }
 
 .app-blocked-message .app-blocked-reload {
   margin-top: var(--space-3);
-  font: inherit;
   font-size: var(--text-sm);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
   background: var(--paper-raised);
   color: var(--ink);
-  cursor: pointer;
 }
 
 /* サンプル読み込み失敗のインライン通知(use-sample-loaderのsampleError) */
@@ -137,10 +109,6 @@
   max-width: 32em;
   margin: var(--space-4) auto 0;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--warn);
-  background: var(--warn-wash);
-  color: var(--ink);
-  border-radius: var(--radius);
   font-size: var(--text-sm);
 }
 

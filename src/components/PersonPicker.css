@@ -1,17 +1,8 @@
+/* 見た目の基本形(.field / .surface--floating)は styles/primitives.css にある。
+   ここは候補リストの浮かせ方と選択肢の行に固有の差分のみ */
+
 .person-picker {
   position: relative;
-}
-
-.person-picker input {
-  width: 100%;
-  box-sizing: border-box;
-  font: inherit;
-  font-size: var(--text-sm);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
 }
 
 .person-picker-list {
@@ -25,17 +16,14 @@
   margin: 0;
   padding: var(--space-1);
   list-style: none;
-  border: 1px solid var(--line-strong);
+  /* 面の角丸は操作要素と同じ一段にとどめる(入力欄の直下に接する小さな面のため) */
   border-radius: var(--radius);
-  background: var(--paper-raised);
-  box-shadow: var(--shadow-floating);
 }
 
 /* 選択肢はli自身(role="option")。内側ボタンは廃止した(監査 中7: listbox構造) */
 .person-picker-option {
   display: block;
   box-sizing: border-box;
-  font: inherit;
   font-size: var(--text-sm);
   text-align: left;
   padding: var(--space-1) var(--space-2);

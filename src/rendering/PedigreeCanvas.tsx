@@ -17,6 +17,7 @@ import {
   personCardInnerHtml,
   personToCardInput,
 } from './person-card'
+import './person-card.css'
 import './PedigreeCanvas.css'
 
 export interface PedigreeCanvasProps {

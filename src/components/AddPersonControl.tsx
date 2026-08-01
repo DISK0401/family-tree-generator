@@ -47,14 +47,17 @@ export function AddPersonControl({ onAdded }: AddPersonControlProps) {
     <div className="add-person-control">
       <button
         type="button"
-        className="add-person-trigger"
+        className="btn btn--tight surface--overlay add-person-trigger"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
         人物を追加
       </button>
       {open && (
-        <form onSubmit={handleSubmit} className="add-person-form">
+        <form
+          onSubmit={handleSubmit}
+          className="add-person-form surface--raised"
+        >
           <p className="add-person-hint">
             関係を決めずに登録します。追加後に配偶者・子・親として繋げられます。
           </p>
@@ -66,10 +69,18 @@ export function AddPersonControl({ onAdded }: AddPersonControlProps) {
             autoFocus
           />
           <div className="add-person-actions">
-            <button type="button" onClick={() => setOpen(false)}>
+            <button
+              type="button"
+              className="btn btn--outline"
+              onClick={() => setOpen(false)}
+            >
               キャンセル
             </button>
-            <button type="submit" disabled={!canSubmit}>
+            <button
+              type="submit"
+              className="btn btn--primary-soft"
+              disabled={!canSubmit}
+            >
               追加する
             </button>
           </div>

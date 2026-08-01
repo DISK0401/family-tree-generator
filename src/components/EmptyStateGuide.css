@@ -76,30 +76,20 @@
   margin-top: var(--space-2);
 }
 
+/* 見た目の基本形(.btn / .btn--primary)は styles/primitives.css にある */
 .empty-state-guide-form button {
-  font: inherit;
   font-size: var(--text-md);
   padding: var(--space-3) var(--space-6);
-  border: 1px solid var(--ai);
   /* ランディングの主要CTAと同じピル型(「はじめる」動線の一貫性) */
-  border-radius: 999px;
-  /* 有効時はソリッドで明確に押せることを示す。淡色は無効状態のみに使う。
-     文字色は --paper(地色)を使う: ライトでは明、ダークでは暗と役割が反転するため
-     どちらのテーマでもアクセント背景に対して十分なコントラストが取れる */
-  background: var(--ai);
-  color: var(--paper);
-  cursor: pointer;
+  border-radius: var(--radius-pill);
   align-self: center;
 }
 
+/* 空状態の唯一の導線であり、他に押せるものが無い。淡色へ退くだけで十分に
+   「まだ押せない」ことが伝わるため、基本形の減光(opacity)は当てない */
 .empty-state-guide-form button:disabled {
+  opacity: 1;
   background: var(--ai-wash);
   color: var(--ai-strong);
   border-color: var(--line);
-  cursor: not-allowed;
-}
-
-.empty-state-guide-form button:not(:disabled):hover {
-  background: var(--ai-strong);
-  border-color: var(--ai-strong);
 }

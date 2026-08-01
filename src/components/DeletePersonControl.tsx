@@ -38,7 +38,7 @@ export function DeletePersonControl({
     <>
       <button
         type="button"
-        className="delete-person-trigger"
+        className="btn btn--danger-outline btn--tight delete-person-trigger"
         onClick={() => setOpen(true)}
       >
         この人物を削除

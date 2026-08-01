@@ -13,15 +13,10 @@
   color: var(--ink-faint);
 }
 
-.display-settings-control-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--ink-soft);
-}
-
+/* 見た目の基本形(.field-label--row)は styles/primitives.css にある。
+   この<select>だけは基本形(.field)を当てていない: 元から font-family を持たず
+   UA既定のシステム書体で描かれており、.field を当てると書体が変わってしまう。
+   統一するかどうかは別途判断する(design.md 付録A 注意2) */
 .display-settings-control-field select {
   font-size: var(--text-sm);
   border: 1px solid var(--line);

@@ -214,7 +214,11 @@ export function PersonEditForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="person-edit-form">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="person-edit-form surface--sunken"
+    >
       <PersonNameFields
         surname={surname}
         given={given}
@@ -222,18 +226,20 @@ export function PersonEditForm({
         onGivenChange={setGiven}
       />
       <div className="person-edit-form-kana-fields">
-        <label>
+        <label className="field-label">
           姓(ふりがな)
           <input
+            className="field field--block"
             type="text"
             value={surnameKana}
             onChange={(e) => setSurnameKana(e.target.value)}
             placeholder="やまだ"
           />
         </label>
-        <label>
+        <label className="field-label">
           名(ふりがな)
           <input
+            className="field field--block"
             type="text"
             value={givenKana}
             onChange={(e) => setGivenKana(e.target.value)}
@@ -242,10 +248,11 @@ export function PersonEditForm({
         </label>
       </div>
 
-      <label htmlFor={genderId} className="person-edit-form-field">
+      <label htmlFor={genderId} className="person-edit-form-field field-label">
         性別
         <select
           id={genderId}
+          className="field field--block"
           value={gender}
           onChange={(e) => setGender(e.target.value as Gender)}
         >
@@ -257,7 +264,7 @@ export function PersonEditForm({
         </select>
       </label>
 
-      <fieldset className="person-edit-form-event">
+      <fieldset className="person-edit-form-event surface--fieldset">
         <legend>生年月日</legend>
         <WarekiDateInput
           label="生年月日"
@@ -265,10 +272,14 @@ export function PersonEditForm({
           value={birthDate}
           onChange={setBirthDate}
         />
-        <label htmlFor={birthPlaceId} className="person-edit-form-field">
+        <label
+          htmlFor={birthPlaceId}
+          className="person-edit-form-field field-label"
+        >
           場所
           <input
             id={birthPlaceId}
+            className="field field--block"
             type="text"
             value={birthPlace}
             onChange={(e) => setBirthPlace(e.target.value)}
@@ -276,7 +287,7 @@ export function PersonEditForm({
         </label>
       </fieldset>
 
-      <fieldset className="person-edit-form-event">
+      <fieldset className="person-edit-form-event surface--fieldset">
         <legend>没年月日</legend>
         <WarekiDateInput
           label="没年月日"
@@ -284,10 +295,14 @@ export function PersonEditForm({
           value={deathDate}
           onChange={setDeathDate}
         />
-        <label htmlFor={deathPlaceId} className="person-edit-form-field">
+        <label
+          htmlFor={deathPlaceId}
+          className="person-edit-form-field field-label"
+        >
           場所
           <input
             id={deathPlaceId}
+            className="field field--block"
             type="text"
             value={deathPlace}
             onChange={(e) => setDeathPlace(e.target.value)}
@@ -295,17 +310,21 @@ export function PersonEditForm({
         </label>
       </fieldset>
 
-      <label htmlFor={noteId} className="person-edit-form-field">
+      <label htmlFor={noteId} className="person-edit-form-field field-label">
         メモ
         <textarea
           id={noteId}
+          className="field field--block"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
         />
       </label>
 
-      <button type="submit" className="person-edit-form-submit">
+      <button
+        type="submit"
+        className="btn btn--primary-soft person-edit-form-submit"
+      >
         確定
       </button>
     </form>

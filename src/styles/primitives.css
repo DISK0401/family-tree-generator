@@ -1,0 +1,318 @@
+/*
+ * 見た目の基本形(プリミティブ)— tokens.css の色・書体・余白の上に載る「素形」の層。
+ *
+ * ここが操作要素・入力欄・面・セグメント切替の**単一の情報源**。ボタンの角丸や
+ * 入力欄の余白を変えたいときは、このファイルだけを編集すれば全体に反映される。
+ * 集約対象の全一覧と、各コンポーネントに残した差分の根拠は
+ * openspec の design.md 付録 A を参照。
+ *
+ * 読み込み順: index.css から tokens.css の直後に @import する。各コンポーネントの
+ * CSS は常にこの後に適用されるため、差分は各所で上書きできる。逆に、
+ * コンポーネント CSS がここにある基本形を再定義してはならない
+ * (styles/primitives.test.ts が検査する)。
+ *
+ * 命名: 基底クラス .btn / .field / .surface / .segmented と、`--` 付きのバリアント。
+ * バリアントは単体では使わず、必ず基底クラスと併記する(例: class="btn btn--outline")。
+ * ただし .surface--* は面の性格ごとに独立しているため基底クラスを持たない。
+ */
+
+/* ============================================================
+   ボタン
+   ============================================================ */
+
+.btn {
+  font: inherit;
+  cursor: pointer;
+  /* 枠を透明で確保しておく: バリアントで色だけを差し替えれば、
+     枠の有無で寸法がずれない */
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+}
+
+/*
+ * `font: inherit` はショートハンドのため line-height も継承値(:root の 1.6)へ変える。
+ * UA 既定の `normal`(約 1.2)を前提に組まれていた箇所へそのまま当てると縦に約 5px
+ * 伸びるため、該当箇所はこのバリアントで現行の行送りを保つ(design.md 付録 A 注意 1)。
+ */
+.btn--tight {
+  line-height: normal;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 枠線付き中立 — 最も多用する形。紙の面に細い枠 */
+.btn--outline {
+  border-color: var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+
+/* 枠線付き中立の選択状態。外枠を持たないボタン群の切替に使う
+   (枠でくるむ切替は .segmented を使う) */
+.btn--outline[aria-pressed='true'] {
+  border-color: var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+/* 確定操作(淡) — 藍の wash。フォーム内の「追加する」「保存」 */
+.btn--primary-soft {
+  border-color: var(--ai);
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+/* 確定操作(強) — 藍のソリッド。押せることを最も強く示す。
+   文字色に --paper を使うのは、ライトで明・ダークで暗と役割が反転し、
+   どちらのテーマでもアクセント背景に対して十分なコントラストが取れるため */
+.btn--primary {
+  border-color: var(--ai);
+  background: var(--ai);
+  color: var(--paper);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--ai-strong);
+  border-color: var(--ai-strong);
+}
+
+/* 破壊的操作(強) — 「安全側を目立たせる」より「押す前に一拍おかせる」ことを優先する */
+.btn--danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--paper);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 85%, black);
+}
+
+/* 破壊的操作(枠線) — 人物削除のトリガ等、ソリッドほど強くしたくない場面 */
+.btn--danger-outline {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn--danger-outline:hover:not(:disabled) {
+  background: var(--danger-wash);
+}
+
+/* 文字ボタン — 枠を持たず、ホバーで面だけが付く従属的な操作。
+   ホバーの面の色は役割ごとに異なるため各所で指定する */
+.btn--text {
+  border: none;
+}
+
+/* メニュー項目 — 設定メニュー内の行。文字ボタンの全幅・左揃え版。
+   行送りは UA既定を保つ(注意1: .btn の `font: inherit` を打ち消す) */
+.btn--menu-item {
+  border: none;
+  line-height: normal;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* ゴースト — 枠を透明で確保し、ホバーで枠が現れる(位置がずれない) */
+.btn--ghost {
+  color: var(--ink-soft);
+}
+
+.btn--ghost:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+/* ============================================================
+   入力欄
+   ============================================================ */
+
+.field {
+  font: inherit;
+  font-size: var(--text-md);
+  padding: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.field--sm {
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.field--xs {
+  font-size: var(--text-xs);
+  padding: 2px var(--space-1);
+}
+
+/* 面(--paper-raised)の中に置く入力は一段沈め、「面の中の領域」として描く */
+.field--sunken {
+  background: var(--paper);
+}
+
+/* 枠を持たない入力(表のセルエディタ)。位置はセル側の枠で示す */
+.field--bare {
+  border: none;
+  padding: 0;
+}
+
+/* 親の幅いっぱいに伸ばす */
+.field--block {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* 解釈できなかった入力(和暦の誤記等)は枠で示す */
+.field[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+/* 入力の見出し — ラベルと入力を縦に積む(最も多い形) */
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+/* 見出しと入力を横に並べる(設定メニューの行・系譜の親の行) */
+.field-label--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* ============================================================
+   面(サーフェス)
+   ============================================================ */
+
+/* 浮遊 — メニュー・ダイアログ・候補リスト。地から離れて手前に出る */
+.surface--floating {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-floating);
+}
+
+/* 接地 — 人物カード・フォームの箱。机上に置かれた紙 */
+.surface--raised {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+}
+
+/* 沈み — フォーム内のグループ。面より一段奥に置いて入れ子を示す */
+.surface--sunken {
+  background: var(--paper-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+/* 図の上に浮かぶ操作面 — 地図アプリの流儀(半透明+ぼかし+接地影)。
+   下の図が透けることで「図の上のレイヤ」であることが分かる */
+.surface--overlay {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-raised);
+}
+
+/* 通知面 — 既定は警告(warn)。危険は --danger 版で色だけ差し替える */
+.surface--notice {
+  border: 1px solid var(--warn);
+  background: var(--warn-wash);
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+
+.surface--notice-danger {
+  border-color: var(--danger);
+  background: var(--danger-wash);
+}
+
+/* 枠付きグループ(fieldset)— 生没・婚姻イベントの囲み */
+.surface--fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+
+.surface--fieldset > legend {
+  font-family: var(--font-gothic);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  padding: 0 var(--space-1);
+}
+
+/* ============================================================
+   セグメント切替
+   ============================================================ */
+
+.segmented {
+  display: flex;
+  /* 子の角が外枠からはみ出さないようにする */
+  overflow: hidden;
+}
+
+.segmented > button {
+  font: inherit;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+/* 現在の選択は藍で示す。朱は「選択中の人物」の一意な印なので切替には使わない */
+.segmented > button[aria-pressed='true'] {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  font-weight: 600;
+}
+
+/* 枠でくるむ横並び(ヘッダの図/表、表の閲覧/編集) */
+.segmented--framed {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.segmented--framed > button {
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-3);
+  background: var(--paper);
+}
+
+.segmented--framed > button + button {
+  border-left: 1px solid var(--line-strong);
+}
+
+/* 縦積み(図の上の操作面)。外枠は .surface--overlay と併用する */
+.segmented--stacked {
+  flex-direction: column;
+}
+
+.segmented--stacked > button {
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  /* 縦積みの操作面は UA既定の行送りを前提に高さが組まれている(注意1)。
+     `.segmented > button` の `font: inherit` は詳細度が同じで先に来るため、
+     ここで打ち消す(.btn--tight は詳細度が足りず勝てない) */
+  line-height: normal;
+}
+
+.segmented--stacked > button:last-child {
+  border-bottom: none;
+}

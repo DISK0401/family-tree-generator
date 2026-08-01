@@ -286,7 +286,7 @@ export function PersonPanel({
             常時表示の閉じるボタンで図へ戻れるようにする */}
         <button
           type="button"
-          className="person-panel-close"
+          className="btn btn--outline person-panel-close"
           onClick={onClose}
           aria-label="パネルを閉じる"
         >
@@ -301,7 +301,7 @@ export function PersonPanel({
           <button
             key={action}
             type="button"
-            className="person-panel-action-button"
+            className="btn btn--outline person-panel-action-button"
             aria-pressed={openAction === action}
             onClick={() =>
               openAction === action ? closeForm() : openForm(action)
@@ -313,7 +313,7 @@ export function PersonPanel({
       </div>
 
       {openAction && (
-        <div className="person-panel-relation-form">
+        <div className="person-panel-relation-form surface--sunken">
           <div
             className="person-panel-relation-modes"
             role="group"
@@ -321,6 +321,7 @@ export function PersonPanel({
           >
             <button
               type="button"
+              className="btn btn--outline"
               aria-pressed={!useExisting}
               onClick={() => setUseExisting(false)}
             >
@@ -328,6 +329,7 @@ export function PersonPanel({
             </button>
             <button
               type="button"
+              className="btn btn--outline"
               aria-pressed={useExisting}
               onClick={() => setUseExisting(true)}
             >
@@ -338,7 +340,7 @@ export function PersonPanel({
           {useExisting ? (
             <div className="person-panel-relation-existing">
               {candidates.length > 0 ? (
-                <label htmlFor={existingSelectId}>
+                <label htmlFor={existingSelectId} className="field-label">
                   {EXISTING_LABEL[openAction]}
                   <PersonPicker
                     id={existingSelectId}
@@ -352,7 +354,11 @@ export function PersonPanel({
                 </p>
               )}
               <div className="person-panel-relation-actions">
-                <button type="button" onClick={closeForm}>
+                <button
+                  type="button"
+                  className="btn btn--outline"
+                  onClick={closeForm}
+                >
                   キャンセル
                 </button>
               </div>
@@ -367,10 +373,18 @@ export function PersonPanel({
                 autoFocus
               />
               <div className="person-panel-relation-actions">
-                <button type="button" onClick={closeForm}>
+                <button
+                  type="button"
+                  className="btn btn--outline"
+                  onClick={closeForm}
+                >
                   キャンセル
                 </button>
-                <button type="submit" disabled={!canSubmit}>
+                <button
+                  type="submit"
+                  className="btn btn--primary-soft"
+                  disabled={!canSubmit}
+                >
                   追加する
                 </button>
               </div>

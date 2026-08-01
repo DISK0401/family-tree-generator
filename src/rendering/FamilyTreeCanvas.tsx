@@ -27,6 +27,7 @@ import {
   type FamilyChartDatum,
   type HiddenNeighborInfo,
 } from './to-family-chart-data'
+import './person-card.css'
 import './FamilyTreeCanvas.css'
 
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
@@ -635,7 +636,7 @@ export function FamilyTreeCanvas({
             キーボードで人物を選択できる唯一の経路としてモーダルの検索を置く(監査 高4) */}
           <button
             type="button"
-            className="tree-person-search-trigger"
+            className="btn btn--tight surface--overlay tree-person-search-trigger"
             onClick={() => setSearchOpen(true)}
           >
             人物を探す
@@ -643,7 +644,7 @@ export function FamilyTreeCanvas({
           {/* 表示モードの3値切り替え(design.md D7)。現在の表示はaria-pressedと
             (既存の).tree-show-all-toggle[aria-pressed='true']の配色で判別できる */}
           <div
-            className="tree-view-mode-toggle"
+            className="segmented segmented--stacked surface--overlay tree-view-mode-toggle"
             role="group"
             aria-label="表示モード"
           >
@@ -673,7 +674,10 @@ export function FamilyTreeCanvas({
             </button>
           </div>
           {/* 凡例。モバイルでは初期折りたたみでコントロール群の占有を抑える(監査 中12) */}
-          <details className="tree-legend" open={legendInitiallyOpen}>
+          <details
+            className="tree-legend surface--overlay"
+            open={legendInitiallyOpen}
+          >
             <summary className="tree-legend-summary">凡例</summary>
             <div className="tree-legend-body">
               <div className="tree-legend-item">

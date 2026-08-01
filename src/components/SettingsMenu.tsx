@@ -53,7 +53,7 @@ export function SettingsMenu({
       <button
         type="button"
         ref={triggerRef}
-        className="settings-menu-trigger"
+        className="btn btn--ghost settings-menu-trigger"
         aria-expanded={open}
         aria-label="設定"
         onClick={() => setOpen((v) => !v)}
@@ -61,7 +61,7 @@ export function SettingsMenu({
         ⋯
       </button>
       {open && (
-        <div className="settings-menu-panel">
+        <div className="settings-menu-panel surface--floating">
           <DisplaySettingsControl />
           <ImportExportControl importDisabled={importDisabled} />
           <DataResetControl onReset={onReset} />
