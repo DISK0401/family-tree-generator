@@ -11,6 +11,7 @@
 
 export const SAMPLE_IDS = [
   'tokugawa-ieyasu',
+  'tokugawa-shoguns',
   'natsume-soseki',
   'shibusawa-eiichi',
   'modern-family',
@@ -43,6 +44,15 @@ export const SAMPLE_METAS: SampleMeta[] = [
     description:
       '江戸幕府を開いた徳川家康。正室・継室・側室、それぞれとの子どもたちを一枚の系図で。複数の配偶者がいても系線は崩れません。',
     note: 'Wikipedia等の公知情報を基に、主要な人物のみへ簡略化したサンプルです(登場人物はすべて故人です)。',
+  },
+  {
+    id: 'tokugawa-shoguns',
+    tabLabel: '徳川将軍15代',
+    title: '徳川将軍15代の家系図',
+    pattern: '分家からの継承',
+    description:
+      '初代 家康から15代 慶喜まで、江戸幕府の将軍15人を一枚に。将軍職は実子相続だけでなく、紀州・一橋・水戸などの分家からの入嗣で受け継がれました。世代をまたぐ継承や養子縁組も、系線が崩れず辿れます。',
+    note: 'Wikipedia等の公知情報を基に、継承の系統に必要な人物へ簡略化したサンプルです(登場人物はすべて故人です)。',
   },
   {
     id: 'natsume-soseki',
