@@ -9,6 +9,8 @@ import { isSampleId, type SampleId } from './sample-meta'
 const SAMPLE_LOADERS: Record<SampleId, () => Promise<TreeDocument>> = {
   'tokugawa-ieyasu': async () =>
     (await import('./data/tokugawa-ieyasu')).tokugawaIeyasuSample,
+  'tokugawa-shoguns': async () =>
+    (await import('./data/tokugawa-shoguns')).tokugawaShogunsSample,
   'natsume-soseki': async () =>
     (await import('./data/natsume-soseki')).natsumeSosekiSample,
   'shibusawa-eiichi': async () =>

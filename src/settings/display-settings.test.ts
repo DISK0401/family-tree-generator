@@ -181,9 +181,15 @@ describe('formatDateForDisplay', () => {
     ).toBe('昭和39年')
   })
 
-  it('和暦モードでも元号テーブルの範囲外(明治より前)は西暦表記にフォールバックする(design.md D5)', () => {
+  it('和暦モードで江戸期以前の日付も和暦表記になる(元号テーブルは大化まで収録)', () => {
     expect(
       formatDateForDisplay({ year: 1800, month: 1, day: 1 }, 'full', 'wareki'),
-    ).toBe('1800-01-01')
+    ).toBe('寛政12年1月1日')
+  })
+
+  it('和暦モードでも元号テーブルの範囲外(大化より前)は西暦表記にフォールバックする(design.md D5)', () => {
+    expect(
+      formatDateForDisplay({ year: 600, month: 1, day: 1 }, 'full', 'wareki'),
+    ).toBe('600-01-01')
   })
 })

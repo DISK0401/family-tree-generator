@@ -74,6 +74,32 @@ describe('fuzzyDateToGedcomNode', () => {
   })
 })
 
+describe('江戸期の和暦日付のラウンドトリップ', () => {
+  it('明治より前の日付(安政3年2月30日)がエクスポート→インポートで変化しない', () => {
+    const date: FuzzyDate = {
+      original: '安政3年2月30日',
+      qualifier: 'exact',
+      date: { year: 1856, month: 2, day: 30 },
+    }
+    const { dateNode } = fuzzyDateToGedcomNode(date, '7.0')
+
+    expect(dateNode.value).toBe('30 FEB 1856')
+    expect(gedcomNodeToFuzzyDate(dateNode)).toEqual(date)
+  })
+
+  it('江戸期の年のみの日付(文久2年)がエクスポート→インポートで変化しない', () => {
+    const date: FuzzyDate = {
+      original: '文久2年',
+      qualifier: 'exact',
+      date: { year: 1862 },
+    }
+    const { dateNode } = fuzzyDateToGedcomNode(date, '7.0')
+
+    expect(dateNode.value).toBe('1862')
+    expect(gedcomNodeToFuzzyDate(dateNode)).toEqual(date)
+  })
+})
+
 describe('gedcomNodeToFuzzyDate', () => {
   it('構造化DATE値をgregorianとして解釈する', () => {
     const date = gedcomNodeToFuzzyDate({

@@ -31,6 +31,34 @@ describe('parseDateInput: 和暦', () => {
   })
 })
 
+describe('parseDateInput: 江戸期以前の和暦', () => {
+  it('文久2年5月10日', () => {
+    expect(expectOk('文久2年5月10日')).toEqual({
+      original: '文久2年5月10日',
+      qualifier: 'exact',
+      date: { year: 1862, month: 5, day: 10 },
+    })
+  })
+
+  it('旧暦にあり得る日(安政3年2月30日)も受理する', () => {
+    expect(expectOk('安政3年2月30日').date).toEqual({
+      year: 1856,
+      month: 2,
+      day: 30,
+    })
+  })
+
+  it('4文字の元号(天平感宝元年)も解釈できる', () => {
+    expect(expectOk('天平感宝元年').date).toEqual({ year: 749 })
+  })
+
+  it('未対応の元号(南朝の天授)は元号名入りの理由を返す', () => {
+    const r = parseDateInput('天授2年')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.message).toBe('元号「天授」には対応していません')
+  })
+})
+
 describe('parseDateInput: 西暦', () => {
   it.each([
     ['1964年10月10日', { year: 1964, month: 10, day: 10 }],

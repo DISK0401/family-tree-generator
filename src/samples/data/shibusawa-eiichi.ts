@@ -6,8 +6,9 @@ import { SCHEMA_VERSION } from '../../domain/types'
  * 人名は旧字体表記「澁澤榮一」をそのまま保持し、旧字体対応のショーケースを兼ねる。
  * Wikipedia等の公知情報を基に主要人物のみへ簡略化している。登場人物は全員故人。
  *
- * 構造化日付(date)は、明治6年(1873年)のグレゴリオ暦採用以降の日付に限り
- * originalの月日をそのまま写している。それより前(天保・安政・明治5年以前)は旧暦のため年のみとする。
+ * 構造化日付(date)は、original の和暦を日付入力欄に入れたときにこのアプリが記録する値
+ * (名目値)に揃える。明治6年(1873年)のグレゴリオ暦採用より前(天保・安政・明治5年以前)は
+ * 旧暦のため、和暦の年月日をそのままの数字で西暦フィールドへ写す(domain/wareki.ts)。
  */
 export const shibusawaEiichiSample: TreeDocument = {
   schemaVersion: SCHEMA_VERSION,
@@ -29,7 +30,7 @@ export const shibusawaEiichiSample: TreeDocument = {
         date: {
           original: '天保11年2月13日',
           qualifier: 'exact',
-          date: { year: 1840 },
+          date: { year: 1840, month: 2, day: 13 },
         },
       },
       death: {
@@ -121,7 +122,7 @@ export const shibusawaEiichiSample: TreeDocument = {
         date: {
           original: '明治5年10月7日',
           qualifier: 'exact',
-          date: { year: 1872 },
+          date: { year: 1872, month: 10, day: 7 },
         },
       },
       death: {
@@ -173,7 +174,7 @@ export const shibusawaEiichiSample: TreeDocument = {
           date: {
             original: '安政5年12月',
             qualifier: 'exact',
-            date: { year: 1858 },
+            date: { year: 1858, month: 12 },
           },
         },
       ],
