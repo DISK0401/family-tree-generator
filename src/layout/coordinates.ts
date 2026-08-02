@@ -16,12 +16,16 @@ import type {
  * おおむね収まる寸法をここで定める。
  *
  * 1〜5群では暫定値(120×160)だったが、7群で実カードの寸法
- * (`FamilyTreeCanvas.tsx`の`CARD_WIDTH`/`CARD_HEIGHT` = 104×116)と突き合わせて確定させた。
+ * (`FamilyTreeCanvas.tsx`の`CARD_WIDTH`/`CARD_HEIGHT`)と突き合わせて確定させた。
  * `src/layout`は`src/rendering`に依存できない(`src/layout/types.test.ts`が機械的に検査する)ため、
  * 依存の向きを守れる`src/layout`側にこの共通定数を置き、rendering側がここから読む形にする
  * (rendering → layout の一方向)
+ *
+ * 104×116から128×148へ拡大(`fix-tree-card-overlap-and-density` design.md D3)。
+ * 全表示項目オン+氏名3文字(戸籍由来の伝統的な名の典型的な長さ)を等倍表示しても
+ * 破綻しない寸法として、実測しながら決めた
  */
-export const CARD_SIZE: CardSize = { width: 104, height: 116 }
+export const CARD_SIZE: CardSize = { width: 128, height: 148 }
 export const HORIZONTAL_GAP = 24
 export const VERTICAL_GAP = 96
 

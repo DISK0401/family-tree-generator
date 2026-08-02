@@ -307,7 +307,7 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(withBadge).toContain('+3')
   })
 
-  it('姓名それぞれ2文字以下では列にフォントサイズの指定が付かない(既定表示のまま)', () => {
+  it('姓名それぞれ3文字以下では列にフォントサイズの指定が付かない(既定表示のまま)', () => {
     const view = derivePersonCardView(
       baseInput({ surname: '山田', given: '太郎' }),
       baseSettings(),
@@ -317,14 +317,24 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(html).toContain('<div class="tree-card-given">太郎</div>')
   })
 
-  it('3文字以上の列は折り返さず、フォントサイズを縮小して1列のまま収める', () => {
+  it('戸籍由来の3文字名(例:「仁三郎」)も縮小されずに表示される', () => {
     const view = derivePersonCardView(
-      baseInput({ surname: '富岡', given: '愛梨奈' }),
+      baseInput({ surname: '川島', given: '仁三郎' }),
+      baseSettings(),
+    )
+    const html = personCardInnerHtml(view)
+    expect(html).toContain('<div class="tree-card-surname">川島</div>')
+    expect(html).toContain('<div class="tree-card-given">仁三郎</div>')
+  })
+
+  it('4文字以上の列は折り返さず、フォントサイズを縮小して1列のまま収める', () => {
+    const view = derivePersonCardView(
+      baseInput({ surname: '富岡', given: '愛梨奈美' }),
       baseSettings(),
     )
     const html = personCardInnerHtml(view)
     expect(html).toMatch(
-      /<div class="tree-card-given" style="font-size: 0\.\d+em">愛梨奈<\/div>/,
+      /<div class="tree-card-given" style="font-size: 0\.\d+em">愛梨奈美<\/div>/,
     )
     // 折り返しを許す複数列(tree-card-given が2回現れる等)は生成されない
     expect(html.match(/tree-card-given/g)).toHaveLength(1)

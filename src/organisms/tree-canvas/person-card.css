@@ -23,8 +23,8 @@
   box-sizing: border-box;
   /* setCardInnerHtmlCreator使用時はfamily-chart側のカードサイズCSSが適用されないため、
      コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
-  width: var(--tree-card-w, 104px);
-  height: var(--tree-card-h, 116px);
+  width: var(--tree-card-w, 128px);
+  height: var(--tree-card-h, 148px);
   padding: var(--space-2) var(--space-1) var(--space-1);
   color: var(--ink);
   display: flex;

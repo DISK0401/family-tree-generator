@@ -1,9 +1,9 @@
 ## 1. カード寸法・氏名縮小しきい値の拡張(design.md D3)
 
-- [ ] 1.1 `src/layout/coordinates.ts` の `CARD_SIZE` を新しい高さ・幅に変更する(D3で決めた初期値。氏名3文字が全項目表示時でも等倍で収まることを1.2の目視確認で調整)。完了条件: `coordinates.test.ts` が新寸法を前提に更新され通過する
-- [ ] 1.2 `src/organisms/tree-canvas/person-card.ts` の `nameFontScale` の `COMFORTABLE_CHARS` を2→3に変更する。完了条件: 名2〜3文字ではフォントサイズの指定(`style="font-size: ..."`)が付かず、4文字以上で付く
-- [ ] 1.3 `CARD_SIZE` を参照する既存テスト(`src/layout/coordinates.test.ts`, `src/layout/index.test.ts`, `src/layout/types.test.ts`)の期待値を新寸法に合わせて更新する。完了条件: 3ファイルとも `npx vitest run` で通過する
-- [ ] 1.4 `person-card.test.ts` の「3文字以上の列は折り返さず、フォントサイズを縮小して1列のまま収める」テストのフィクスチャを4文字以上の氏名に差し替える。完了条件: 3文字(例:「仁三郎」)は縮小されず、4文字以上でのみ縮小される
+- [x] 1.1 `src/layout/coordinates.ts` の `CARD_SIZE` を新しい高さ・幅に変更する(D3で決めた初期値。氏名3文字が全項目表示時でも等倍で収まることを1.2の目視確認で調整)。完了条件: `coordinates.test.ts` が新寸法を前提に更新され通過する — CARD_SIZE 104×116→128×148。テストはCARD_SIZEを定数参照しているため修正不要、そのまま通過を確認
+- [x] 1.2 `src/organisms/tree-canvas/person-card.ts` の `nameFontScale` の `COMFORTABLE_CHARS` を2→3に変更する。完了条件: 名2〜3文字ではフォントサイズの指定(`style="font-size: ..."`)が付かず、4文字以上で付く
+- [x] 1.3 `CARD_SIZE` を参照する既存テスト(`src/layout/coordinates.test.ts`, `src/layout/index.test.ts`, `src/layout/types.test.ts`)の期待値を新寸法に合わせて更新する。完了条件: 3ファイルとも `npx vitest run` で通過する — いずれもCARD_SIZE定数を参照しており数値ハードコードがないため、変更なしで通過を確認済み
+- [x] 1.4 `person-card.test.ts` の「3文字以上の列は折り返さず、フォントサイズを縮小して1列のまま収める」テストのフィクスチャを4文字以上の氏名に差し替える。完了条件: 3文字(例:「仁三郎」)は縮小されず、4文字以上でのみ縮小される — 3文字無縮小の専用テストを追加し、既存テストは4文字(「愛梨奈美」)に差し替え
 
 ## 2. 性別インジケーター・故人マーカーの隣接配置(design.md D1)
 

@@ -181,7 +181,9 @@ export function personToCardInput(person: Person): PersonCardInput {
  * 姓・名は独立した列のため、縮小率も列ごとに個別の文字数で決める
  */
 function nameFontScale(charCount: number): number {
-  const COMFORTABLE_CHARS = 2
+  // 戸籍由来の家系図という用途上、「仁三郎」「武之助」のような伝統的な3文字名も
+  // 無縮小で表示できるようにする(design.md D3)
+  const COMFORTABLE_CHARS = 3
   const MIN_SCALE = 0.6
   if (charCount <= COMFORTABLE_CHARS) return 1
   return Math.max(COMFORTABLE_CHARS / charCount, MIN_SCALE)
