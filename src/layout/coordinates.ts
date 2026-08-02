@@ -30,7 +30,26 @@ import type {
  * 重ならずに収まる最小高さに、視覚的な余白ぶんを加えた値
  */
 export const CARD_SIZE: CardSize = { width: 136, height: 180 }
-export const HORIZONTAL_GAP = 24
+/*
+ * 折りたたみ表示・全体表示(家系ごと)(family-chartベース)とつながった全体表示
+ * (pedigree-layoutベース)が共有する間隔定数(fix-marriage-label-spacing-selection
+ * design.md D1)。以前は表示モードごとに別々の値を持っていたが、表示切り替えで
+ * 余白の見え方が大きく変わっていたため一本化した。
+ *
+ * HORIZONTAL_GAP(同一世代内の隣接カード間の隙間)は、婚姻線に表示する婚姻日ラベル
+ * (和暦フル精度の最長パターン「XX年XX月XX日」)が隣接カードに隠れず収まる幅を基準にする。
+ * Playwrightで実際にレンダリングして描画幅を実測したところ69.47pxだったため、
+ * フォントのレンダリング差(OS・ブラウザ)を見込んだ余裕を持たせて80pxとした
+ * (旧値: family-chart側44px/pedigree-layout側24px。いずれも婚姻日ラベルの幅は
+ * 考慮されていなかった)
+ */
+export const HORIZONTAL_GAP = 80
+/*
+ * VERTICAL_GAP(世代間の隙間)は、pedigree-layout側で複数の系線が交差しないよう
+ * レーンを割り付けるための実領域としても使われるため、その値(96px)を両表示で共有する
+ * (旧値: family-chart側22px。レーン確保に使われないため縮められていたが、
+ * 表示モード間の余白統一のため広い方へ揃えた)
+ */
 export const VERTICAL_GAP = 96
 
 /**
