@@ -14,10 +14,10 @@
 
 ## 3. ふりがなの文字数縮小ロジック(design.md D2)
 
-- [ ] 3.1 `person-card.ts` に、ふりがな用の文字数依存フォント縮小関数(`nameFontScale`とは別定数の`KANA_COMFORTABLE_CHARS`・下限値)を追加する
-- [ ] 3.2 `personCardInnerHtml` の `.tree-card-kana` 生成箇所で、縮小関数の結果をインラインスタイルとして適用する。完了条件: 自社サンプル相当(「しぶさわ たけのすけ」9文字)が1行に収まり縮小される
-- [ ] 3.3 `person-card.css` の `.tree-card-kana` に `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` を追加し、折り返しを禁止しつつ極端な長さへの保険を入れる。完了条件: 下限まで縮小しても収まらない長さの入力で、テキストが省略記号付きで1行に収まり、他の行の高さに影響しない
-- [ ] 3.4 `person-card.test.ts` に、ふりがなの文字数縮小(通常/下限到達/フォールバックのellipsis)と、性別アイコン・故人マーカーと重ならない位置に描画されることを確認するテストを追加する
+- [x] 3.1 `person-card.ts` に、ふりがな用の文字数依存フォント縮小関数(`nameFontScale`とは別定数の`KANA_COMFORTABLE_CHARS=10`・下限値`MIN_SCALE=0.6`)を追加する
+- [x] 3.2 `personCardInnerHtml` の `.tree-card-kana` 生成箇所で、縮小関数の結果をインラインスタイルとして適用する。完了条件: 自社サンプル相当(「しぶさわ たけのすけ」9文字)が1行に収まり縮小される — 実装時に発覚: 氏名列と同じ`em`単位を使うと親要素のfont-size基準で解決されてしまい(氏名列は`--text-md`=1remがたまたま親と一致するため無事だった)、ふりがなの基準サイズ(0.5625rem)では逆に拡大される不具合があったため、絶対値の`rem`で計算するよう修正
+- [x] 3.3 `person-card.css` の `.tree-card-kana` に `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` を追加し、折り返しを禁止しつつ極端な長さへの保険を入れる。完了条件: 下限まで縮小しても収まらない長さの入力で、テキストが省略記号付きで1行に収まり、他の行の高さに影響しない
+- [x] 3.4 `person-card.test.ts` に、ふりがなの文字数縮小(通常/下限到達/フォールバックのellipsis)と、性別アイコン・故人マーカーと重ならない位置に描画されることを確認するテストを追加する — Playwrightで実機相当のデータ(「かわしま じんさぶろう」)をレンダリングし、scrollWidth<=clientWidthで1行に収まることも実測確認
 
 ## 4. 表示設定を全項目オンにした場合の余白確認
 

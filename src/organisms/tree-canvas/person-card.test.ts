@@ -295,6 +295,52 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(html).not.toContain('tree-card-kana')
   })
 
+  it('10文字以下のふりがなは縮小されない(design.md D2)', () => {
+    // 「しぶさわ たけのすけ」相当(自社サンプルsrc/samples/data/shibusawa-eiichi.ts)
+    const html = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({ surnameKana: 'しぶさわ', givenKana: 'たけのすけ' }),
+        baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+      ),
+    )
+    expect(html).toContain(
+      '<div class="tree-card-kana">しぶさわ たけのすけ</div>',
+    )
+  })
+
+  it('文字数の多いふりがなは折り返さずフォントサイズを縮小して1行に収める', () => {
+    const html = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({
+          surnameKana: 'かわしまむらやまざき',
+          givenKana: 'じんさぶろう',
+        }),
+        baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+      ),
+    )
+    expect(html).toMatch(
+      /<div class="tree-card-kana" style="font-size: 0\.\d+rem">かわしまむらやまざき じんさぶろう<\/div>/,
+    )
+    // 折り返し・複数div化はしない(1個のtree-card-kanaのまま)
+    expect(html.match(/tree-card-kana/g)).toHaveLength(1)
+  })
+
+  it('ふりがなの縮小率には下限があり、極端に長くても文字が潰れきらない', () => {
+    const html = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({
+          surnameKana: 'かわしまむらやまざきおおたにやしろべえ',
+          givenKana: 'じんさぶろうえもんのすけ',
+        }),
+        baseSettings({ visibleCardFields: fields({ furigana: true }) }),
+      ),
+    )
+    const match = html.match(/tree-card-kana" style="font-size: (0\.\d+)rem"/)
+    expect(match).not.toBeNull()
+    // 下限(MIN_SCALE=0.6)を絶対remへ換算した値(0.5625 * 0.6 = 0.3375)を下回らない
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(0.3375)
+  })
+
   it('非表示人数バッジはhiddenBadgeを渡したときだけ描かれる(design.md D4)', () => {
     const view = derivePersonCardView(baseInput(), baseSettings())
     const withoutBadge = personCardInnerHtml(view)

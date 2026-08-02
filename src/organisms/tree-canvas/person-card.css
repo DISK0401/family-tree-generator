@@ -195,6 +195,13 @@
      ふりがな入力済みの人物との間で氏名列の開始位置がずれる。line-height基準で高さを固定する */
   line-height: 1.2;
   min-height: 1.2em;
+  /* 折り返すと行数が増え、上に隣接する性別インジケーター・故人マーカーとの間隔が
+     圧迫される・カード高さが逼迫する。氏名列と同様に1行固定+文字数に応じた縮小
+     (person-card.tsのkanaFontScale)で収め、縮小の下限に達してもなお収まらない
+     極端な長さの入力は省略記号で切り詰める(fix-tree-card-overlap-and-density design.md D2) */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tree-card-places {
