@@ -1,0 +1,106 @@
+/* 見た目の基本形(.btn / .btn--outline / .btn--primary-soft / .surface--sunken /
+   .field-label)は styles/primitives.css にある。ここは配置と固有の差分のみ。
+   選択状態(aria-pressed)も .btn--outline[aria-pressed='true'] が担う */
+
+.person-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.person-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.person-panel-name {
+  font-size: var(--text-lg);
+  letter-spacing: 0.05em;
+}
+
+.person-panel-close {
+  font-size: var(--text-md);
+  line-height: 1;
+  padding: var(--space-2);
+  flex-shrink: 0;
+}
+
+.person-panel-close:hover {
+  border-color: var(--ai);
+  color: var(--ai-strong);
+}
+
+.person-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.person-panel-action-button {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  color: var(--ink);
+  text-align: center;
+  flex: 1;
+  min-width: max-content;
+}
+
+.person-panel-action-button:hover {
+  border-color: var(--ai);
+  color: var(--ai-strong);
+}
+
+.person-panel-relation-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/*
+ * 新規作成 / 既存の人物から選ぶ の切り替え(spec tree-editor「既存の人物を関係先に選ぶ」)。
+ * パネル幅(360px)で「既存の人物から選ぶ」(9文字)が入りきらないため、
+ * flex: 1 で均等分割すると単語の途中で折り返してしまう。折り返さず、
+ * 収まらない場合はボタンごと次の行へ回す(flex-wrap)ことで対応する
+ */
+.person-panel-relation-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.person-panel-relation-modes button {
+  flex: 1 1 auto;
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  white-space: nowrap;
+}
+
+.person-panel-relation-existing,
+.person-panel-relation-new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* NOTE: 関係先の選択はPersonPicker(コンボボックス)に置き換え済みのため、
+   旧<select>向けのスタイルは削除した(監査 低4) */
+
+.person-panel-relation-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
+.person-panel-relation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.person-panel-relation-actions button {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+}

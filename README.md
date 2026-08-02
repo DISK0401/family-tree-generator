@@ -129,15 +129,30 @@ Windows・macOS・Linuxいずれの環境でも、追加のコマンド実行な
 - `src/store/`: Zustandによる状態管理。コマンド適用+undo/redo。
 - `src/persistence/`: IndexedDB(`idb`)への自動保存・復元・スキーマバージョンガード。
 - `src/layout/`: 「つながった全体表示」用の自前レイアウトエンジン(世代割当・層内順序・座標・系線)。フレームワーク非依存の純関数群。
-- `src/rendering/`: family-chartによる家系図描画。ドメインモデルをfamily-chart形式へ射影するアダプタ層を介する(family-chart側のデータを保存・編集の正本にしない)。
 - `src/lib/gedcom/`: GEDCOM 7.0/5.5.1の構文層(パーサ/シリアライザ)・意味層(氏名/日付/続柄/家族関係種別マッピング、インポート/エクスポート)。
 - `src/lib/json/`: アプリ独自JSON形式(`TreeDocument`直列化)の入出力・zodスキーマ検証。
-- `src/features/import-export/`: ファイル入出力のユーティリティ(サイズ上限、エクスポートファイル名の生成等)。
-- `src/features/person-table/`: 表形式ビューの列定義(表示文字列の導出とセル文字列の解釈)とTSVクリップボードの直列化・パース。描画に依存しない純関数群。
-- `src/settings/`: 表示設定(日付粒度・和暦/西暦・カード表示項目)のストアとUI。端末ローカル(localStorage)保持。
-- `src/components/`: 編集UI(サイドパネル、日付入力、確認ダイアログ、インポート/エクスポート等)。
-- `src/pages/`: 製品紹介(ランディング)ページと図版(トークン準拠の軽量SVG。family-chart非依存)。
+- `src/styles/`: デザイントークン(`tokens.css`)と、その上に載る見た目の基本形(`primitives.css`)。
 - `src/samples/`: 偉人家系図サンプルのデータ(`TreeDocument`形式)と `/app?sample=<id>` 読み込み処理。データ本体はエディタ側チャンクから動的importされる。
+
+#### UI層(Atomic Design)
+
+UIは Atomic Design の5層に分ける。**層の所属は「見た目の複雑さ」ではなく依存の向きで決まる**(判定は `import` だけで機械的に付き、ESLint が強制する)。
+
+| 層 | 役割 | 判定基準 |
+| --- | --- | --- |
+| `src/atoms/` | `primitives.css` の基本形を使う最小の部品(`Button` `Field` `Surface` `Dialog` `SegmentedControl`) | `domain/` を import しない。ドメイン語彙をpropsに持たない |
+| `src/molecules/` | 機能をまたいで再利用する部品(`ConfirmDialog` `PersonNameFields` `PersonPicker` `WarekiDateInput`) | `domain/` の型は知ってよい。`store/` を import しない |
+| `src/organisms/<機能>/` | 機能単位のUIと、その機能に属する純関数・CSS | `store/` を購読してよい。1つの機能に属する |
+| `src/templates/` | 画面の骨組み(`AppShell`: ヘッダ・注意書き・図/表・編集パネルの4領域) | 状態を持たない |
+| `src/pages/` | ルーティングと状態管理(`AppPage` / `LandingPage`) | — |
+
+`src/organisms/` の内部は機能で切る: `person-edit` / `person-table` / `import-export` / `tree-canvas` / `settings` / `onboarding`。UIと「その機能のためだけに存在する純関数」(列定義・TSV変換・family-chartへの射影・ファイル入出力等)を同居させる。**機能をまたぐ直接の参照は禁止**で、共有が必要になった部品は `molecules/` へ昇格させる(昇格条件は「機能をまたいで2箇所以上」)。
+
+依存は必ず下向き(`pages` → `templates` → `organisms` → `molecules` → `atoms`)。`atoms/` `molecules/` が状態も通信も知らないことは、無料版の「外部送信ゼロ」に対する構造上の防波堤にもなる(送信コードが混入しうる場所を `organisms/` 以下に限定する)。
+
+見た目の基本形(ボタン・入力・面・セグメント切替)は `src/styles/primitives.css` にのみ置き、各コンポーネントのCSSは差分だけを持つ。`src/styles/primitives.test.ts` が「基本形が他のCSSへ散っていないこと」を実ファイルから検証する。
+
+> **`src/layout/` と `src/templates/` は別物**。`layout/` は家系図の**座標を計算する**純関数群(世代割当・層内順序・座標・系線)、`templates/` は画面の**骨組みを与える** Reactコンポーネント。
 - `src/routes.ts` / `src/Root.tsx`: パス判定によるランディング/エディタの出し分けとルート単位のコード分割(ルータライブラリ不使用)。
 - `worker/`: Cloudflare Workers のエントリ。静的アセット配信に加え、セキュリティヘッダ(CSP等)の付与・ハッシュ付きアセットの immutable キャッシュ・非本番環境への noindex を担う。
 - `spike/`: family-chart の挙動検証スパイク(凍結・ビルド非含有)。詳細は `spike/README.md`。

@@ -1,0 +1,212 @@
+/* family-chartによる家系図キャンバスの土台・系線・図の上に浮かぶ操作面。
+   人物カードの見た目は person-card.css(両描画系で共有)にある。
+   操作要素・面・切替の基本形は styles/primitives.css にある */
+
+.tree-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * 図の領域。凡例・ズームコントロール・非表示人数バッジはこの領域に対して絶対配置する。
+ * 「図に現れていない人物」の一覧はこの下に独立した帯として積むため、
+ * 左下の全体表示トグル・右下のズームと重なることがない(design.md D6)
+ */
+.tree-canvas-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.tree-canvas-root {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-canvas-root .card {
+  background: transparent;
+}
+
+.tree-canvas-root path.link {
+  stroke: var(--line-strong);
+  stroke-width: 1.75px;
+  stroke-linecap: round;
+}
+
+/* 養子の系線は実子と視覚的に区別する(破線)。装飾ではなく系譜上の意味を持たせる */
+.tree-canvas-root path.link.adopted-link {
+  stroke-dasharray: 5 4;
+}
+
+/* 婚姻線は伝統的な系図記法にならい二重線にする。DOM複製はD3の再結合を壊すため、
+   drop-shadowで並行線を「複製」せず描く(0ブラーで縁取りが複製コピーとして描画される) */
+.tree-canvas-root path.link.spouse-link {
+  filter: drop-shadow(0 3px 0 var(--line-strong));
+}
+
+/*
+ * 婚姻線ラベル(design.md D9)。family-chart組み込みのlinkSpouseText機能が生成する
+ * text要素(`.link-text text`)の見た目を上書きする。ライブラリ側がJSで
+ * fill/font-sizeをinline styleとして設定するため、CSSクラスで上書きするには
+ * !importantが必要。paper色のストロークで縁取り(ハロー)を作ってから文字を描き、
+ * 線に重なっても読めるようにする。クリック等の操作対象ではないため
+ * pointer-eventsを無効化する
+ */
+.tree-canvas-root .link-text text {
+  fill: var(--ink-faint) !important;
+  font-size: 9px !important;
+  font-family: var(--font-gothic);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+/* 全体表示モード(design.md D5)の仮想ルートと、その子(各家系の根)を結ぶ線は実在の
+   関係ではないため非表示にする。display:noneではなくvisibilityにするのはD3のデータ結合を
+   壊さないため(cloneNode等と同様、ノードそのものはDOMに残す必要がある) */
+.tree-canvas-root path.link.virtual-root-link {
+  visibility: hidden;
+}
+
+/* 全体表示トグル・凡例をまとめて1つの縦積みブロックとして配置し、互いに重ならないようにする */
+.tree-corner-panel {
+  /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
+     タップ/クリックを奪われるため、明示的なz-indexが必須 */
+  z-index: 10;
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* 凡例・ズームは地図アプリの流儀で「図の上に浮かぶ操作面」として描く(半透明+ぼかし+浮遊影)。
+   <details>として折りたためる(モバイルでは初期折りたたみ。監査 中12) */
+.tree-legend {
+  align-self: stretch;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
+.tree-legend-summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--ink-soft);
+}
+
+.tree-legend[open] .tree-legend-summary {
+  margin-bottom: var(--space-1);
+}
+
+.tree-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tree-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tree-legend-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 0;
+  border-top: 1.5px solid var(--line-strong);
+}
+
+.tree-legend-swatch.adopted {
+  border-top-style: dashed;
+}
+
+/* 性別インジケーターの凡例。カード上のtree-card-gender-*と同じ形状・色を、
+   カード用の position:absolute は継がずにここでは静的なスウォッチとして表示する */
+.tree-legend-gender-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+/* カード右上の故人マーク(†)と同じ文字を凡例のスウォッチ位置に置く */
+.tree-legend-deceased {
+  display: inline-block;
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.tree-legend-hint {
+  margin: var(--space-1) 0 0;
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+}
+
+/*
+ * 表示モードの3値切り替え(design.md D7)。
+ * 3つを横に並べると文言のぶんだけ図の領域を横に食いつぶすため、ズーム操作
+ * (.tree-zoom-controls)と同じ「縦積みの操作面」として束ねる。幅は最も長い文言ぶんで
+ * 済み、下に続く凡例のブロックとも横幅が揃う
+ */
+.tree-view-mode-toggle {
+  align-self: stretch;
+}
+
+.tree-show-all-toggle {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  /* 基本形の `font: inherit` が行送りを1.6にするため、UA既定の詰まった高さを保つ */
+  line-height: normal;
+  text-align: left;
+  /* 文言が長いので、文字の途中で折り返さないようにする
+     (過去にボタンの文字折り返しの不具合を出しているため必ず付ける) */
+  white-space: nowrap;
+}
+
+.tree-show-all-toggle:hover {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+/* ズーム操作面は共有コンポーネント(components/ZoomControls)のCSSへ移動した(監査 低6) */
+
+/* キーボードで人物を選択できる唯一の経路(監査 高4)。表示モード切替と同じ操作面の見た目 */
+.tree-person-search-trigger {
+  align-self: stretch;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.tree-person-search-trigger:hover {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+.tree-person-search-hint {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+/* モバイルではコントロール群の占有を抑える(監査 中12)。凡例はJSX側で初期折りたたみ */
+@media (max-width: 640px) {
+  .tree-show-all-toggle,
+  .tree-person-search-trigger {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+  }
+}

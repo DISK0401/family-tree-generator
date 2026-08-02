@@ -1,0 +1,72 @@
+/*
+ * 図に現れていない人物の一覧(spec tree-rendering、design.md D5/D6)。
+ * キャンバス本体の縦書きカードは再利用せず、氏名で識別できる軽量なチップに留める。
+ * 図の下に積む帯のため、対象が多い場合は縦に伸ばさず横スクロールで受ける。
+ */
+.unconnected-tray {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--line);
+  background: var(--paper-raised);
+}
+
+.unconnected-tray-title {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.unconnected-tray-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  padding: 0 0.35em;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.unconnected-tray-list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+
+/* 図に現れていない人物のチップ。基本形(.btn)の上で、破線の丸型という
+   「まだ図に繋がっていない」ことを表す形だけを差分として持つ */
+.unconnected-tray-chip {
+  padding: var(--space-1) var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.unconnected-tray-chip:hover {
+  border-style: solid;
+  box-shadow: var(--shadow-raised);
+}
+
+/* 選択状態は図のカードと同じく朱で表す(朱=選択の一意性) */
+.unconnected-tray-chip[aria-pressed='true'] {
+  border-color: var(--shu);
+  border-style: solid;
+  background: var(--shu-wash);
+  box-shadow: 0 0 0 1px var(--shu) inset;
+}

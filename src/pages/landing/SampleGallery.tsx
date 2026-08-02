@@ -59,7 +59,7 @@ export function SampleGallery() {
             aria-selected={meta.id === selected.id}
             aria-controls={`${baseId}-panel`}
             tabIndex={meta.id === selected.id ? 0 : -1}
-            className="sample-gallery-tab"
+            className="btn sample-gallery-tab"
             onClick={() => setSelectedId(meta.id)}
             onKeyDown={(e) => handleTabKeyDown(e, index)}
           >
@@ -69,7 +69,7 @@ export function SampleGallery() {
         ))}
       </div>
       <div
-        className="sample-gallery-panel"
+        className="sample-gallery-panel surface--raised"
         role="tabpanel"
         id={`${baseId}-panel`}
         aria-labelledby={`${baseId}-tab-${selected.id}`}

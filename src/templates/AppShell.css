@@ -1,0 +1,86 @@
+/* エディタ画面の骨組み(ヘッダ・注意書き・図/表・編集パネルの4領域のグリッド)。
+   各領域の中身のスタイルは pages/AppPage.css にある */
+
+.app-frame {
+  display: grid;
+  grid-template-areas:
+    'header header'
+    'notice notice'
+    'canvas panel';
+  /* noticeの行は要素が無ければ高さ0に潰れる(永続化の注意書きがあるときだけ現れる) */
+  grid-template-rows: auto auto 1fr;
+  grid-template-columns: 1fr auto;
+  height: 100svh;
+  background: var(--paper);
+}
+
+.app-header {
+  grid-area: header;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--header-min-height);
+  padding: var(--header-padding-y) var(--header-padding-x);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-raised);
+}
+
+.app-title {
+  font-size: var(--text-lg);
+  letter-spacing: 0.2em;
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-canvas {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  /* 作図ツールの流儀のドット方眼: 「図を描く場」であることを地の質感で示す。
+     ドットは系線より十分薄く、印刷的な紙の世界観を壊さない濃度に留める */
+  background-color: var(--paper);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--line-strong) 45%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 24px 24px;
+}
+
+.app-panel {
+  grid-area: panel;
+  width: min(360px, 90vw);
+  border-left: 1px solid var(--line);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-panel);
+  overflow-y: auto;
+}
+
+.app-panel[hidden] {
+  display: none;
+}
+
+/* 狭幅画面ではパネルを図の横に並べると図が数十pxのスリバーになり操作不能になるため、
+   全画面オーバーレイに切り替える(design.md: スマホは「閲覧可能レベル」が目標だが、
+   選択後に図へ戻れなくなるのはそれを下回るため最低限のフォールバックとして必要) */
+@media (max-width: 640px) {
+  .app-frame {
+    grid-template-areas:
+      'header'
+      'notice'
+      'canvas';
+    grid-template-columns: 1fr;
+  }
+
+  .app-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    z-index: 20;
+  }
+}

@@ -1,0 +1,52 @@
+.display-settings-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-2);
+}
+
+.display-settings-control-heading {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* 見た目の基本形(.field-label--row / .field / .field--sm)は
+   styles/primitives.css にある。メニュー内の控えめな見た目にするため、
+   枠は一段弱く(--line)、面はメニューの地(--paper)に沿わせ、余白は詰める */
+.display-settings-control-field select {
+  border-color: var(--line);
+  background: var(--paper);
+  padding: var(--space-1);
+}
+
+.display-settings-control-card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: none;
+  padding: var(--space-1) 0 0;
+  margin: 0;
+}
+
+.display-settings-control-card-fields legend {
+  padding: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.display-settings-control-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.display-settings-control-warning {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}

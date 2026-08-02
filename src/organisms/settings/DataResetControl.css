@@ -1,0 +1,16 @@
+/* 見た目の基本形(.btn--menu-item)は styles/primitives.css にある。
+   最も破壊的な操作なので、メニュー項目のなかで朱系の文字色だけが異なる */
+
+.data-reset-trigger {
+  color: var(--danger);
+}
+
+.data-reset-trigger:hover {
+  background: var(--danger-wash);
+}
+
+/* 削除失敗時のダイアログ内エラー(監査 中10) */
+.data-reset-error {
+  color: var(--danger);
+  font-size: var(--text-sm);
+}

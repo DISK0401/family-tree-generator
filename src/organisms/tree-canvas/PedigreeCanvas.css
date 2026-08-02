@@ -1,0 +1,64 @@
+/*
+ * つながった全体表示(design.md D1〜D7, tasks.md 7群)。
+ * カード自体(.tree-card系)のスタイルはperson-card.cssを明示的にimportして共有する
+ * (design.md D3: 見た目の一致はマークアップごと共有することで保証する)。
+ * ここでは系線・パン/ズーム・キャンバスの土台だけを持つ
+ */
+
+/* 図の領域(.tree-canvas-stage)いっぱいに敷く。絶対配置にするのは、同じ領域に居る
+   family-chartのキャンバス(隠していてもDOMは残す)の有無に高さを左右されないため */
+.pedigree-canvas-root {
+  position: absolute;
+  inset: 0;
+}
+
+.pedigree-canvas-svg {
+  width: 100%;
+  height: 100%;
+  /* ブラウザ標準のタッチスクロール/ピンチズームとドラッグ操作が競合しないようにする */
+  touch-action: none;
+  /* カードはforeignObject上のHTMLなので、パンのドラッグがそのまま文字の範囲選択になってしまう。
+     図の上を掴んで動かすのが主な操作であり、カードの文字を選びたい場面は無いため一律で止める */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  background: var(--paper);
+}
+
+.pedigree-canvas-svg:active {
+  cursor: grabbing;
+}
+
+.pedigree-link {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.75px;
+  stroke-linecap: round;
+}
+
+/* 養子の系線は実子と視覚的に区別する(破線)。FamilyTreeCanvas.cssの.adopted-linkと同じ見え方 */
+.pedigree-link.adopted-link {
+  stroke-dasharray: 5 4;
+}
+
+/* 婚姻線は伝統的な系図記法にならい二重線にする。FamilyTreeCanvas.cssの.spouse-linkと同じ手法
+   (drop-shadowで並行線を「複製」する。0ブラーで縁取りがそのまま複製コピーとして描画される)。
+   再婚等でレーンに複数の婚姻線が並ぶと束になって圧が出るため、親子の系線より一段細く・
+   淡くして「主役は血統の線、婚姻は結び」という読み順を作る(デザイン検証の指摘6) */
+.pedigree-link.spouse-link {
+  stroke-width: 1.5px;
+  opacity: 0.72;
+  filter: drop-shadow(0 3px 0 var(--line-strong));
+}
+
+.pedigree-card {
+  cursor: pointer;
+  overflow: visible;
+}
+
+.pedigree-card > div {
+  width: 100%;
+  height: 100%;
+}
+
+/* ズーム操作面は共有コンポーネント(components/ZoomControls)のCSSへ移動した(監査 低6) */

@@ -1,0 +1,71 @@
+/* 見た目の基本形(.surface--fieldset / .field-label / .field / .btn--text)は
+   styles/primitives.css にある。ここは配置と固有の差分のみ */
+
+.family-event-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.family-event-editor-title {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+}
+
+.family-event-editor-family {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.family-event-editor-family:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.family-event-editor-spouse {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.family-event-editor-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.family-event-editor-note {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* 配偶者が登録されていない家族へ既存人物を紐づける選択欄(PersonPicker)。
+   本文より一段控えめな見出しにして、主たる入力(日付)と競合させない */
+.family-event-editor-link {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* 破壊的操作なので日付入力欄とは明確に区別する。ただし人物削除より従属的な操作のため、
+   枠線を持たない控えめな見た目(.btn--text)にとどめる */
+.family-event-editor-delete {
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  color: var(--danger);
+  padding: var(--space-1) var(--space-2);
+}
+
+.family-event-editor-delete:hover {
+  background: var(--danger-wash);
+}
+
+/* 「自分を外す」(家族は残る)と「この婚姻を削除」(家族ごと消える)を横並びで対比させる */
+.family-event-editor-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

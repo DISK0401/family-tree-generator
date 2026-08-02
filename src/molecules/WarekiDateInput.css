@@ -1,0 +1,14 @@
+/* 見た目の基本形(.field-label / .field / .field[aria-invalid])は
+   styles/primitives.css にある。ここは和暦入力に固有の補助表示のみ */
+
+/* 入力と反対の暦(和暦入力なら西暦、西暦入力なら和暦)の即時表示 */
+.wareki-date-input-hint {
+  font-size: var(--text-xs);
+  color: var(--ai-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.wareki-date-input-error {
+  font-size: var(--text-xs);
+  color: var(--danger);
+}

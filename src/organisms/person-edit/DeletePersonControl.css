@@ -1,0 +1,8 @@
+/* 見た目の基本形(.btn / .btn--danger-outline)は styles/primitives.css にある。
+   .btn--tight は UA既定の行送りを保つための指定(design.md 付録A 注意1) */
+
+.delete-person-trigger {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  align-self: flex-start;
+}

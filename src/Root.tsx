@@ -10,7 +10,7 @@ import { resolveRoute } from './routes'
  * 遅延チャンクの取得失敗(オフライン・デプロイ直後の旧チャンク参照切れ)や描画中の例外は
  * ErrorBoundaryで受け止め、「データはこの端末に保存されている」ことと再読み込み導線を示す。
  */
-const App = lazy(() => import('./App'))
+const AppPage = lazy(() => import('./pages/AppPage'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 
 export function Root() {
@@ -25,7 +25,7 @@ export function Root() {
           />
         }
       >
-        {route === 'app' ? <App /> : <LandingPage />}
+        {route === 'app' ? <AppPage /> : <LandingPage />}
       </Suspense>
     </ErrorBoundary>
   )

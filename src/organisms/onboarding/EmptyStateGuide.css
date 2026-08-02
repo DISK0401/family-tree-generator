@@ -1,0 +1,95 @@
+.empty-state-guide {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow: hidden;
+}
+
+/* 完成イメージを薄く敷き、縦書きカードという最大の売りを入力前に伝える */
+.empty-state-ghost {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(70vw, 480px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+.empty-state-ghost-line {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.empty-state-ghost-card {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+}
+
+.empty-state-ghost-card span {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mincho);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+.empty-state-guide-body {
+  position: relative;
+  max-width: 24em;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty-state-guide-body h2 {
+  font-size: var(--text-xl);
+}
+
+.empty-state-guide-body p {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  /* 句読点の直前で改行しない(「ください / 。」のような不自然な折り返しを防ぐ) */
+  line-break: strict;
+  text-wrap: pretty;
+}
+
+.empty-state-guide-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+/* 見た目の基本形(.btn / .btn--primary)は styles/primitives.css にある */
+.empty-state-guide-form button {
+  font-size: var(--text-md);
+  padding: var(--space-3) var(--space-6);
+  /* ランディングの主要CTAと同じピル型(「はじめる」動線の一貫性) */
+  border-radius: var(--radius-pill);
+  align-self: center;
+}
+
+/* 空状態の唯一の導線であり、他に押せるものが無い。淡色へ退くだけで十分に
+   「まだ押せない」ことが伝わるため、基本形の減光(opacity)は当てない */
+.empty-state-guide-form button:disabled {
+  opacity: 1;
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+  border-color: var(--line);
+}

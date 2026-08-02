@@ -1,0 +1,71 @@
+## 1. 第1段: 見た目の基本形を単一化する(`primitives.css` の新設・各コンポーネントへの基本形クラス付与・各 CSS の差分化。機能の変更はしない)
+
+- [x] 1.1 現状のボタン・入力・面・セグメント切替のスタイル宣言を全 CSS から棚卸しし、基本形と差分に分類した対応表を design.md へ追記する(完了条件: 22 ファイル分の宣言が「基本形へ集約」「各コンポーネントに残す差分」のどちらかに分類され、分類漏れがない)
+- [x] 1.2 `src/styles/primitives.css` を新設し、ボタンの基本形(`.btn` と既定/主要/危険/淡色/アイコンのバリアント)をトークン参照のみで定義する(完了条件: ハードコード色・サイズがなく、全宣言が `var(--*)` 経由である)
+- [x] 1.3 `primitives.css` に入力欄とラベルの基本形(`.field` 系)を定義する(完了条件: `<input>` `<select>` `<textarea>` の 3 種で同一の枠線・余白・フォーカス表現になる)
+- [x] 1.4 `primitives.css` に面(`.surface` 系: `paper-raised` の面・枠線・角丸・影)を定義する(完了条件: パネル・ダイアログ・カードが同一の面表現を参照できる)
+- [x] 1.5 `primitives.css` にセグメント切替(`.segmented` と `[aria-pressed='true']` の選択表現)を定義する(完了条件: 現行 6 箇所の見た目を再現できることを 1 箇所へ試験適用して確認する)
+- [x] 1.6 `src/index.css` から `tokens.css` の直後に `primitives.css` を `@import` する(完了条件: ブラウザの開発者ツールで、コンポーネント CSS が `primitives.css` より後に適用されていることを確認する)
+- [x] 1.7 `person-edit` 圏(`PersonPanel` / `PersonEditForm` / `PedigreeEditor` / `FamilyEventEditor` / `DeletePersonControl` / `UnlinkRelationControl` / `PersonNameFields` / `WarekiDateInput` / `PersonPicker`)へ基本形クラスを付与し、各 CSS を差分のみへ削減する(完了条件: 編集パネルの見た目が変更前と一致し、既存のコンポーネントテストが変更なしで通る)
+- [x] 1.8 `settings` / `import-export` / `onboarding` 圏(`SettingsMenu` / `DisplaySettingsControl` / `DataResetControl` / `ImportExportControl` / `EmptyStateGuide` / `AddPersonControl` / `ConfirmDialog`)へ基本形クラスを付与し、各 CSS を差分のみへ削減する(完了条件: 設定メニュー・確認ダイアログ・空状態の見た目が変更前と一致する)
+- [x] 1.9 `person-table` 圏(`PersonTableView`・CSS 39 ルール)へ基本形クラスを付与し、CSS を差分のみへ削減する(完了条件: 表形式ビューの閲覧/編集モード双方の見た目が変更前と一致し、既存の表テストが変更なしで通る)
+- [x] 1.10 `tree-canvas` 圏(`FamilyTreeCanvas` / `PedigreeCanvas` / `ZoomControls` / `UnconnectedTray`)へ基本形クラスを付与し、各 CSS を差分のみへ削減する(完了条件: 3 種の表示モード切替・ズーム操作の見た目が変更前と一致する)
+- [x] 1.11 `App.tsx` / `App.css` と `LandingPage` 系へ基本形クラスを付与し、各 CSS を差分のみへ削減する(完了条件: ヘッダの図/表切替とランディングの見た目が変更前と一致する)
+- [x] 1.12 `tokens.css` へ `--radius-pill: 999px` を追加し、`border-radius: 999px` のハードコード 9 箇所をトークン参照へ置き換える(完了条件: `999px` の直接指定が CSS に残っていない)
+- [x] 1.13 `.tree-card` 系のスタイルを `FamilyTreeCanvas.css` から `src/rendering/person-card.css` へ切り出し、`FamilyTreeCanvas.tsx` と `PedigreeCanvas.tsx` の両方から明示的に import する(完了条件: `FamilyTreeCanvas.css` の import を外した状態でも `PedigreeCanvas` のカードがスタイルを失わないことを確認し、既存の `card-consistency` テストが変更なしで通る)
+- [x] 1.14 ライト/ダーク両テーマで主要画面(空状態・編集パネル・表形式ビュー・3 表示モード・設定メニュー・確認ダイアログ・ランディング)の視覚回帰がないことを確認する(完了条件: 変更前後のスクリーンショットで差異がない)
+- [x] 1.15 第1段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` を各 exit code まで確認する(完了条件: すべて exit code 0)
+
+## 2. 第2段: 層への移動(見た目・振る舞いをゼロ変更。触るのはファイル配置と import パスのみ)
+
+- [x] 2.1 `src/molecules/` を作り、`ConfirmDialog`(CSS を `ConfirmDialog.css` へ改名)・`PersonNameFields`・`PersonPicker`・`WarekiDateInput`・`person-name.ts` を対応するテストごと移動する(完了条件: 移動後に `npm run typecheck` と各部品のテストが通る)
+- [x] 2.2 `src/organisms/person-edit/` を作り、`PersonPanel`・`PersonEditForm`・`PedigreeEditor`・`FamilyEventEditor`・`DeletePersonControl`・`UnlinkRelationControl` を対応するテストごと移動する(完了条件: `PersonPanel` / `PersonEditForm` / `FamilyEventEditor` / `UnlinkRelationControl` の各テストが変更なし(import パス除く)で通る)
+- [x] 2.3 `src/organisms/person-table/` を作り、`PersonTableView`(+ `.test` / `.perf.test`)と `features/person-table/columns.ts` `tsv.ts`(+ 各テスト)を統合する(完了条件: 表形式ビューのテストと `columns` / `tsv` の単体テストが同一ディレクトリで通る)
+- [x] 2.4 `src/organisms/import-export/` を作り、`ImportExportControl` と `features/import-export/fileIO.ts` を各テストごと統合する(完了条件: インポート/エクスポートのテストが通り、`src/features/` が空になる)
+- [x] 2.5 `src/organisms/tree-canvas/` を作り、`rendering/` 一式(`FamilyTreeCanvas` / `PedigreeCanvas` / `person-card` / `person-card.css` / `to-family-chart-data` / `card-consistency.test`)と `ZoomControls` / `UnconnectedTray` / `AddPersonControl` を移動する(完了条件: 描画系の全テスト(`card-consistency` 含む)が通る)
+- [x] 2.6 `src/organisms/settings/` を作り `SettingsMenu` / `DisplaySettingsControl` / `DataResetControl` を移動し、`settings/display-settings-store.ts` と `settings/display-settings.ts` を各テストごと `src/store/` へ移す(完了条件: 表示設定のストアテストが `src/store/` で通り、`src/settings/` が空になる)
+- [x] 2.7 `src/organisms/onboarding/` を作り `EmptyStateGuide` / `EmptyStateGhostPreview` を移動する(完了条件: 空状態のテストが通る)
+- [x] 2.8 `App.tsx` をレイアウトの骨組み(`src/templates/AppShell.tsx` + `AppShell.css`)と状態管理(`src/pages/AppPage.tsx`)に分離し、`Root.tsx` の遅延読み込み境界を `pages/AppPage` へ移す(完了条件: `AppShell` が `useState` を持たず、`App.test.tsx` が import パスの変更のみで通る)
+- [x] 2.9 `components/tokens-contrast.test.ts` を `src/styles/` へ移す(完了条件: トークンのコントラストテストが移動後も通る)
+- [x] 2.10 空になった `src/components/` `src/features/` `src/rendering/` `src/settings/` を削除する(完了条件: 4 ディレクトリが存在せず、`npm run typecheck` が通る)
+- [x] 2.11 クラス名依存の `querySelector`(実測 19 箇所)が移動後も意図どおり動作することを個別に確認する(完了条件: 19 箇所すべてを目視で確認し、該当テストが通る)
+- [x] 2.12 ビルド後のチャンク構成を確認し、ランディングの初回表示チャンクに family-chart / D3 が含まれないことを検証する(完了条件: `npm run build` の出力とチャンク内容から、ランディング側に family-chart が含まれないことを確認する)
+- [x] 2.13 第2段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
+
+## 3. 第3段: `atoms/` の適用(触るのは `*.tsx` の中身)
+
+- [x] 3.1 現行 6 箇所のセグメント切替(`AppPage` の図/表・`PersonPanel` の関係アクションと新規/既存・`PersonTableView` の閲覧/編集・`FamilyTreeCanvas` の 3 表示モード)の `role` / `aria-label` / `aria-pressed` / フォーカス順の差分表を作る(完了条件: 6 箇所の属性とキーボード挙動の差異が一覧化され、統合可能な共通形と各箇所の差分が確定する)
+- [x] 3.2 `src/atoms/Button.tsx` を実装する(`primitives.css` の `.btn` を使う薄いラッパ。バリアントと `type` の既定値を持つ)(完了条件: バリアントごとのクラス付与と `type="button"` 既定のテストが通る)
+- [x] 3.3 `src/atoms/Field.tsx` を実装する(ラベル・入力・補助文/エラーの関連付けを `useId` で行う)(完了条件: `getByLabelText` で入力が取得でき、補助文が `aria-describedby` で関連付くテストが通る)
+- [x] 3.4 `src/atoms/Surface.tsx` を実装する(完了条件: 面のバリアント指定がクラスへ反映されるテストが通る)
+- [x] 3.5 `src/atoms/Dialog.tsx` を実装し、`molecules/ConfirmDialog` をその上に組み直す(完了条件: `ConfirmDialog` の既存テスト(フォーカス・`alertdialog`・追加アクション)が変更なしで通る)
+- [x] 3.6 `src/atoms/SegmentedControl.tsx` を 3.1 の差分表に基づいて実装する(完了条件: 差分表の 6 パターンすべてを表現でき、各パターンの `aria-pressed` とキーボード操作のテストが通る)
+- [x] 3.7 6 箇所のセグメント切替を `SegmentedControl` へ置き換える(完了条件: 6 箇所の既存テストが `getByRole` ベースのまま変更なしで通り、アクセシビリティ名も変わらない)
+- [x] 3.8 `Button` / `Field` / `Surface` を各層のコンポーネントへ適用する(完了条件: 適用後も全テストが通り、視覚回帰がない)
+- [x] 3.9 ライト/ダーク両テーマで主要画面の視覚回帰がないことを目視確認する(完了条件: 第1段 1.13 と同じ画面一覧で差異がない)
+- [x] 3.10 第3段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
+
+## 4. 第4段: 規律の機械検証で固定する
+
+- [x] 4.1 ESLint に層間依存ルール(`no-restricted-imports`)を追加する: `atoms/` → `domain/` `store/` `persistence/` `lib/` 禁止、`molecules/` → `store/` `persistence/` 禁止、`atoms/` `molecules/` → 上位層禁止(完了条件: 各禁止パターンを一時的に仕込むと `npm run lint` が非ゼロ終了し、現行コードでは 0 件である)
+- [x] 4.2 ESLint に機能間の直接依存禁止(`organisms/<機能A>/` → `organisms/<機能B>/`)を追加する(完了条件: 機能をまたぐ import を一時的に仕込むと `npm run lint` が非ゼロ終了し、現行コードでは 0 件である)
+- [x] 4.3 `src/styles/primitives.test.ts` を実装する: `primitives.css` 以外の CSS が操作要素の基本形(`cursor: pointer` + `border-radius` + `padding` の同時指定)を定義していないことを `fs` で実ファイルから検証する(完了条件: 違反を一時的に仕込むとテストが失敗し、現行コードでは通る。除外ファイルはテスト内に明示列挙されている)
+- [x] 4.4 README の「開発者向け情報 > アーキテクチャ」を 5 層構成へ更新し、層の判定基準と、`src/layout/`(座標計算)と `src/templates/`(UI の骨組み)の役割の違いを明記する(完了条件: 記載内容が実装と一致し、新しい部品の置き場が記載のみで判断できる)
+- [x] 4.5 CLAUDE.md の「アーキテクチャの要点」を 5 層構成と層間依存規則に合わせて更新する(完了条件: 記載が README と矛盾せず、`src/components/` 等の消えたディレクトリへの言及が残っていない)
+- [x] 4.6 第4段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
+
+## 6. 既存の不統一の是正(当初は保留していたが、利用者の判断で本 change 内で実施)
+
+- [x] 6.1 設定メニューの 3 つの `<select>` へ `.field .field--sm` を当て、書体を UA 既定からゴシックへ統一する(完了条件: 計算後の `font-family` がゴシックスタックになり、他の要素に差分が出ない)
+- [x] 6.2 「エクスポート」ボタンへ `.btn--outline` を当て、同ダイアログの確認ボタン群と余白を揃える(完了条件: UA 既定の `outset` 枠が消え、「閉じる」と同じ枠・角丸になる)
+- [x] 6.3 `person-card.ts` の生成する HTML へ `surface--raised` を加え、`person-card.test.ts` の完全一致アサーション 2 件を更新する(完了条件: カードの計算後スタイルに差分が出ない = 値がトークンで揃っていたことの確認)
+- [x] 6.4 `primitives.test.ts` の除外リストから `.tree-card` を外す(完了条件: 除外なしでテストが通る)
+- [x] 6.5 是正内容を spec の「既存の不統一の是正」要件と design.md 付録 A/B へ記録する(完了条件: 実測差分の一覧が残り、`openspec validate` が通る)
+- [x] 6.6 是正後の全体検証(完了条件: lint / format:check / typecheck / test / build / test:e2e がすべて exit code 0、計算後スタイルの差分が是正箇所のみ)
+
+## 5. 最終検証と archive
+
+- [x] 5.1 E2E を全件実行し、外部送信ゼロを含めて回帰がないことを確認する(完了条件: `npm run test:e2e` が exit code 0 で全件パスし、自オリジン以外へのリクエストが 0 件)
+- [x] 5.2 主要画面のスクリーンショットをライト/ダーク両テーマで取得し、変更前(`develop`)との比較で視覚回帰がないことを確認する(完了条件: 空状態・編集パネル・表形式ビュー・3 表示モード・設定メニュー・確認ダイアログ・ランディングの各スクリーンショットに差異がなく、比較結果を design.md へ追記する)
+- [x] 5.3 `openspec` の spec を同期し、change を archive する(完了条件: `openspec/specs/ui-component-layers/spec.md` が作成され、`openspec validate` が通る)
+- [ ] 5.4 PR を作成する(完了条件: 必須チェック(ジョブID `quality`)が通る)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDateForDisplay } from '../settings/display-settings'
+import { formatDateForDisplay } from '../store/display-settings'
 import { buildGraph, splitIntoComponents } from '../layout/graph'
 import { layoutPedigree } from '../layout'
 import { expectLayoutInvariants } from '../layout/test-invariants'

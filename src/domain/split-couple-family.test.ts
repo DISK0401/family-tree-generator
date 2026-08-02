@@ -9,7 +9,7 @@ import {
 } from './commands'
 import { createTreeDocument } from './helpers'
 import type { PersonId, TreeDocument } from './types'
-import { toFamilyChartData } from '../rendering/to-family-chart-data'
+import { toFamilyChartData } from '../organisms/tree-canvas/to-family-chart-data'
 
 /**
  * 報告された不具合の再現と修復の検証。

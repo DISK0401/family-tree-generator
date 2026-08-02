@@ -1,4 +1,7 @@
+/* トークン(色・書体・余白)→ 基本形(操作要素・入力・面・切替)の順に読む。
+   この2枚より後に各コンポーネントのCSSが適用されるため、基本形は各所で上書きできる */
 @import './styles/tokens.css';
+@import './styles/primitives.css';
 
 :root {
   font: 16px/1.6 var(--font-gothic);

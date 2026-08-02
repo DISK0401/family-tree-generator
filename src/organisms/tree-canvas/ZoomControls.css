@@ -1,0 +1,35 @@
+/* キャンバス右下のズーム操作面。地図アプリの流儀(半透明+ぼかし+浮遊影)は
+   .surface--overlay、縦積みの切替の骨格は .segmented--stacked が担う
+   (いずれも styles/primitives.css)。family-chartのキャンバス・PedigreeCanvasの
+   両方から使う共通スタイル(監査 低6) */
+.zoom-controls {
+  /* family-chart内部の#htmlSvgレイヤ(z-index: 2)より上に描画されないと
+     タップ/クリックを奪われるため、明示的なz-indexが必須 */
+  z-index: 10;
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+}
+
+/* 正方形のアイコンボタン。基本形の `font: inherit`(行送り1.6)ではなく
+   字面を中央に置くための line-height: 1 を保つ */
+.zoom-controls button {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-md);
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.zoom-controls button:hover {
+  background: var(--ai-wash);
+  color: var(--ai-strong);
+}
+
+/* モバイルではタップ領域を44pxへ広げる(監査 中12: 40px以上) */
+@media (max-width: 640px) {
+  .zoom-controls button {
+    width: 44px;
+    height: 44px;
+  }
+}

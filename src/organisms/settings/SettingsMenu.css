@@ -1,0 +1,26 @@
+/* 見た目の基本形(.btn--ghost / .surface--floating)は styles/primitives.css にある */
+
+.settings-menu {
+  position: relative;
+}
+
+.settings-menu-trigger {
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: var(--space-1) var(--space-2);
+}
+
+/* 開いている間もホバーと同じ「枠が現れた」状態に留める */
+.settings-menu-trigger[aria-expanded='true'] {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.settings-menu-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 12em;
+  padding: var(--space-2);
+  z-index: 5;
+}

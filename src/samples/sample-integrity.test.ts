@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SCHEMA_VERSION } from '../domain/types'
 import { treeDocumentSchema } from '../lib/json/schema'
-import { formatDateForDisplay } from '../settings/display-settings'
+import { formatDateForDisplay } from '../store/display-settings'
 import { loadSampleDocument } from './load-sample'
 import { SAMPLE_IDS, type SampleId } from './sample-meta'
 import type { FuzzyDate } from '../domain/types'
