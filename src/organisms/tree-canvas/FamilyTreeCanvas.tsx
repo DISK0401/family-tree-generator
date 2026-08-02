@@ -46,6 +46,14 @@ type SortSpousesFn = Parameters<ChartInstance['setSortSpousesFunction']>[0]
 const CARD_WIDTH = CARD_SIZE.width
 const CARD_HEIGHT = CARD_SIZE.height
 
+// family-chartの世代間隔(setCardYSpacing)・同世代内間隔(setCardXSpacing)は、
+// カードが中心基準で描画されるため常にCARD_HEIGHT/CARD_WIDTHを上回っている必要がある
+// (下回ると隣接世代のカードが重なる)。マージンはCARD_SIZE拡大前の最後に破綻していなかった
+// 実効値を復元したもの(design.md D1: 170-148=22, 180-136=44)。CARD_SIZEが変わっても
+// この関係が保たれるよう、固定値ではなくCARD_SIZEからの算出値として渡す
+const FAMILY_CHART_ROW_MARGIN = 22
+const FAMILY_CHART_COLUMN_MARGIN = 44
+
 /**
  * 表示モード(design.md D7)。折りたたみ表示・全体表示(家系ごと)はfamily-chartのまま、
  * つながった全体表示だけ自前レイアウタ(PedigreeCanvas)へ差し替える
@@ -305,8 +313,8 @@ export function FamilyTreeCanvas({
     const chart = f3
       .createChart(container, initialData)
       .setTransitionTime(prefersReducedMotion() ? 0 : 700)
-      .setCardYSpacing(170)
-      .setCardXSpacing(180)
+      .setCardYSpacing(CARD_HEIGHT + FAMILY_CHART_ROW_MARGIN)
+      .setCardXSpacing(CARD_WIDTH + FAMILY_CHART_COLUMN_MARGIN)
       .setSingleParentEmptyCard(false)
       .setSortChildrenFunction(sortChildren)
       .setSortSpousesFunction(sortSpouses)
