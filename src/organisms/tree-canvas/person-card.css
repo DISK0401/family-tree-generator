@@ -25,7 +25,11 @@
      コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
   width: var(--tree-card-w, 128px);
   height: var(--tree-card-h, 148px);
-  padding: var(--space-2) var(--space-1) var(--space-1);
+  /* 上端は性別インジケーター・故人マーカーの行(絶対配置、高さ約12px)ぶんを確保する。
+     ふりがな行(表示オフ時は氏名列)が最初のフロー要素になるため、ここで一括して
+     コンテンツの開始位置を下げることで、文字数によらずアイコンと重ならなくする
+     (fix-tree-card-overlap-and-density design.md D1) */
+  padding: var(--space-5) var(--space-1) var(--space-1);
   color: var(--ink);
   display: flex;
   flex-direction: column;
@@ -154,12 +158,16 @@
  * 故人マーカー。以前は氏名の縦書き列内に文字として埋め込んでいたが、ふりがな・
  * 生没地等の追加表示項目で列の高さが狭まると意図しない列へ折り返され、名前の
  * 前に浮いて見える不具合があったため、性別インジケーターと対になる固定位置の
- * バッジとして独立させた(表示項目が何個有効でも位置が揺れない)
+ * バッジとして独立させた(表示項目が何個有効でも位置が揺れない)。
+ *
+ * 右上の絶対配置は非表示人数バッジ(.tree-card-hidden-badge)専用のため、
+ * 故人マーカーは性別インジケーターの右隣に並べて配置する
+ * (fix-tree-card-overlap-and-density design.md D1)
  */
 .tree-card-deceased-mark {
   position: absolute;
   top: var(--space-1);
-  right: var(--space-1);
+  left: calc(var(--space-1) * 2 + 10px);
   font-size: var(--text-xs);
   line-height: 1;
   color: var(--ink-faint);

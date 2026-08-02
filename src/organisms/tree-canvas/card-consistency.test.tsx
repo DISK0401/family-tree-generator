@@ -145,7 +145,7 @@ describe('カード表現の一致(9.1)', () => {
       persons: {
         [PERSON_ID]: {
           id: PERSON_ID,
-          name: { surname: '富岡', given: '愛梨奈' },
+          name: { surname: '富岡', given: '愛梨奈美' },
           gender: 'female',
         },
       },
@@ -153,7 +153,7 @@ describe('カード表現の一致(9.1)', () => {
     const { collapsed, connected } = renderBothModes()
 
     expect(connected).toBe(collapsed)
-    expect(collapsed).toContain('愛梨奈')
+    expect(collapsed).toContain('愛梨奈美')
     expect(collapsed).toMatch(/tree-card-given" style="font-size: 0\.\d+em"/)
     // 折り返しによる複数列化(bug再発)が起きていないことの確認
     expect(collapsed.match(/tree-card-given/g)).toHaveLength(1)

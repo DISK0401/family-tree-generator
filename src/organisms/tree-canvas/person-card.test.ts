@@ -307,6 +307,21 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(withBadge).toContain('+3')
   })
 
+  it('故人かつ非表示人数バッジがある場合でも両方描画される(重なり回避はperson-card.cssの配置で担保)', () => {
+    const view = derivePersonCardView(
+      baseInput({ deceased: true, deathYear: 1980 }),
+      baseSettings(),
+    )
+    const html = personCardInnerHtml(view, {
+      hiddenBadge: { count: 14, revealId: 'p2' },
+    })
+    expect(html).toContain('tree-card-deceased-mark')
+    expect(html).toContain('tree-card-hidden-badge')
+    // 故人マーカーは性別インジケーターの隣に置かれ、非表示バッジ専用の
+    // 右上絶対配置(top:-8px; right:-8px)とは異なる領域を使う(design.md D1)
+    expect(html).toContain('tree-card-gender')
+  })
+
   it('姓名それぞれ3文字以下では列にフォントサイズの指定が付かない(既定表示のまま)', () => {
     const view = derivePersonCardView(
       baseInput({ surname: '山田', given: '太郎' }),
