@@ -181,11 +181,37 @@ export function personToCardInput(person: Person): PersonCardInput {
  * 姓・名は独立した列のため、縮小率も列ごとに個別の文字数で決める
  */
 function nameFontScale(charCount: number): number {
-  const COMFORTABLE_CHARS = 2
+  // 戸籍由来の家系図という用途上、「仁三郎」「武之助」のような伝統的な3文字名も
+  // 無縮小で表示できるようにする(design.md D3)
+  const COMFORTABLE_CHARS = 3
   const MIN_SCALE = 0.6
   if (charCount <= COMFORTABLE_CHARS) return 1
   return Math.max(COMFORTABLE_CHARS / charCount, MIN_SCALE)
 }
+
+/**
+ * ふりがな行(`.tree-card-kana`)も氏名列と同じ理由で折り返しを禁止している
+ * (CSS側の`white-space: nowrap`)ため、姓かな・名かなを結合した文字数が多い場合は
+ * フォントサイズを縮小して1行に収める(design.md D2, fix-tree-card-overlap-and-density)。
+ * 「しぶさわ たけのすけ」(9文字)程度の戸籍由来の長さは無縮小で収まる値を基準にする
+ */
+function kanaFontScale(charCount: number): number {
+  const COMFORTABLE_CHARS = 10
+  const MIN_SCALE = 0.6
+  if (charCount <= COMFORTABLE_CHARS) return 1
+  return Math.max(COMFORTABLE_CHARS / charCount, MIN_SCALE)
+}
+
+/**
+ * `.tree-card-kana`(person-card.css)のCSS側の基準フォントサイズと一致させる。
+ * 氏名列(`nameColumnHtml`)は縮小率を`em`のインラインスタイルで表現しているが、
+ * `font-size`に付けた`em`は常に**親要素**の実フォントサイズを基準に解決されるため、
+ * 「クラスの元々のfont-size(1rem)」と「祖先から継承されたfont-size(既定16px)」が
+ * たまたま一致している(design tokenの`--text-md`=1rem)場合にしか正しく縮小されない。
+ * ふりがなの基準サイズ(0.5625rem)は祖先のfont-sizeと一致しないため、同じ手法は使えない。
+ * `rem`はルート要素基準で祖先のfont-sizeに依存しないため、絶対値として計算する
+ */
+const KANA_BASE_FONT_SIZE_REM = 0.5625
 
 /** 氏名は利用者入力のため、innerHTMLへ渡す前に必ずエスケープする */
 export function escapeHtml(value: string): string {
@@ -225,6 +251,16 @@ function nameColumnHtml(
   const attrs: Record<string, string> = { class: className }
   if (scale < 1) attrs.style = `font-size: ${scale.toFixed(2)}em`
   return htmlTag('div', attrs, text)
+}
+
+/** ふりがな行のHTML(縮小が必要な場合のみインラインスタイルを付す。htmlTag経由でエスケープする) */
+function kanaRowHtml(kana: string): string {
+  const scale = kanaFontScale(kana.length)
+  const attrs: Record<string, string> = { class: 'tree-card-kana' }
+  if (scale < 1) {
+    attrs.style = `font-size: ${(KANA_BASE_FONT_SIZE_REM * scale).toFixed(4)}rem`
+  }
+  return htmlTag('div', attrs, kana)
 }
 
 /** 折りたたみ表示のみが持つ「非表示人数バッジ」(design.md D4)。PersonCardViewの一部にはしない(下記コメント参照) */
@@ -286,10 +322,7 @@ export function personCardInnerHtml(
   // `view.kana`が`''`(表示設定はオンだがこの人物には未入力)の場合も行を描く。
   // 空のdivでも行の高さ(line-height由来)は確保されるため、ふりがな入力済みの人物と
   // 未入力の人物とで、下に続く氏名列の開始位置が上下にずれることを防げる
-  const kanaHtml =
-    view.kana !== undefined
-      ? htmlTag('div', { class: 'tree-card-kana' }, view.kana)
-      : ''
+  const kanaHtml = view.kana !== undefined ? kanaRowHtml(view.kana) : ''
   const placesHtml = view.places
     ? htmlTag('div', { class: 'tree-card-places' }, view.places)
     : ''
