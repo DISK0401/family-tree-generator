@@ -26,7 +26,7 @@
 
 ## 5. 回帰確認・仕上げ
 
-- [ ] 5.1 `npm run test` を実行し、既存テスト(特に `coordinates.test.ts`, `index.test.ts`, `person-card.test.ts`, `card-consistency`系)が全て通過することを確認する
-- [ ] 5.2 `npm run typecheck` / `npm run lint` / `npm run format:check` を実行し、CIと同じ品質チェックを通過させる
-- [ ] 5.3 `npm run test:e2e` を実行し、Playwrightスモークテストが全件パスすることを確認する(archiveゲート)
-- [ ] 5.4 README.mdにカード寸法・氏名縮小しきい値に関する記述がある場合は更新する(なければ対応不要と明記して完了とする)
+- [x] 5.1 `npm run test` を実行し、既存テスト(特に `coordinates.test.ts`, `index.test.ts`, `person-card.test.ts`, `card-consistency`系)が全て通過することを確認する — 967件全て通過
+- [x] 5.2 `npm run typecheck` / `npm run lint` / `npm run format:check` を実行し、CIと同じ品質チェックを通過させる — いずれもエラーなし
+- [x] 5.3 `npm run test:e2e` を実行し、Playwrightスモークテストが全件パスすることを確認する(archiveゲート)— 5件全て通過(このサンドボックス環境ではプリインストール済みブラウザのリビジョンが`@playwright/test`の期待値と異なりexecutablePath指定が実行時に必要だったが、リポジトリの`playwright.config.ts`は変更していない。CI/実際の開発環境では発生しない、このセッション固有の環境差異)
+- [x] 5.4 README.mdにカード寸法・氏名縮小しきい値に関する記述がある場合は更新する(なければ対応不要と明記して完了とする)— 該当する記述はなく対応不要
