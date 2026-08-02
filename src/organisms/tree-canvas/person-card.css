@@ -23,18 +23,20 @@
   box-sizing: border-box;
   /* setCardInnerHtmlCreator使用時はfamily-chart側のカードサイズCSSが適用されないため、
      コンポーネント側でCARD_WIDTH/CARD_HEIGHTから注入したカスタムプロパティを実寸として使う */
-  width: var(--tree-card-w, 128px);
-  height: var(--tree-card-h, 148px);
+  width: var(--tree-card-w, 136px);
+  height: var(--tree-card-h, 180px);
   /* 上端は性別インジケーター・故人マーカーの行(絶対配置、高さ約12px)ぶんを確保する。
      ふりがな行(表示オフ時は氏名列)が最初のフロー要素になるため、ここで一括して
      コンテンツの開始位置を下げることで、文字数によらずアイコンと重ならなくする
      (fix-tree-card-overlap-and-density design.md D1) */
-  padding: var(--space-5) var(--space-1) var(--space-1);
+  padding: var(--space-5) var(--space-1) var(--space-2);
   color: var(--ink);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: var(--space-1);
+  /* 全表示項目オン時の窮屈さ対策(design.md「全項目表示時の余白確認」)。
+     カード寸法は実測した最小限+この行間ぶんの余白を含めて決めている */
+  gap: var(--space-2);
   cursor: pointer;
   transition:
     border-color 0.15s ease,
