@@ -94,12 +94,17 @@
   background: color-mix(in srgb, var(--paper-raised) 55%, var(--paper-sunken));
 }
 
-/* 選択状態は朱で表す(性別インジケーターとは別配色。design.md D7) */
+/*
+ * 選択状態は朱で表す(性別インジケーターとは別配色。design.md D7)。
+ * ボックスモデル(width/height/padding)に影響しない`outline`で強調を表現する
+ * (`border-width`を太くしてpaddingを縮める方式は、`.tree-card`本体のpadding変更に
+ * 追従できず表示崩れの原因になっていたため、fix-marriage-label-spacing-selection
+ * design.md D3で廃止した)
+ */
 .tree-card.selected {
   border-color: var(--shu);
-  border-width: 2px;
-  padding: calc(var(--space-2) - 1px) calc(var(--space-1) - 1px)
-    calc(var(--space-1) - 1px);
+  outline: 2px solid var(--shu);
+  outline-offset: 0;
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--shu) 22%, transparent),
     var(--shadow-raised);

@@ -8,7 +8,11 @@ import { PersonPicker } from '../../molecules/PersonPicker'
 import { UnconnectedTray } from './UnconnectedTray'
 import { ZoomControls } from './ZoomControls'
 import type { Pedigree, TreeDocument } from '../../domain/types'
-import { CARD_SIZE } from '../../layout/coordinates'
+import {
+  CARD_SIZE,
+  HORIZONTAL_GAP,
+  VERTICAL_GAP,
+} from '../../layout/coordinates'
 import { useDisplaySettingsStore } from '../../store/display-settings-store'
 import { formatDateForDisplay } from '../../store/display-settings'
 import { derivePersonCardView, personCardInnerHtml } from './person-card'
@@ -48,11 +52,9 @@ const CARD_HEIGHT = CARD_SIZE.height
 
 // family-chartの世代間隔(setCardYSpacing)・同世代内間隔(setCardXSpacing)は、
 // カードが中心基準で描画されるため常にCARD_HEIGHT/CARD_WIDTHを上回っている必要がある
-// (下回ると隣接世代のカードが重なる)。マージンはCARD_SIZE拡大前の最後に破綻していなかった
-// 実効値を復元したもの(design.md D1: 170-148=22, 180-136=44)。CARD_SIZEが変わっても
-// この関係が保たれるよう、固定値ではなくCARD_SIZEからの算出値として渡す
-const FAMILY_CHART_ROW_MARGIN = 22
-const FAMILY_CHART_COLUMN_MARGIN = 44
+// (下回ると隣接世代のカードが重なる)。マージンは`pedigree-layout`(つながった全体表示)と
+// 共有する`VERTICAL_GAP`/`HORIZONTAL_GAP`(coordinates.ts)を用い、表示モード間で
+// カード間隔の見た目が揃うようにする(fix-marriage-label-spacing-selection design.md D1)
 
 /**
  * 表示モード(design.md D7)。折りたたみ表示・全体表示(家系ごと)はfamily-chartのまま、
@@ -313,8 +315,8 @@ export function FamilyTreeCanvas({
     const chart = f3
       .createChart(container, initialData)
       .setTransitionTime(prefersReducedMotion() ? 0 : 700)
-      .setCardYSpacing(CARD_HEIGHT + FAMILY_CHART_ROW_MARGIN)
-      .setCardXSpacing(CARD_WIDTH + FAMILY_CHART_COLUMN_MARGIN)
+      .setCardYSpacing(CARD_HEIGHT + VERTICAL_GAP)
+      .setCardXSpacing(CARD_WIDTH + HORIZONTAL_GAP)
       .setSingleParentEmptyCard(false)
       .setSortChildrenFunction(sortChildren)
       .setSortSpousesFunction(sortSpouses)

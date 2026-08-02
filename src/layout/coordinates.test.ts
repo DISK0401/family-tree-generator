@@ -577,15 +577,20 @@ describe('assignCoordinates', () => {
   })
 
   it('層をまたぐ縦線は、中間層のカードを避けて隣の隙間へスナップされる', () => {
-    // gf-gm夫婦の子はmid(層1)とfar(層2へ婚出)。層1にはmidしかいないため、緩和で
-    // midは夫婦の真下(=結合点の真下)へ寄り、farへの縦線をそのまま降ろすと
-    // midのカードを縦に貫通する(監査指摘)。修正後はmidの脇の隙間へスナップされる
+    // gf-gm夫婦の子はmid(層1)とfar(層2へ婚出)。層1にはmidの一族(mid・midChild・
+    // midChild2)がいるため、緩和でmidは夫婦の真下(=結合点の真下)へ寄り、farへの
+    // 縦線をそのまま降ろすとmidのカードを縦に貫通する(監査指摘)。修正後はmidの脇の
+    // 隙間へスナップされる。midChild2は「結合点がmidの真上に来る」という前提を
+    // HORIZONTAL_GAPの値によらず成立させるための補助的な子(fix-marriage-label-
+    // spacing-selectionでHORIZONTAL_GAPが24→80へ広がった際、midChild2なしでは
+    // 結合点がmidのカード幅からわずかに外れてしまい前提が崩れたため追加した)
     const doc = testDoc(
       [
         person('gf', '祖父'),
         person('gm', '祖母'),
         person('mid', '中間の子'),
         person('midChild', '中間の孫'),
+        person('midChild2', '中間の孫2'),
         person('far', '婚出した子'),
       ],
       [
@@ -600,7 +605,10 @@ describe('assignCoordinates', () => {
         family(
           'fMid',
           ['mid'],
-          [{ childId: 'midChild', pedigree: 'biological' }],
+          [
+            { childId: 'midChild', pedigree: 'biological' },
+            { childId: 'midChild2', pedigree: 'biological' },
+          ],
         ),
         family('fFar', ['midChild', 'far'], []),
       ],
