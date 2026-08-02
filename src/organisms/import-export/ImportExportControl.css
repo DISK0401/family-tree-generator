@@ -102,3 +102,10 @@
   font-size: var(--text-xs);
   color: var(--ink-faint);
 }
+
+/* 書き出しの実行ボタン。同じダイアログ内の確認ボタン群
+   (.confirm-dialog-actions button)と同じ余白に揃える */
+.import-export-export {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+}

@@ -44,16 +44,10 @@ const PRIMITIVES = 'src/styles/primitives.css'
 const EXCEPTIONS: { file: string; selector: string; reason: string }[] = [
   {
     file: 'src/organisms/tree-canvas/person-card.css',
-    selector: '.tree-card',
-    reason:
-      '人物カードは person-card.ts が生成するHTML文字列で、クラスは person-card.test.ts が' +
-      '完全一致で検証しているため .surface--raised を当てられない(design.md 付録A)。' +
-      '値はトークンで基本形と揃えている',
-  },
-  {
-    file: 'src/organisms/tree-canvas/person-card.css',
     selector: '.tree-card-hidden-badge',
-    reason: '同上(カードのマークアップはHTML文字列側の定数)',
+    reason:
+      '折りたたみ時の人数バッジ。押せるが「ボタンの語彙」ではなく丸い印であり、' +
+      'マークアップは person-card.ts のHTML文字列側の定数',
   },
   {
     file: 'src/molecules/PersonPicker.css',

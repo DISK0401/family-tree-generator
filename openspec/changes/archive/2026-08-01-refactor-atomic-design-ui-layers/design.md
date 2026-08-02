@@ -277,6 +277,17 @@ README と本ドキュメントで役割を明記して区別する:
 
 E2E は全 5 件パス(外部送信ゼロの 3 件を含む)。
 
+### 既存の不統一を是正した際の実測差分(意図した視覚変更)
+
+インポート/エクスポートのダイアログを計測対象に加え(**18 画面 / 188 要素**)、`develop` と比較した結果の差分は **68 プロパティ**。内訳は下記の 2 箇所に限られ、他の要素は 1 プロパティも変わっていない。ライト・ダークの両テーマで同一の差分が出ており、テーマ依存の取りこぼしがないことも確認できる。
+
+| 箇所 | 観測された差分 |
+| --- | --- |
+| 設定メニューの `<select>` × 3 | `font-family`: `Arial` → ゴシックスタック / 高さ 28px → 32px。連鎖してメニューパネルの高さ 557px → 569px |
+| 「エクスポート」ボタン | `border`: 2px `outset` → 1px `solid --line-strong` / `border-radius`: 0 → 6px / `background`: `rgb(240,240,240)` → `--paper` / `font-size`: 13.33px → 16px / `cursor`: `default` → `pointer` / 幅 462px(全幅)→ 130px(内容幅) / 高さ 25px → 44px。連鎖してダイアログの高さ 657px → 676px |
+
+`.tree-card` は `surface--raised` へ載せ替えても **差分 0 件**。是正の前後をスクリーンショットでも確認し、いずれも周囲の語彙に揃う方向の変化であることを目視で裏付けた。
+
 ### 検証によって発見・修正した実際の回帰 2 件
 
 いずれも「プリミティブが子孫セレクタを使い、コンポーネント側の 1 クラスのルールより詳細度が高くなる」ことが原因だった。**この教訓は第 3 段以降にも効く**ため記録する。
@@ -342,7 +353,7 @@ E2E は全 5 件パス(外部送信ゼロの 3 件を含む)。
 | `.surface--notice` | `border: 1px solid` `border-radius: var(--radius)` `color: var(--ink)` | `.import-export-disabled-note` `.import-export-confirm`(ImportExportControl) / `.app-sample-error` `.app-blocked-message`(App) | 色の別(`--warn` / `--danger` と対応する `-wash`) / `padding` `font-size` `max-width` `margin` |
 | `.surface--fieldset` | `border: 1px solid var(--line)` `border-radius: var(--radius)` `padding: var(--space-2) var(--space-3) var(--space-3)` + `legend` の `font-family: var(--font-gothic)` `font-size: var(--text-xs)` `color: var(--ink-faint)` `padding: 0 var(--space-1)` | `.person-edit-form-event`(PersonEditForm) / `.family-event-editor-event`(FamilyEventEditor) | なし(2 箇所は完全一致) |
 
-`.tree-card` を `.surface--raised` の上に載せることで、`PedigreeCanvas` が `FamilyTreeCanvas.css` へ暗黙依存している問題(D3)の解消と同時に、カードの面表現がアプリの他の面と一致することが構造的に保証される。
+`.tree-card` を `.surface--raised` の上に載せることで、`PedigreeCanvas` が `FamilyTreeCanvas.css` へ暗黙依存している問題(D3)の解消と同時に、カードの面表現がアプリの他の面と一致することが構造的に保証される(実施済み。注意 2 の 3 番)。
 
 ### A-4. セグメント切替 — `.segmented`
 
@@ -376,8 +387,18 @@ E2E は全 5 件パス(外部送信ゼロの 3 件を含む)。
 
 `.delete-person-trigger`(DeletePersonControl) / `.data-reset-trigger`(DataResetControl) / `.import-export-trigger`(ImportExportControl) / `.add-person-trigger`(AddPersonControl) / `.tree-show-all-toggle` `.tree-person-search-trigger`(FamilyTreeCanvas)
 
-**注意 2 — `.display-settings-control-field select` は現在システム書体で描かれている**
+**注意 2 — 既存の不統一 3 件は「意図した視覚変更」として是正した**
 
-`index.css` は `button { font-family: var(--font-gothic) }` のみを指定し、`input` / `select` / `textarea` には書体を与えていない。アプリ内の入力欄はすべて `font: inherit` を自前で持つためゴシックで描かれるが、**`.display-settings-control-field select`(DisplaySettingsControl)だけは `font-size` のみの指定で、書体は UA 既定(システム書体)のまま**である。
+棚卸しの過程で、基本形を当てられない/当てていない箇所が 3 件見つかった。いずれも当初は「視覚回帰ゼロ」を優先して現状維持とし別 change の候補にしていたが、**利用者の判断で本 change 内で是正した**。是正後の実測差分は付録 B に記載する。
 
-これは既存の見た目の不統一だが、本変更の完了条件は視覚回帰ゼロであるため、この 1 箇所は `.field` の書体部分を適用せず**現行の見た目を保つ**。統一するかどうかは別 change の判断とする(統一する場合は `.field--sm` を当てるだけで済む)。
+1. **`.display-settings-control-field select` がシステム書体で描かれていた**
+   `index.css` は `button { font-family: var(--font-gothic) }` のみを指定し、`input` / `select` / `textarea` には書体を与えていない。アプリ内の入力欄はすべて `font: inherit` を自前で持つためゴシックで描かれるが、設定メニューの 3 つの `<select>` だけは `font-size` のみの指定で UA 既定(Arial 等)のままだった。
+   → `.field .field--sm` を適用。枠を一段弱く(`--line`)・面をメニューの地(`--paper`)に沿わせ・余白を詰める点だけを差分として残す。
+
+2. **インポート/エクスポートの「エクスポート」ボタンがクラスを持っていなかった**
+   同じダイアログの「閉じる」が基本形の枠付きボタンなのに対し、こちらは UA 既定(灰色・`outset` 枠・全幅)で描かれており、明らかに不揃いだった。
+   → `.btn--outline` を適用し、余白は同ダイアログの確認ボタン群(`.confirm-dialog-actions button`)と揃える。`align-self: flex-start` で全幅から内容幅へ。
+
+3. **`.tree-card` が面の宣言を自前で持っていた**
+   `person-card.test.ts` がカードの HTML を完全一致で検証しているためクラスの付け替えを避けていた。
+   → `person-card.ts` の生成する文字列へ `surface--raised` を加え、テストの完全一致アサーション 2 件を新しいクラス構成へ更新した。**計算後スタイルの差分は 0 件** — 面の値がトークンで既に揃っていたことの裏付けになった。

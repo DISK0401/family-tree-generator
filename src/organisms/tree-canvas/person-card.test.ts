@@ -225,14 +225,16 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
       baseSettings(),
     )
     const html = personCardInnerHtml(view, { selected: true })
-    expect(html).toContain('class="tree-card selected deceased"')
+    expect(html).toContain(
+      'class="tree-card surface--raised selected deceased"',
+    )
     expect(html).toContain('tree-card-deceased-mark')
   })
 
   it('選択されていない・生存中は余分なクラスが付かない', () => {
     const view = derivePersonCardView(baseInput(), baseSettings())
     const html = personCardInnerHtml(view)
-    expect(html).toContain('class="tree-card">')
+    expect(html).toContain('class="tree-card surface--raised">')
     expect(html).not.toContain('tree-card-deceased-mark')
   })
 

@@ -9,9 +9,8 @@
  * 暗黙に依存していた。
  *
  * 造形は「机上に浮かぶ紙のカード」: 角丸+多層の柔らかい影+ホバーで浮き上がる。
- * NOTE: 面の表現は`styles/primitives.css`の`.surface--raised`と同一だが、
- * カードのクラスはHTML文字列側の定数であり、`person-card.test.ts`が完全一致で
- * 検証しているためクラスの付け替えは行っていない(値はトークンで揃えている)。
+ * 面(地・枠・角丸・影)は`styles/primitives.css`の`.surface--raised`が与える
+ * ため、ここはカード固有の差分 — 実寸・縦書きの氏名・状態表現 — だけを持つ。
  */
 
 /*
@@ -27,10 +26,6 @@
   width: var(--tree-card-w, 104px);
   height: var(--tree-card-h, 116px);
   padding: var(--space-2) var(--space-1) var(--space-1);
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-raised);
   color: var(--ink);
   display: flex;
   flex-direction: column;

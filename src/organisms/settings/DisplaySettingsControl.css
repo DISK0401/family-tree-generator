@@ -13,16 +13,12 @@
   color: var(--ink-faint);
 }
 
-/* 見た目の基本形(.field-label--row)は styles/primitives.css にある。
-   この<select>だけは基本形(.field)を当てていない: 元から font-family を持たず
-   UA既定のシステム書体で描かれており、.field を当てると書体が変わってしまう。
-   統一するかどうかは別途判断する(design.md 付録A 注意2) */
+/* 見た目の基本形(.field-label--row / .field / .field--sm)は
+   styles/primitives.css にある。メニュー内の控えめな見た目にするため、
+   枠は一段弱く(--line)、面はメニューの地(--paper)に沿わせ、余白は詰める */
 .display-settings-control-field select {
-  font-size: var(--text-sm);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-color: var(--line);
   background: var(--paper);
-  color: var(--ink);
   padding: var(--space-1);
 }
 

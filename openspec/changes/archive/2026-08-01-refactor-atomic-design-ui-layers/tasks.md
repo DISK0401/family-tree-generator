@@ -54,6 +54,15 @@
 - [x] 4.5 CLAUDE.md の「アーキテクチャの要点」を 5 層構成と層間依存規則に合わせて更新する(完了条件: 記載が README と矛盾せず、`src/components/` 等の消えたディレクトリへの言及が残っていない)
 - [x] 4.6 第4段の全体検証: `npm run lint` / `npm run format:check` / `npm run typecheck` / `npm run test` / `npm run build` / `npm run test:e2e` を各 exit code まで確認する(完了条件: すべて exit code 0)
 
+## 6. 既存の不統一の是正(当初は保留していたが、利用者の判断で本 change 内で実施)
+
+- [x] 6.1 設定メニューの 3 つの `<select>` へ `.field .field--sm` を当て、書体を UA 既定からゴシックへ統一する(完了条件: 計算後の `font-family` がゴシックスタックになり、他の要素に差分が出ない)
+- [x] 6.2 「エクスポート」ボタンへ `.btn--outline` を当て、同ダイアログの確認ボタン群と余白を揃える(完了条件: UA 既定の `outset` 枠が消え、「閉じる」と同じ枠・角丸になる)
+- [x] 6.3 `person-card.ts` の生成する HTML へ `surface--raised` を加え、`person-card.test.ts` の完全一致アサーション 2 件を更新する(完了条件: カードの計算後スタイルに差分が出ない = 値がトークンで揃っていたことの確認)
+- [x] 6.4 `primitives.test.ts` の除外リストから `.tree-card` を外す(完了条件: 除外なしでテストが通る)
+- [x] 6.5 是正内容を spec の「既存の不統一の是正」要件と design.md 付録 A/B へ記録する(完了条件: 実測差分の一覧が残り、`openspec validate` が通る)
+- [x] 6.6 是正後の全体検証(完了条件: lint / format:check / typecheck / test / build / test:e2e がすべて exit code 0、計算後スタイルの差分が是正箇所のみ)
+
 ## 5. 最終検証と archive
 
 - [x] 5.1 E2E を全件実行し、外部送信ゼロを含めて回帰がないことを確認する(完了条件: `npm run test:e2e` が exit code 0 で全件パスし、自オリジン以外へのリクエストが 0 件)

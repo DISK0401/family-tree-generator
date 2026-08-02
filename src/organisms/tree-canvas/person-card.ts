@@ -332,7 +332,7 @@ export function personCardInnerHtml(
 
   // ルートのdivだけは(エスケープ済みの)子断片を含むためhtmlTagを通さない。
   // クラス名はすべて内部定数であり、利用者入力はここへは流れない
-  return `<div class="tree-card${selectedClass}${deceasedClass}">
+  return `<div class="tree-card surface--raised${selectedClass}${deceasedClass}">
         ${genderHtml}
         ${deceasedMarkHtml}
         ${badgeHtml}

@@ -77,6 +77,7 @@ export function DisplaySettingsControl() {
         表示形式
         <select
           id={calendarModeId}
+          className="field field--sm"
           value={calendarMode}
           onChange={(e) => setCalendarMode(e.target.value as CalendarMode)}
         >
@@ -94,6 +95,7 @@ export function DisplaySettingsControl() {
         生年月日
         <select
           id={birthId}
+          className="field field--sm"
           value={birthDateGranularity}
           onChange={(e) =>
             setBirthDateGranularity(e.target.value as DateGranularity)
@@ -113,6 +115,7 @@ export function DisplaySettingsControl() {
         没年月日
         <select
           id={deathId}
+          className="field field--sm"
           value={deathDateGranularity}
           onChange={(e) =>
             setDeathDateGranularity(e.target.value as DateGranularity)
