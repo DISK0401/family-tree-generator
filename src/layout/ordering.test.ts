@@ -118,6 +118,38 @@ describe('buildInitialOrder', () => {
 
     expect(gen1.indexOf('c1')).toBeLessThan(gen1.indexOf('c2'))
   })
+
+  it('単一の親を持つ兄弟でも、重心法(orderWithinLayers)適用後に出生順が保たれる(実画面で発見した回帰)', () => {
+    // 兄弟全員が同じ1組の親しか持たないため重心法の並べ替えで重心値が全員同値になり、
+    // タイブレークが人物ID順(=出生順と無関係)へ落ちると出生順が失われる。
+    // buildInitialOrderだけでなくorderWithinLayers(実際の描画が使う関数)で検証する
+    const doc = testDoc(
+      [
+        person('parent', '親'),
+        { ...person('unknownGender', '不明'), birthOrder: 1 },
+        { ...person('c2', '二郎'), gender: 'male', birthOrder: 2 },
+        { ...person('c3', '三郎'), gender: 'male' },
+      ],
+      [
+        family(
+          'f1',
+          ['parent'],
+          [
+            { childId: 'unknownGender', pedigree: 'biological' },
+            { childId: 'c2', pedigree: 'biological' },
+            { childId: 'c3', pedigree: 'biological' },
+          ],
+        ),
+      ],
+    )
+    const graph = buildGraph(doc)
+    const { generationOf } = assignGenerations(graph)
+    const order = orderWithinLayers(graph, generationOf)
+    const gen1 = order.get(1) ?? []
+
+    expect(gen1.indexOf('unknownGender')).toBeLessThan(gen1.indexOf('c2'))
+    expect(gen1.indexOf('c2')).toBeLessThan(gen1.indexOf('c3'))
+  })
 })
 
 describe('orderWithinLayers: 重心法による交差削減', () => {

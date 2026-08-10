@@ -294,11 +294,29 @@ function average(values: number[]): number | undefined {
 }
 
 /**
+ * 各単位の「初期順序(design.md D2-2, buildInitialUnitOrder)における層内の位置」。
+ * 重心値が同値になった際、人物IDへ直接落ちる前にこの順序を優先するためのタイブレークキー
+ * (下記sweepOnceのコメント参照)。同じ親を1組しか持たない(=兄弟全員の重心値が常に同値になる)
+ * 家族は非常に多く、これが無いと出生順・生年に基づく初期順序が重心法の一巡目で
+ * 人物ID順へ上書きされてしまう
+ */
+function buildInitialRank(initial: Map<number, Unit[]>): Map<Unit, number> {
+  const rank = new Map<Unit, number>()
+  for (const units of initial.values()) {
+    units.forEach((unit, index) => rank.set(unit, index))
+  }
+  return rank
+}
+
+/**
  * 重心法による1回分の並び替え(design.md D2-2, tasks.md 3.2)。
  * 下方向のパスでは各層を上から順に、1つ上の層(直近の親)の位置の平均で並べ替える。
  * 上方向のパスでは逆に、1つ下の層(直近の子)の位置の平均で並べ替える。
  * 隣接関係を持たない単位(孤立した人物・独立したクラスタ)は動かす基準がないため末尾へ固定する。
- * 同値は単位の識別子(人物ID)で決着させ、全順序を保つ(spec「レイアウトの決定性」)
+ *
+ * 重心値が同値の場合(単一の親を持つ兄弟は全員が同じ親の位置を参照するため常に同値になる)、
+ * 出生順・生年・氏名に基づく初期順序(initialRank)をまず優先し、それも同値の場合にのみ
+ * 単位の識別子(人物ID)で決着させて全順序を保つ(spec「レイアウトの決定性」)
  */
 function sweepOnce(
   unitsByGeneration: Map<number, Unit[]>,
@@ -306,6 +324,7 @@ function sweepOnce(
   graph: PedigreeGraph,
   generationOf: Map<PersonId, number>,
   direction: 'down' | 'up',
+  initialRank: Map<Unit, number>,
 ): void {
   const order = direction === 'down' ? generations : [...generations].reverse()
   for (const generation of order) {
@@ -327,13 +346,17 @@ function sweepOnce(
         ),
       ),
     }))
+    const tieBreak = (a: Unit, b: Unit) => {
+      const rankDiff = (initialRank.get(a) ?? 0) - (initialRank.get(b) ?? 0)
+      return rankDiff !== 0 ? rankDiff : a.key.localeCompare(b.key)
+    }
     decorated.sort((a, b) => {
       if (a.value === undefined && b.value === undefined)
-        return a.unit.key.localeCompare(b.unit.key)
+        return tieBreak(a.unit, b.unit)
       if (a.value === undefined) return 1
       if (b.value === undefined) return -1
       if (a.value !== b.value) return a.value - b.value
-      return a.unit.key.localeCompare(b.unit.key)
+      return tieBreak(a.unit, b.unit)
     })
     unitsByGeneration.set(
       generation,
@@ -547,6 +570,8 @@ export function orderWithinLayers(
   const generations = [...initial.keys()].sort((a, b) => a - b)
   // 単位の構成はスイープを通して変わらない(順序だけが入れ替わる)ため、ここで1回だけ求める
   const looseSpouseEdges = collectLooseSpouseEdges(graph, generationOf, initial)
+  // 重心値が同値になった際のタイブレーク用(出生順・生年・氏名に基づく初期順序を保つ。sweepOnce参照)
+  const initialRank = buildInitialRank(initial)
 
   const score = (units: Map<number, Unit[]>): OrderScore => {
     const order = flattenToLayerOrder(units)
@@ -561,7 +586,7 @@ export function orderWithinLayers(
   const current = cloneUnitsMap(initial)
 
   for (const direction of SWEEP_DIRECTIONS) {
-    sweepOnce(current, generations, graph, generationOf, direction)
+    sweepOnce(current, generations, graph, generationOf, direction, initialRank)
     const currentScore = score(current)
     if (compareScores(currentScore, bestScore) <= 0) {
       bestScore = currentScore
