@@ -161,6 +161,19 @@ describe('schemaVersionガード', () => {
       loadTreeDocument({ currentVersion: 2, migrations }),
     ).rejects.toThrow(/バージョンを進めていません/)
   })
+
+  it('実際のMIGRATIONS定義でschemaVersion1→2(出生順の追加)が既定値のまま移行できる', async () => {
+    const doc = createTreeDocument({ title: '出生順マイグレーションテスト' })
+    await saveTreeDocument({ ...doc, schemaVersion: 1 })
+
+    const r = await loadTreeDocument() // options省略=実際のSCHEMA_VERSION/MIGRATIONSを使う
+    expect(r.status).toBe('migrated')
+    if (r.status === 'migrated') {
+      expect(r.document.schemaVersion).toBe(2)
+      expect(r.fromVersion).toBe(1)
+      expect(r.document.title).toBe('出生順マイグレーションテスト')
+    }
+  })
 })
 
 describe('clearTreeDocument', () => {

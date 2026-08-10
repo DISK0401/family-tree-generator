@@ -53,6 +53,71 @@ describe('buildInitialOrder', () => {
     ].sort((a, b) => a - b)
     expect(indices).toEqual([0, 1, 2, 3])
   })
+
+  it('出生順(birthOrder)に基づいて兄弟が並ぶ(design.md D3)', () => {
+    const doc = testDoc(
+      [
+        person('gf', '祖父'),
+        person('gm', '祖母'),
+        { ...person('c1', '子1'), birthOrder: 2 },
+        { ...person('c2', '子2'), birthOrder: 1 },
+      ],
+      [
+        family(
+          'fParents',
+          ['gf', 'gm'],
+          [
+            { childId: 'c1', pedigree: 'biological' },
+            { childId: 'c2', pedigree: 'biological' },
+          ],
+        ),
+      ],
+    )
+    const graph = buildGraph(doc)
+    const { generationOf } = assignGenerations(graph)
+    const order = buildInitialOrder(graph, generationOf)
+    const gen1 = order.get(1) ?? []
+
+    expect(gen1.indexOf('c2')).toBeLessThan(gen1.indexOf('c1'))
+  })
+
+  it('出生順が生年より優先される(出生順不明・生年判明の子より、出生順判明・生年不明の子が前に来る)', () => {
+    const doc = testDoc(
+      [
+        person('gf', '祖父'),
+        person('gm', '祖母'),
+        { ...person('c1', '子1'), birthOrder: 1 },
+        {
+          ...person('c2', '子2'),
+          birth: {
+            type: 'birth' as const,
+            date: {
+              original: '1955年',
+              qualifier: 'exact' as const,
+              date: { year: 1955 },
+            },
+          },
+        },
+      ],
+      [
+        family(
+          'fParents',
+          ['gf', 'gm'],
+          [
+            // 登録順ではc2が先だが、出生順が優先されるためc1が前に来る
+            { childId: 'c2', pedigree: 'biological' },
+            { childId: 'c1', pedigree: 'biological' },
+          ],
+        ),
+      ],
+    )
+    const graph = buildGraph(doc)
+    const { generationOf } = assignGenerations(graph)
+    const order = buildInitialOrder(graph, generationOf)
+    const gen1 = order.get(1) ?? []
+
+    expect(gen1.indexOf('c1')).toBeLessThan(gen1.indexOf('c2'))
+  })
 })
 
 describe('orderWithinLayers: 重心法による交差削減', () => {

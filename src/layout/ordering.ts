@@ -1,5 +1,6 @@
+import { compareSiblingOrder, type SiblingSortKey } from '../domain/sibling-order'
 import type { PersonId } from '../domain/types'
-import type { PedigreeGraph } from './graph'
+import type { PedigreeGraph, PersonNode } from './graph'
 
 /** 層(世代)ごとの人物の並び順。配列の添字が層内の左から右への位置を表す */
 export type LayerOrder = Map<number, PersonId[]>
@@ -81,11 +82,24 @@ function cloneUnitsMap(map: Map<number, Unit[]>): Map<number, Unit[]> {
   )
 }
 
+function siblingOrderKey(node: PersonNode | undefined): SiblingSortKey {
+  return {
+    birthOrder: node?.birthOrder,
+    birthYear: node?.birthYear,
+    displayName: node?.displayName ?? '',
+  }
+}
+
 /**
  * 単位の直近の親家族を探し、その位置ときょうだい内の順位を返す。
  * 上の層であればよく、1つ上の層に限定しない(限定すると、実家が2層以上離れた婚入者が
  * 「親が見つからない」扱いで層の末尾へ回され、子から遠く離れた位置に固定されてしまう)。
- * 最も近い層の親家族を優先する
+ * 最も近い層の親家族を優先する。
+ *
+ * きょうだい内の順位(siblingRank)は`family.children`の登録順ではなく、
+ * `compareSiblingOrder`(design.md D3)で並べ替えた後の順位を使う。これにより
+ * 出生順・生年・氏名が`tree-rendering`(折りたたみ表示・全体表示(家系ごと))と
+ * 同じ優先順位で反映される
  */
 function findParentRank(
   unit: Unit,
@@ -114,7 +128,13 @@ function findParentRank(
       if (positions.length === 0) continue
       const position =
         positions.reduce((sum, p) => sum + p, 0) / positions.length
-      const siblingRank = family.children.findIndex(
+      const orderedChildren = [...family.children].sort((a, b) =>
+        compareSiblingOrder(
+          siblingOrderKey(graph.persons.get(a.childId)),
+          siblingOrderKey(graph.persons.get(b.childId)),
+        ),
+      )
+      const siblingRank = orderedChildren.findIndex(
         (c) => c.childId === memberId,
       )
       best = { position, siblingRank, distance }
@@ -128,9 +148,9 @@ function findParentRank(
  *
  * 最上位の層は単位の識別子(構成人物の最小ID)で並べる。それより下の層は、各単位を
  * 「1つ上の層にいる親の単位の位置」で並べ、同じ親を持つ単位(きょうだい)は
- * 家族内の登録順(family.children配列の順)で連続させる。親が見つからない単位
- * (孤立した人物・独立した家族クラスタ・層をまたぐ関係の子)は、位置が確定した単位より後ろへ、
- * 単位の識別子順で置く
+ * `compareSiblingOrder`による並び順(出生順→生年→氏名。design.md D3)で連続させる。
+ * 親が見つからない単位(孤立した人物・独立した家族クラスタ・層をまたぐ関係の子)は、
+ * 位置が確定した単位より後ろへ、単位の識別子順で置く
  */
 function buildInitialUnitOrder(
   graph: PedigreeGraph,

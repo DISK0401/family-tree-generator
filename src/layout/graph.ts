@@ -1,3 +1,4 @@
+import { displayName } from '../domain/helpers'
 import type {
   FamilyId,
   Pedigree,
@@ -12,13 +13,23 @@ import type {
  * (generations.ts / ordering.ts / coordinates.ts)は必ずキーをソートしてから走査する(D5)。
  */
 
-/** グラフ上の人物ノード。どの家族に配偶者・子として属するかだけを持つ */
+/**
+ * グラフ上の人物ノード。基本は「どの家族に配偶者・子として属するか」という構造情報のみを持つ。
+ * `birthOrder`/`birthYear`/`displayName`は例外で、兄弟の並び順比較(design.md D3/D4)に
+ * 必要な最小限のPerson属性だけを派生値として持たせてある
+ */
 export interface PersonNode {
   id: PersonId
   /** 配偶者として属する家族のID */
   spouseFamilyIds: FamilyId[]
   /** 子として属する家族のID。実親・養親の双方を持つ人物は複数件になる */
   parentFamilyIds: FamilyId[]
+  /** 家族内での出生順(性別非依存)。兄弟の並び順比較に使う(design.md D1/D3) */
+  birthOrder?: number
+  /** 生年(西暦)。出生順が未設定の兄弟どうしの並び順比較に使う */
+  birthYear?: number
+  /** 表示名。出生順・生年のいずれも不明な兄弟どうしの並び順比較に使う */
+  displayName: string
 }
 
 /** グラフ上の家族(結合点)ノード。存在しない人物への参照は構築時に除いてある */
@@ -46,7 +57,15 @@ export interface PedigreeGraph {
 export function buildGraph(doc: TreeDocument): PedigreeGraph {
   const persons = new Map<PersonId, PersonNode>()
   for (const id of Object.keys(doc.persons)) {
-    persons.set(id, { id, spouseFamilyIds: [], parentFamilyIds: [] })
+    const person = doc.persons[id]
+    persons.set(id, {
+      id,
+      spouseFamilyIds: [],
+      parentFamilyIds: [],
+      birthOrder: person.birthOrder,
+      birthYear: person.birth?.date?.date?.year,
+      displayName: displayName(person),
+    })
   }
 
   const families = new Map<FamilyId, FamilyNode>()

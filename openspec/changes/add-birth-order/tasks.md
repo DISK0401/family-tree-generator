@@ -1,19 +1,19 @@
 ## 1. ドメインモデル
 
-- [ ] 1.1 `src/domain/types.ts`の`Person`に`birthOrder?: number`を追加し、`SCHEMA_VERSION`を2へ上げる。完了条件: 型定義とバージョン定数の変更のみで既存の`domain/commands.test.ts`が通る
-- [ ] 1.2 `src/persistence/db.ts`の`MIGRATIONS[1]`に、データを変更せず`schemaVersion`を2へ進めるだけのステップを追加する。完了条件: `schemaVersion: 1`の保存データを読み込むと`status: 'migrated'`で`schemaVersion: 2`になるテストが通る
-- [ ] 1.3 `domain/commands.test.ts`に、`updatePerson`で`birthOrder`を設定・解除できることを確認するテストを追加する。完了条件: 追加テストが通る(既存コマンドの実装変更は不要なはず)
+- [x] 1.1 `src/domain/types.ts`の`Person`に`birthOrder?: number`を追加し、`SCHEMA_VERSION`を2へ上げる。完了条件: 型定義とバージョン定数の変更のみで既存の`domain/commands.test.ts`が通る
+- [x] 1.2 `src/persistence/db.ts`の`MIGRATIONS[1]`に、データを変更せず`schemaVersion`を2へ進めるだけのステップを追加する。完了条件: `schemaVersion: 1`の保存データを読み込むと`status: 'migrated'`で`schemaVersion: 2`になるテストが通る
+- [x] 1.3 `domain/commands.test.ts`に、`updatePerson`で`birthOrder`を設定・解除できることを確認するテストを追加する。完了条件: 追加テストが通る(既存コマンドの実装変更は不要なはず)
 
 ## 2. 兄弟の並び順比較・出生順位ラベル導出(共有ロジック)
 
-- [ ] 2.1 `src/domain/sibling-order.ts`を新設し、`{ birthOrder?: number; birthYear?: number; displayName: string }`を受け取る`compareSiblingOrder`を実装する(優先順位: 出生順→出生順の有無→生年→氏名)。完了条件: 単体テストで「出生順同士」「片方のみ出生順あり」「出生順なしの生年判明/不明」の全パターンを検証
-- [ ] 2.2 同ファイルに、家族内の子リスト(各人の`birthOrder`・`gender`)から出生順位ラベル(長男/次男/長女/次女等)を導出する`deriveBirthOrderLabel`を実装する。性別「不明」の子は男女どちらの通し番号にも数えない。完了条件: 性別不明の兄弟を挟むケース・出生順未設定者にはラベルを出さないケースを含む単体テスト
+- [x] 2.1 `src/domain/sibling-order.ts`を新設し、`{ birthOrder?: number; birthYear?: number; displayName: string }`を受け取る`compareSiblingOrder`を実装する(優先順位: 出生順→出生順の有無→生年→氏名)。完了条件: 単体テストで「出生順同士」「片方のみ出生順あり」「出生順なしの生年判明/不明」の全パターンを検証
+- [x] 2.2 同ファイルに、家族内の子リスト(各人の`birthOrder`・`gender`)から出生順位ラベル(長男/次男/長女/次女等)を導出する`deriveBirthOrderLabel`を実装する。性別「不明」の子は男女どちらの通し番号にも数えない。完了条件: 性別不明の兄弟を挟むケース・出生順未設定者にはラベルを出さないケースを含む単体テスト
 
 ## 3. つながった全体表示(pedigree-layout)への反映
 
-- [ ] 3.1 `src/layout/graph.ts`の`PersonNode`に`birthOrder`・`birthYear`・`displayName`を追加し、`buildGraph(doc)`が`doc.persons`から値を派生させる。完了条件: `graph.test.ts`(または相当するテスト)でノードにこれらの値が反映されることを確認
-- [ ] 3.2 `src/layout/ordering.ts`の`findParentRank`内の`siblingRank`計算を、`family.children`の登録順インデックスから、`compareSiblingOrder`で並べ替えた順位に置き換える。完了条件: `layout/ordering.test.ts`に出生順ベースの並び替えテストを追加し通過する
-- [ ] 3.3 出生順が生年より優先されること(出生順ありの子が、出生順なし・生年判明の子より前に来る)を検証するテストを`layout/ordering.test.ts`に追加する
+- [x] 3.1 `src/layout/graph.ts`の`PersonNode`に`birthOrder`・`birthYear`・`displayName`を追加し、`buildGraph(doc)`が`doc.persons`から値を派生させる。完了条件: `graph.test.ts`(または相当するテスト)でノードにこれらの値が反映されることを確認
+- [x] 3.2 `src/layout/ordering.ts`の`findParentRank`内の`siblingRank`計算を、`family.children`の登録順インデックスから、`compareSiblingOrder`で並べ替えた順位に置き換える。完了条件: `layout/ordering.test.ts`に出生順ベースの並び替えテストを追加し通過する
+- [x] 3.3 出生順が生年より優先されること(出生順ありの子が、出生順なし・生年判明の子より前に来る)を検証するテストを`layout/ordering.test.ts`に追加する
 
 ## 4. 折りたたみ表示・全体表示(家系ごと)(to-family-chart-data)への反映
 
