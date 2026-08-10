@@ -17,20 +17,20 @@
 
 ## 4. 折りたたみ表示・全体表示(家系ごと)(to-family-chart-data)への反映
 
-- [ ] 4.1 `to-family-chart-data.ts`の`FamilyChartDatum.data`に`birthOrder`を追加し、`compareChildrenByBirthThenName`の内部実装を`compareSiblingOrder`呼び出しに置き換える(関数名・エクスポートは維持)。完了条件: `to-family-chart-data.test.ts`の既存テストに加え、出生順優先のケースが通る
-- [ ] 4.2 出生順が設定された子と設定されていない子が混在する場合の並び順テストを追加する
+- [x] 4.1 `to-family-chart-data.ts`の`FamilyChartDatum.data`に`birthOrder`を追加し、`compareChildrenByBirthThenName`の内部実装を`compareSiblingOrder`呼び出しに置き換える(関数名・エクスポートは維持)。完了条件: `to-family-chart-data.test.ts`の既存テストに加え、出生順優先のケースが通る
+- [x] 4.2 出生順が設定された子と設定されていない子が混在する場合の並び順テストを追加する
 
 ## 5. 出生順位ラベルのカード表示
 
-- [ ] 5.1 `person-card.ts`の`PersonCardInput`/`PersonCardView`に`birthOrderLabel?: string`を追加する
-- [ ] 5.2 `derivePersonCardView`で表示設定に応じた表示判定を行い、`personCardInnerHtml`(または該当関数)で`escapeHtml`/`htmlTag`経由でHTMLへ組み込む。配置は性別インジケーター→故人マーカー(†)→出生順位ラベルの順。完了条件: `person-card.test.ts`にラベルあり/なし・故人マーカーとの同時表示のスナップショット相当テストを追加
-- [ ] 5.3 `person-card.css`に出生順位ラベルのスタイル(故人マーカーの右に隣接、重ならない位置)を追加する
+- [x] 5.1 `person-card.ts`の`PersonCardInput`/`PersonCardView`に`birthOrderLabel?: string`を追加する
+- [x] 5.2 `derivePersonCardView`で表示設定に応じた表示判定を行い、`personCardInnerHtml`(または該当関数)で`escapeHtml`/`htmlTag`経由でHTMLへ組み込む。配置は性別インジケーター→故人マーカー(†)→出生順位ラベルの順。完了条件: `person-card.test.ts`にラベルあり/なし・故人マーカーとの同時表示のスナップショット相当テストを追加
+- [x] 5.3 `person-card.css`に出生順位ラベルのスタイル(故人マーカーの右に隣接、重ならない位置)を追加する
 
 ## 6. 描画アダプタでのラベル算出・受け渡し
 
-- [ ] 6.1 `to-family-chart-data.ts`で、`findPrimaryParentFamily`を使って人物の兄弟グループを解決し、`deriveBirthOrderLabel`の結果を`personToCardInput`経由で`PersonCardInput.birthOrderLabel`へ渡す
-- [ ] 6.2 `PedigreeCanvas.tsx`(またはそのカードデータ準備処理)でも同じ`deriveBirthOrderLabel`を使い、ラベル算出ロジックが2つの描画系で重複しないようにする
-- [ ] 6.3 `card-consistency.test.tsx`に、出生順位ラベルが折りたたみ表示とつながった全体表示で一致することを確認するテストを追加する
+- [x] 6.1 `to-family-chart-data.ts`で、`findPrimaryParentFamily`を使って人物の兄弟グループを解決し、`deriveBirthOrderLabel`の結果を`personToCardInput`経由で`PersonCardInput.birthOrderLabel`へ渡す
+- [x] 6.2 `PedigreeCanvas.tsx`(またはそのカードデータ準備処理)でも同じ`deriveBirthOrderLabel`を使い、ラベル算出ロジックが2つの描画系で重複しないようにする
+- [x] 6.3 `card-consistency.test.tsx`に、出生順位ラベルが折りたたみ表示とつながった全体表示で一致することを確認するテストを追加する
 
 ## 7. 編集UI(PersonEditForm)
 
