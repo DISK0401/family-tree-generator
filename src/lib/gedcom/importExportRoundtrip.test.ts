@@ -87,6 +87,42 @@ describe('GEDCOM export→importのラウンドトリップ', () => {
   })
 })
 
+describe('出生順(birthOrder)の往復(issue #49)', () => {
+  it('出生順が設定された兄弟が、7.0/5.5.1いずれのバージョンでも値を保ったまま往復する', () => {
+    for (const version of ['7.0', '5.5.1'] as const) {
+      let document = createTreeDocument()
+      const parent = addPerson(document, { name: { given: '親' } })
+      document = parent.doc
+      const c1 = addChild(document, parent.personId, {
+        name: { given: '一郎' },
+        birthOrder: 1,
+      })
+      document = c1.doc
+      // parentの配偶者参照1件のみの家族は既存のものが再利用されるため、c1と同じ家族に属する
+      const c2 = addChild(document, parent.personId, {
+        name: { given: '二郎' },
+        birthOrder: 2,
+      })
+      document = c2.doc
+
+      const { text } = exportGedcom(document, version)
+      const reimported = importGedcom(bytesOf(text))
+
+      expect(reimported.success).toBe(true)
+      if (!reimported.success) continue
+
+      const reimportedC1 = Object.values(reimported.document.persons).find(
+        (p) => p.name.given === '一郎',
+      )
+      const reimportedC2 = Object.values(reimported.document.persons).find(
+        (p) => p.name.given === '二郎',
+      )
+      expect(reimportedC1?.birthOrder).toBe(1)
+      expect(reimportedC2?.birthOrder).toBe(2)
+    }
+  })
+})
+
 describe('GEDCOM 7.0の完全ラウンドトリップ', () => {
   it('氏名+かな+場所+複数イベント+長文NOTE+和暦PHRASE+養子が復元される', () => {
     const longNote = `代々の来歴に関する長いメモ。${'家伝の記録による補足。'.repeat(30)}`

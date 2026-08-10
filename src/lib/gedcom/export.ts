@@ -40,6 +40,10 @@ const EXTENSION_TAG_URIS: [string, string][] = [
   ],
   ['_FAM_KIND', 'https://github.com/DISK0401/family-tree-generator#_fam_kind'],
   [
+    '_BIRTH_ORDER',
+    'https://github.com/DISK0401/family-tree-generator#_birth_order',
+  ],
+  [
     '_TREE_TITLE',
     'https://github.com/DISK0401/family-tree-generator#_tree_title',
   ],
@@ -168,6 +172,16 @@ function personToIndiNode(
     value: GENDER_EXPORT[person.gender],
     children: [],
   })
+
+  // 出生順(家族内での出生順、性別非依存)はGEDCOM標準タグに対応がないため、
+  // 拡張タグへ退避する(7.0/5.5.1共通。_FAM_KINDと同じ往復パターン)
+  if (person.birthOrder !== undefined) {
+    children.push({
+      tag: '_BIRTH_ORDER',
+      value: String(person.birthOrder),
+      children: [],
+    })
+  }
 
   if (person.birth) {
     children.push(lifeEventToNode('BIRT', person.birth, version))

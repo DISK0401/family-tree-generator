@@ -39,10 +39,10 @@
 
 ## 8. GEDCOM入出力
 
-- [ ] 8.1 `docs/gedcom-mapping.md`の`Person → INDI`表に`birthOrder`→拡張タグ`_BIRTH_ORDER`の対応を追記する
-- [ ] 8.2 `src/lib/gedcom/export.ts`でGEDCOM 7.0/5.5.1互換モード双方に`_BIRTH_ORDER`を出力し、7.0の`HEAD`の`SCHMA`に宣言を追加する。完了条件: `export.test.ts`に出生順ありの人物のエクスポートテストを追加
-- [ ] 8.3 `src/lib/gedcom/import.ts`で`_BIRTH_ORDER`を読み取り`Person.birthOrder`へ変換する。数値としてパースできない値は警告を出して無視する。完了条件: `import.test.ts`に往復(エクスポート→インポート)テストを追加
-- [ ] 8.4 `src/lib/gedcom/importExportRoundtrip.test.ts`・`roundtrip.test.ts`に出生順を含むケースを追加し、往復で値が保持されることを確認する
+- [x] 8.1 `docs/gedcom-mapping.md`の`Person → INDI`表に`birthOrder`→拡張タグ`_BIRTH_ORDER`の対応を追記する
+- [x] 8.2 `src/lib/gedcom/export.ts`でGEDCOM 7.0/5.5.1互換モード双方に`_BIRTH_ORDER`を出力し、7.0の`HEAD`の`SCHMA`に宣言を追加する。完了条件: `export.test.ts`に出生順ありの人物のエクスポートテストを追加
+- [x] 8.3 `src/lib/gedcom/import.ts`で`_BIRTH_ORDER`を読み取り`Person.birthOrder`へ変換する。数値としてパースできない値は警告を出して無視する。完了条件: `import.test.ts`に往復(エクスポート→インポート)テストを追加
+- [x] 8.4 `src/lib/gedcom/importExportRoundtrip.test.ts`に出生順を含むケースを追加し、7.0/5.5.1双方で往復して値が保持されることを確認する(`roundtrip.test.ts`はGEDCOM構文層のみを扱うテストのため対象外と判断)
 
 ## 9. 仕上げ
 
