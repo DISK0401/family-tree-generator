@@ -34,8 +34,8 @@
 
 ## 7. 編集UI(PersonEditForm)
 
-- [ ] 7.1 `PersonEditForm.tsx`に出生順の数値入力欄を追加する(空欄=未設定を許容、性別selectの近傍に配置)
-- [ ] 7.2 `PersonEditForm.test.tsx`に、出生順の入力・未入力・確定後の反映を確認するテストを追加する
+- [x] 7.1 `PersonEditForm.tsx`に出生順の数値入力欄を追加する(空欄=未設定を許容、性別selectの近傍に配置)
+- [x] 7.2 `PersonEditForm.test.tsx`に、出生順の入力・未入力・確定後の反映を確認するテストを追加する
 
 ## 8. GEDCOM入出力
 
