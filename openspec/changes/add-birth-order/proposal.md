@@ -9,6 +9,7 @@
 - カード表示に、性別マーク(左上)→ 故人マーク(†)の並びに続けて出生順位ラベル(長男/次男/長女等)を表示する
 - 兄弟の左右の並び順に`birthOrder`を反映する。折りたたみ表示(`to-family-chart-data.ts`)・全体表示(`layout/ordering.ts`)の両方の実装に対し、共通のルール(①両者に`birthOrder`があれば数値比較 ②片方のみにあれば`birthOrder`ありを優先 ③両者ともなければ現行ルール=生年月日→氏名)を適用する。全体表示側は現状`family.children`の登録順のみで並べ替えを行っておらず、生年月日・性別も一切見ていないため、本変更で初めて意味のある並び替えロジックが入る
 - 人物編集フォーム(`PersonEditForm`)に`birthOrder`の入力欄を追加する
+- 表形式ビュー(`person-table-editor`)にも「出生順」列を追加する。人物編集フォームと表形式ビューは同じ人物属性を編集できる並行した編集経路であり、既存の列(姓・名・ふりがな・性別等)と同じ扱いにする
 - GEDCOM 7.0/5.5.1相当のエクスポート・インポートに、独自拡張タグ(例: `_BIRTH_ORDER`)として`birthOrder`を無損失往復できるよう対応する(`docs/gedcom-mapping.md`を更新)
 
 ## Capabilities
@@ -21,12 +22,13 @@
 - `tree-rendering`: カードの表示項目に出生順位ラベルを追加し、既存の重なり回避要件(性別インジケーター・故人マーカー等)にこのラベルも含める
 - `pedigree-layout`: 層内(兄弟間)の並び順ルールに`birthOrder`を組み込み、現行の「登録順のみ」という規定を更新する
 - `tree-editor`: 人物編集パネルに出生順の入力欄を追加する要件を加える
+- `person-table-editor`: 列構成に出生順列を追加する要件を加える
 - `gedcom-import-export`: エクスポート/インポートのマッピング対象に`birthOrder`(`_BIRTH_ORDER`拡張タグ)を加える
 
 ## Impact
 
 - **対象**: 無料版・有償版の両方に影響する(ドメインモデル・UI描画層はどちらの版でも共有されるため)
-- **影響コード**: `src/domain/types.ts`(`Person`型)、`src/domain/commands.ts`(必要なら)、`src/organisms/tree-canvas/person-card.ts`/`.css`(表示)、`src/organisms/tree-canvas/to-family-chart-data.ts`(折りたたみ表示の並び順)、`src/layout/ordering.ts`(全体表示の並び順)、`src/organisms/person-edit/PersonEditForm.tsx`(入力欄)、`src/lib/gedcom/`配下(エクスポート・インポート)、`docs/gedcom-mapping.md`
+- **影響コード**: `src/domain/types.ts`(`Person`型)、`src/domain/commands.ts`(必要なら)、`src/organisms/tree-canvas/person-card.ts`/`.css`(表示)、`src/organisms/tree-canvas/to-family-chart-data.ts`(折りたたみ表示の並び順)、`src/layout/ordering.ts`(全体表示の並び順)、`src/organisms/person-edit/PersonEditForm.tsx`(入力欄)、`src/organisms/person-table/columns.ts`(表形式ビューの列)、`src/lib/gedcom/`配下(エクスポート・インポート)、`docs/gedcom-mapping.md`
 - **スキーマ**: `birthOrder`は任意項目として追加するため既存ドキュメントとの後方互換性は保たれる。`SCHEMA_VERSION`を上げるかどうかは design.md で判断する
 - **プライバシー・法務への影響**: なし。既存のクライアント完結(サーバー非送信)の制約に変更はなく、追加される情報も出生順という数値のみで、サーバー通信フロー自体に変更はない
 - **競合調査**: 戸籍の続柄は法務局民事局長通達により出生順で「長・二・三男(女)」と定めるのが公式ルールであり、既存の家系図ソフト(例: 「家系図のススメ」「つくれる家系図3」)も続柄情報の入力・自動反映に対応している。本変更はこの慣行に沿った上で、「名前不明でも存在だけ記録できる」という戸籍固有の課題(既存製品では明確に扱われていない模様)に対応するものである

@@ -275,6 +275,26 @@ export const PERSON_TABLE_COLUMNS: readonly TableColumn[] = [
       return { ok: true, patch: { gender } }
     },
   },
+  {
+    id: 'birthOrder',
+    label: '出生順',
+    editable: true,
+    sortable: true,
+    filterKind: 'text',
+    getValue: (person) => person.birthOrder?.toString() ?? '',
+    parse: (raw) => {
+      const trimmed = raw.trim()
+      if (trimmed === '') return { ok: true, patch: { birthOrder: undefined } }
+      const parsed = Number(trimmed)
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        return {
+          ok: false,
+          message: '出生順は1以上の整数で入力してください',
+        }
+      }
+      return { ok: true, patch: { birthOrder: parsed } }
+    },
+  },
   dateField(
     'birthDate',
     '生年月日',

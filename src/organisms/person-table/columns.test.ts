@@ -57,6 +57,7 @@ describe('列定義: 表示文字列の導出(spec「列構成」)', () => {
     expect(columnById('surnameKana').getValue(person, ctx)).toBe('やまだ')
     expect(columnById('givenKana').getValue(person, ctx)).toBe('たろう')
     expect(columnById('gender').getValue(person, ctx)).toBe('男')
+    expect(columnById('birthOrder').getValue(person, ctx)).toBe('')
     expect(columnById('birthDate').getValue(person, ctx)).toBe('1964-10-10')
     expect(columnById('birthPlace').getValue(person, ctx)).toBe('東京')
     expect(columnById('deathDate').getValue(person, ctx)).toBe('')
@@ -126,6 +127,28 @@ describe('列定義: セル文字列の解釈', () => {
     const error = column.parse?.('ヒト', person)
     expect(error?.ok).toBe(false)
     if (error && !error.ok) expect(error.message).toContain('性別')
+  })
+
+  it('出生順(issue #49)は1以上の整数を受理し、空文字で未設定へ戻す', () => {
+    const column = columnById('birthOrder')
+    expect(column.parse?.('2', person)).toEqual({
+      ok: true,
+      patch: { birthOrder: 2 },
+    })
+    expect(column.parse?.('', person)).toEqual({
+      ok: true,
+      patch: { birthOrder: undefined },
+    })
+    const error = column.parse?.('長男', person)
+    expect(error?.ok).toBe(false)
+    if (error && !error.ok) expect(error.message).toContain('出生順')
+  })
+
+  it('出生順は0以下や小数を拒否する', () => {
+    const column = columnById('birthOrder')
+    expect(column.parse?.('0', person).ok).toBe(false)
+    expect(column.parse?.('-1', person).ok).toBe(false)
+    expect(column.parse?.('1.5', person).ok).toBe(false)
   })
 
   it('日付セルは既存パーサで解釈し、原文を保持する', () => {

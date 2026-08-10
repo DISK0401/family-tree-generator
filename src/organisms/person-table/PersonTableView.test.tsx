@@ -410,7 +410,7 @@ describe('PersonTableView: grid構造(spec/a11y)', () => {
     )
 
     expect(screen.getByRole('grid', { name: '人物の一覧' })).toBeInTheDocument()
-    expect(screen.getAllByRole('columnheader')).toHaveLength(11)
+    expect(screen.getAllByRole('columnheader')).toHaveLength(12)
     expect(screen.getAllByRole('gridcell').length).toBeGreaterThan(0)
   })
 
@@ -754,7 +754,7 @@ describe('PersonTableView: 列ごとの絞り込み(spec「列ごとの絞り込
     // 性別は選択式(spec: 選択肢が限られる列)
     expect(screen.getByLabelText('性別で絞り込み').tagName).toBe('SELECT')
     // 見出し行のcolumnheaderは列数どおり(絞り込み行で二重にならない)
-    expect(screen.getAllByRole('columnheader')).toHaveLength(11)
+    expect(screen.getAllByRole('columnheader')).toHaveLength(12)
   })
 
   it('単一の列で絞り込める', () => {
