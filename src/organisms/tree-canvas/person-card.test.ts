@@ -378,9 +378,7 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     const withoutLabel = personCardInnerHtml(
       derivePersonCardView(baseInput(), baseSettings()),
     )
-    expect(withLabel).toContain(
-      '<div class="tree-card-birth-order">次男</div>',
-    )
+    expect(withLabel).toContain('<div class="tree-card-birth-order">次男</div>')
     expect(withoutLabel).not.toContain('tree-card-birth-order')
   })
 

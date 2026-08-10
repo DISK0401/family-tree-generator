@@ -210,9 +210,7 @@ describe('カード表現の一致(9.1)', () => {
     const { collapsed, connected } = renderBothModesForPerson('c2')
 
     expect(connected).toBe(collapsed)
-    expect(collapsed).toContain(
-      '<div class="tree-card-birth-order">次男</div>',
-    )
+    expect(collapsed).toContain('<div class="tree-card-birth-order">次男</div>')
   })
 
   it('4文字以上の氏名でも、両方の描画系で同じ縮小フォントサイズの1列として表示される', () => {

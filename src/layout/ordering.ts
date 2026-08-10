@@ -1,4 +1,7 @@
-import { compareSiblingOrder, type SiblingSortKey } from '../domain/sibling-order'
+import {
+  compareSiblingOrder,
+  type SiblingSortKey,
+} from '../domain/sibling-order'
 import type { PersonId } from '../domain/types'
 import type { PedigreeGraph, PersonNode } from './graph'
 

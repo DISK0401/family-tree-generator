@@ -500,9 +500,7 @@ describe('importGedcom 拡張タグ・特殊値の取り扱い', () => {
     if (!result.success) return
     const person = Object.values(result.document.persons)[0]
     expect(person.birthOrder).toBeUndefined()
-    expect(
-      result.warnings.some((w) => w.tag === '_BIRTH_ORDER'),
-    ).toBe(true)
+    expect(result.warnings.some((w) => w.tag === '_BIRTH_ORDER')).toBe(true)
   })
 
   it('SEX Xは「不明」として取り込み警告を出す', () => {

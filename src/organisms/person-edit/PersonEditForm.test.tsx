@@ -180,9 +180,8 @@ describe('PersonEditForm: 出生順(issue #49)', () => {
     const person = createPerson({ name: { given: '太郎' }, birthOrder: 3 })
     render(<PersonEditForm person={person} onSave={vi.fn()} />)
 
-    const input = screen.getByLabelText<HTMLInputElement>(
-      '出生順(家族内での出生順。任意)',
-    )
+    const input =
+      screen.getByLabelText<HTMLInputElement>('出生順(家族内での出生順。任意)')
     expect(input.value).toBe('3')
   })
 })

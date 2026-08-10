@@ -8,7 +8,10 @@ import {
 describe('compareSiblingOrder', () => {
   it('両者に出生順があれば数値の昇順で比較する', () => {
     expect(
-      compareSiblingOrder({ birthOrder: 2, displayName: 'B' }, { birthOrder: 1, displayName: 'A' }),
+      compareSiblingOrder(
+        { birthOrder: 2, displayName: 'B' },
+        { birthOrder: 1, displayName: 'A' },
+      ),
     ).toBeGreaterThan(0)
   })
 
