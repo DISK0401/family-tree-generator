@@ -19,7 +19,7 @@
 
 ## 4. ブラウザの戻る操作の防止
 
-- [ ] 4.1 `AppShell.css`の`.app-canvas`に`overscroll-behavior-x: none`を追加する(完了条件: ランディングページ(`/`)側のCSSは変更されないことをdiffで確認する)
+- [x] 4.1 `AppShell.css`の`.app-canvas`に`overscroll-behavior-x: none`を追加する(完了条件: ランディングページ(`/`)側のCSSは変更されないことをdiffで確認する)
 
 ## 5. 品質チェック
 

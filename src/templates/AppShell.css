@@ -42,6 +42,11 @@
   grid-area: canvas;
   position: relative;
   overflow: hidden;
+  /* Mac Chromeのトラックパッド2本指スワイプによる「戻る/進む」ナビゲーションを防ぐ
+     (fix-trackpad-canvas-pan-zoom design.md D4)。wheelのpreventDefaultとは別系統の
+     対策で、キャンバス内でのパン操作に必要。html/body全体ではなくこの領域にだけ
+     スコープし、ランディングページ等エディタ以外のページには影響させない */
+  overscroll-behavior-x: none;
   /* 作図ツールの流儀のドット方眼: 「図を描く場」であることを地の質感で示す。
      ドットは系線より十分薄く、印刷的な紙の世界観を壊さない濃度に留める */
   background-color: var(--paper);
