@@ -38,6 +38,8 @@ proposal.mdで決定済み。実装上のポイントは、`PedigreeCanvas`は�
 - **`family-chart`のフォーク/vendor化**: 却下。1点のwheelハンドラ修正のために依存ライブラリ全体を自前管理下に置くのは今回の変更規模に対して過大
 - **キャンバスの上に透明なオーバーレイ`div`を重ね、そこで独自にtransformを操作**: 却下。`family-chart`本体のtransform状態(ドラッグパン・+/-ボタン)と二重管理になり、ズレる
 
+`zoomObj.scaleBy`/`translateBy`はd3-zoomの作法上`d3.select(container).call(zoomObj.scaleBy, ...)`のように呼ぶ必要がある。`family-chart`自身は`import * as d3 from 'd3'`という形で`d3`パッケージ(`^7.9.0`)に依存しているが、これは現状`package.json`では`family-chart`経由の間接依存にとどまり、アプリ側の`dependencies`には無い。アプリのコードから`d3.select`を直接使うため、`d3`を`package.json`の`dependencies`へ明示的に追加する(`family-chart`が要求するバージョン`^7.9.0`に合わせる)。間接依存のまま利用すると、将来`family-chart`が`d3`への依存をやめた場合やパッケージマネージャのnode_modules配置が変わった場合に解決できなくなる。
+
 ### D4: `overscroll-behavior-x: none`は`.app-canvas`(`AppShell.css`、既に`overflow: hidden`)にスコープする(`html`/`body`全体には設定しない)
 ランディングページ(`/`)は`wheel`を奪っておらず、この不具合の対象外。`html`/`body`全体に設定すると、エディタ以外のページでもMac Chromeの2本指スワイプによる「戻る」操作が使えなくなり、不要な副作用になる。`.app-canvas`は両キャンバスの共通の親であり、かつ既に`overflow: hidden`を持つため、`overscroll-behavior`が効くスクロールコンテナの条件を満たす。
 
