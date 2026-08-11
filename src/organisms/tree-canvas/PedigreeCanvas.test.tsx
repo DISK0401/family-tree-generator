@@ -254,6 +254,125 @@ describe('PedigreeCanvas: パン(監査 中5: rAFスロットル・内容のメ�
   })
 })
 
+/** viewBox属性("x y width height")を数値へ分解する */
+function parseViewBox(svg: Element): {
+  x: number
+  y: number
+  width: number
+  height: number
+} {
+  const raw = svg.getAttribute('viewBox')
+  if (!raw) throw new Error('viewBoxが見つからない')
+  const [x, y, width, height] = raw.split(' ').map(Number)
+  return { x, y, width, height }
+}
+
+describe('PedigreeCanvas: ホイールのパン/ズーム分岐(fix-trackpad-canvas-pan-zoom)', () => {
+  beforeEach(() => {
+    const doc = testDoc(
+      [person('a', 'A'), person('b', 'B')],
+      [family('f1', ['a', 'b'], [])],
+    )
+    useTreeStore.getState().replace(doc)
+  })
+
+  it('ctrlKey無しのwheel(トラックパッドの2本指パンを含む)はパンし、拡大縮小しない', async () => {
+    const { container } = render(
+      <PedigreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const svg = container.querySelector('.pedigree-canvas-svg')!
+    const before = parseViewBox(svg)
+
+    fireEvent.wheel(svg, { deltaX: 30, deltaY: 20, ctrlKey: false })
+
+    await waitFor(() => {
+      expect(parseViewBox(svg).x).not.toBe(before.x)
+    })
+    const after = parseViewBox(svg)
+    expect(after.width).toBe(before.width)
+    expect(after.height).toBe(before.height)
+    // wheelのdeltaX/deltaYはドラッグパンとは逆に、そのままカメラへ加算される(design.md D2)
+    expect(after.x).toBeGreaterThan(before.x)
+    expect(after.y).toBeGreaterThan(before.y)
+  })
+
+  it('ctrlKey付きのwheel(ピンチ・Ctrl/⌘+ホイール)はズームし、パンしない', async () => {
+    const { container } = render(
+      <PedigreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const svg = container.querySelector('.pedigree-canvas-svg')!
+    const before = parseViewBox(svg)
+
+    // deltaY<0(指を広げる/ホイールを上へ)はズームイン(viewBoxが縮む)
+    fireEvent.wheel(svg, { deltaY: -50, ctrlKey: true })
+
+    await waitFor(() => {
+      expect(parseViewBox(svg).width).not.toBe(before.width)
+    })
+    const after = parseViewBox(svg)
+    expect(after.width).toBeLessThan(before.width)
+    expect(after.height).toBeLessThan(before.height)
+  })
+
+  it('deltaYが大きいほど1回あたりの拡縮量が大きい(固定10%刻みの解消)', async () => {
+    const { container: smallContainer } = render(
+      <PedigreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const smallSvg = smallContainer.querySelector('.pedigree-canvas-svg')!
+    const smallBefore = parseViewBox(smallSvg)
+    fireEvent.wheel(smallSvg, { deltaY: 5, ctrlKey: true })
+    await waitFor(() => {
+      expect(parseViewBox(smallSvg).width).not.toBe(smallBefore.width)
+    })
+    const smallRatio = parseViewBox(smallSvg).width / smallBefore.width
+
+    const { container: largeContainer } = render(
+      <PedigreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const largeSvg = largeContainer.querySelector('.pedigree-canvas-svg')!
+    const largeBefore = parseViewBox(largeSvg)
+    fireEvent.wheel(largeSvg, { deltaY: 50, ctrlKey: true })
+    await waitFor(() => {
+      expect(parseViewBox(largeSvg).width).not.toBe(largeBefore.width)
+    })
+    const largeRatio = parseViewBox(largeSvg).width / largeBefore.width
+
+    // どちらもdeltaY>0(縮小方向)なので比率は1より大きく、大きいdeltaYの方がより縮小が大きい
+    expect(smallRatio).toBeGreaterThan(1)
+    expect(largeRatio).toBeGreaterThan(smallRatio)
+  })
+
+  it('連続したctrlKey付きwheelも取りこぼさず積算される(rAFスロットル中の起点をpendingCameraにする)', async () => {
+    const { container } = render(
+      <PedigreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const svg = container.querySelector('.pedigree-canvas-svg')!
+    const before = parseViewBox(svg)
+
+    // rAFが1回も走っていないうちに2回連続でズームイン方向のwheelを送る
+    fireEvent.wheel(svg, { deltaY: -50, ctrlKey: true })
+    fireEvent.wheel(svg, { deltaY: -50, ctrlKey: true })
+
+    await waitFor(() => {
+      expect(parseViewBox(svg).width).not.toBe(before.width)
+    })
+    const afterTwoTicksWidth = parseViewBox(svg).width
+
+    const { container: oneTickContainer } = render(
+      <PedigreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const oneTickSvg = oneTickContainer.querySelector('.pedigree-canvas-svg')!
+    const oneTickBefore = parseViewBox(oneTickSvg)
+    fireEvent.wheel(oneTickSvg, { deltaY: -50, ctrlKey: true })
+    await waitFor(() => {
+      expect(parseViewBox(oneTickSvg).width).not.toBe(oneTickBefore.width)
+    })
+
+    // 2回分のズームは1回分より大きく縮む(2発目が取りこぼされていない)
+    expect(afterTwoTicksWidth).toBeLessThan(parseViewBox(oneTickSvg).width)
+  })
+})
+
 describe('PedigreeCanvas: 初期フィット(デザイン検証の指摘1・7)', () => {
   const PADDING = 64
   const CONTROLS_INSET_LEFT_PX = 232
