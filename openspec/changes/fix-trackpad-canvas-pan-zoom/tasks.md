@@ -24,8 +24,8 @@
 ## 5. 品質チェック
 
 - [x] 5.1 `npm run lint` / `npm run format:check` / `npm run typecheck`をすべてパスさせる
-- [ ] 5.2 `npm run test`(全件)をパスさせる
-- [ ] 5.3 `npm run test:e2e`(全件、`e2e/no-external-requests.spec.ts`を含む外部送信ゼロ検証)をパスさせる
+- [x] 5.2 `npm run test`(全件)をパスさせる
+- [x] 5.3 `npm run test:e2e`(全件、`e2e/no-external-requests.spec.ts`を含む外部送信ゼロ検証)をパスさせる(実行環境のchromiumバージョン差異のためexecutablePathを一時的に上書きした設定で実行。リポジトリへの変更は無し)
 
 ## 6. ドキュメント
 
