@@ -97,7 +97,6 @@ function personIdOf(node: TreeDatum | undefined): string | undefined {
   return (node?.data as unknown as FamilyChartDatum | undefined)?.data.personId
 }
 
-
 /**
  * 系線への意味づけ: 養子は破線、婚姻線は二重線(伝統的な系図記法)。
  * D3が管理する既存ノードへclassList.toggleするだけに留め、DOM構造(ノード数)を

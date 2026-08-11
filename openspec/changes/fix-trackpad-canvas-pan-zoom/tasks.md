@@ -23,7 +23,7 @@
 
 ## 5. 品質チェック
 
-- [ ] 5.1 `npm run lint` / `npm run format:check` / `npm run typecheck`をすべてパスさせる
+- [x] 5.1 `npm run lint` / `npm run format:check` / `npm run typecheck`をすべてパスさせる
 - [ ] 5.2 `npm run test`(全件)をパスさせる
 - [ ] 5.3 `npm run test:e2e`(全件、`e2e/no-external-requests.spec.ts`を含む外部送信ゼロ検証)をパスさせる
 
