@@ -11,7 +11,7 @@ Mac Chrome + トラックパッドでの操作時、3つの表示モード(折�
   - `ctrlKey === false`(素のホイール回転、トラックパッドの2本指パン)→ パン。`deltaX`/`deltaY`をそのままカメラの平行移動に使い、同じく`scheduleCamera`で間引く
 - `FamilyTreeCanvas.tsx`(折りたたみ表示・全体表示(家系ごと))でも同じ`ctrlKey`分岐を適用する。`family-chart`の`d3.zoom()`はデフォルトで`wheel`を常にズーム扱いするため、`ctrlKey === false`の`wheel`イベントについては`d3.zoom()`側のデフォルト処理を無効化し、`family-chart`が公開する変換操作(`el.__zoomObj`の`translateBy`等)を介してパンとして処理する
   - **BREAKING(操作仕様の変更、3モード共通)**: 素のマウスホイール(縦回転のみ)の挙動が「ズーム」から「パン」に変わる。ズームは`⌘/Ctrl+ホイール`・ピンチ・`ZoomControls`のボタンで行う
-- `html, body`に`overscroll-behavior-x: none`を追加し、wheelの`preventDefault`とは独立にMac Chromeの「2本指スワイプで戻る」誤爆を防ぐ(CSS側の変更なので3モード共通に効く)
+- エディタのキャンバス領域(`.app-canvas`、`AppShell.css`)に`overscroll-behavior-x: none`を追加し、wheelの`preventDefault`とは独立にMac Chromeの「2本指スワイプで戻る」誤爆を防ぐ(両キャンバスの共通の親のため3モード共通に効く。ランディングページ等エディタ以外には影響させない)
 - 上記のwheel挙動・rAF間引きを検証する単体テスト(`PedigreeCanvas.test.tsx`・`FamilyTreeCanvas.test.tsx`)を追加する
 
 ## Capabilities
@@ -24,7 +24,7 @@ Mac Chrome + トラックパッドでの操作時、3つの表示モード(折�
 
 ## Impact
 
-- 影響コード: `src/organisms/tree-canvas/PedigreeCanvas.tsx`(wheelハンドラ)、`src/organisms/tree-canvas/FamilyTreeCanvas.tsx`(`family-chart`のzoom設定・wheelハンドラ)、`src/index.css`(`overscroll-behavior-x`)
+- 影響コード: `src/organisms/tree-canvas/PedigreeCanvas.tsx`(wheelハンドラ)、`src/organisms/tree-canvas/FamilyTreeCanvas.tsx`(`family-chart`のzoom設定・wheelハンドラ)、`src/templates/AppShell.css`(`.app-canvas`への`overscroll-behavior-x`)
 - 影響範囲: 無料版・有償版の両方、かつ3つの表示モード全て(折りたたみ表示・全体表示(家系ごと)・つながった全体表示)。いずれもティアに関わらず共通のキャンバスコンポーネントであり、データ保存方式には手を入れないため両ティアへ同一の修正が適用される
 - プライバシー・法務への影響: なし(UIの入力イベント処理とCSSのみの変更で、通信・データ保存方式の変更を伴わない)
 - 競合比較: Figma・Excalidraw・Google Mapsは共通して「素のホイール/2本指スワイプ=パン、Ctrl/⌘+ホイールまたはピンチ=ズーム」という規約を採用している。本changeはこの規約に合わせることで、現状(トラックパッドでパンできない)を修正しつつ、他ツールに慣れた利用者にとって直感的な操作へ改善する
