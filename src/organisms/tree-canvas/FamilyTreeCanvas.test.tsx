@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import * as d3 from 'd3'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeDocument } from '../../domain/helpers'
 import type { TreeDocument } from '../../domain/types'
 import { useTreeStore } from '../../store/tree-store'
+import { getZoomBehavior, setupWheelPan } from './family-chart-wheel-pan'
 import { FamilyTreeCanvas } from './FamilyTreeCanvas'
 
 /**
@@ -120,6 +122,94 @@ describe('FamilyTreeCanvas: connectedモードでの描画系の入れ替え(8.3
     fireEvent.click(screen.getByRole('button', { name: '折りたたみ表示' }))
 
     expect(useTreeStore.getState().document).toBe(before)
+  })
+})
+
+describe('FamilyTreeCanvas: ホイールのパン/ズーム分岐(fix-trackpad-canvas-pan-zoom)', () => {
+  /**
+   * d3-zoomが要素に直接持たせる現在のtransform(`__zoom`)を読む。他のFamilyTreeCanvas
+   * テストと異なり、この機能(wheelでのパン/ズーム分岐)自体がfamily-chart内部のd3-zoom
+   * transformを直接操作するものであるため、ここでは内部DOMを読むことが避けられない。
+   * `.style.transform`(CSS文字列)ではなくこちらを読むのは、family-chartの初期fit
+   * (`positionTree`)がtransition経由(実時間依存)で反映するのに対し、wheelでの
+   * パン/ズーム(自前のtranslateBy呼び出し・d3-zoom自身のwheelハンドラ)はどちらも
+   * `__zoom`を同期的に更新するため、実時間のtransitionを待たずに検証できるため
+   */
+  function getZoomState(container: HTMLElement) {
+    const target = container.querySelector<HTMLElement>('#f3Canvas')
+    if (!target) throw new Error('#f3Canvasが見つからない')
+    return d3.zoomTransform(target)
+  }
+
+  it('ctrlKey無しのwheel(トラックパッドの2本指パンを含む)はパンし、d3-zoom自身のズームは発火しない', () => {
+    const { container } = render(
+      <FamilyTreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const svg = container.querySelector('.f3.tree-canvas-root svg.main_svg')!
+    const before = getZoomState(container)
+
+    fireEvent.wheel(svg, { deltaX: 20, deltaY: 30, ctrlKey: false })
+
+    const after = getZoomState(container)
+    // ズーム(k)は変化せず、パン(x/y)だけが動く。符号はスクロールの一般的な規約
+    // (下スクロール=コンテンツが上へ)に合わせて反転している(design.md D3)
+    expect(after.k).toBe(before.k)
+    expect(after.x).toBe(before.x - 20)
+    expect(after.y).toBe(before.y - 30)
+  })
+
+  it('ctrlKey付きのwheel(ピンチ・Ctrl/⌘+ホイール)はd3-zoom自身の既定処理でズームする', () => {
+    const { container } = render(
+      <FamilyTreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const svg = container.querySelector('.f3.tree-canvas-root svg.main_svg')!
+    const before = getZoomState(container)
+
+    // deltaY<0(指を広げる/ホイールを上へ)はズームイン
+    fireEvent.wheel(svg, { deltaY: -100, ctrlKey: true })
+
+    const after = getZoomState(container)
+    expect(after.k).toBeGreaterThan(before.k)
+  })
+
+  it('+/-ボタン(manualZoom)は本changeの前後で挙動が変わらない', () => {
+    render(
+      <FamilyTreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+    )
+    const before = useTreeStore.getState().document
+    // クリック自体がエラーにならず、ドキュメントも変化しないことを確認する
+    // (family-chartのtransition完了はjsdomでは待てないため、transformの数値までは見ない)
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: '拡大' })),
+    ).not.toThrow()
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: '縮小' })),
+    ).not.toThrow()
+    expect(useTreeStore.getState().document).toBe(before)
+  })
+
+  it('__zoomObjが取得できない要素ではエラーにならず、独自のwheel処理を諦める', () => {
+    // family-chartのsetupZoomを経ていないただのsvg(__zoomObj無し)を渡すケース
+    // (design.md D3のリスク対応: 将来のfamily-chartバージョン更新で実装が変わった場合)
+    const bareSvg = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'svg',
+    )
+    document.body.appendChild(bareSvg)
+
+    expect(getZoomBehavior(bareSvg)).toBeNull()
+
+    let teardown: () => void = () => {}
+    expect(() => {
+      teardown = setupWheelPan(bareSvg)
+    }).not.toThrow()
+    // 独自のwheelリスナーを追加していないため、wheelイベントを送ってもエラーにならない
+    expect(() =>
+      fireEvent.wheel(bareSvg, { deltaX: 10, deltaY: 10, ctrlKey: false }),
+    ).not.toThrow()
+    expect(() => teardown()).not.toThrow()
+
+    document.body.removeChild(bareSvg)
   })
 })
 

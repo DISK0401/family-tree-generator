@@ -30,8 +30,9 @@ proposal.mdで決定済み。実装上のポイントは、`PedigreeCanvas`は�
 - ズームも`setCamera`を直接呼ばず`scheduleCamera`を経由させる(現状はパンだけがrAF間引きされており、ズームだけ間引き無しになっている非対称を解消する)
 - パンの`deltaX`/`deltaY`の符号は、ドラッグパン(`handlePointerMove`、指の動きと逆方向にカメラを動かす)とは意図的に逆の規約になる。`wheel`の`deltaX`/`deltaY`はブラウザの標準スクロール量なので、カメラ座標へそのまま加算し(OSの「ナチュラルスクロール」設定は`deltaY`の符号として既にブラウザ側で解決済みのため、アプリ側で符号反転は行わない)、一般的なスクロールUIと同じ感覚に合わせる
 
-### D3: `FamilyTreeCanvas`は`__zoomObj`を取得し`.filter()`で`wheel`(`ctrlKey`無し)をd3-zoom自身の処理対象から除外したうえで、自前の`wheel`リスナーで`scaleBy`/`translateBy`を呼び分ける
-`el.__zoomObj`(`chart.svg.parentNode`から辿れる、`family-chart`が内部で使う`d3.zoom()`インスタンス)を取得し、`.filter()`(d3-zoomの公開メソッド)を呼んで「`wheel`かつ`ctrlKey`無し」のイベントをd3-zoom自身の既定処理(常時ズーム)の対象から除外する。除外されたイベントは自前の`wheel`リスナー(`{ passive: false }`、d3-zoomの購読とは別に追加)で受け、`ctrlKey`の有無に応じて`zoomObj.scaleBy`(ズーム、カーソル位置基準)/`zoomObj.translateBy`(パン)を呼ぶ。どちらも`d3.select(container).call(...)`経由で適用することで、`family-chart`本体の"zoom"イベントハンドラ(transform反映)・ドラッグパン・`manualZoom`(+/-ボタン)と同じtransform状態を共有し続ける。
+### D3: `FamilyTreeCanvas`は`__zoomObj`を取得し`.filter()`で`wheel`(`ctrlKey`無し)をd3-zoom自身の処理対象から除外したうえで、自前の`wheel`リスナーで`translateBy`によるパンだけを行う(ズームはd3-zoom自身の既定処理に委ねる)
+`el.__zoomObj`(`chart.svg.parentNode`から辿れる、`family-chart`が内部で使う`d3.zoom()`インスタンス)を取得し、`.filter()`(d3-zoomの公開メソッド)を呼んで「`wheel`かつ`ctrlKey`無し」のイベントをd3-zoom自身の既定処理の対象から除外する。`ctrlKey`付きのイベント(ピンチ・⌘/Ctrl+ホイール)はfilterを素通りし、d3-zoom自身の`wheeled`ハンドラ(カーソル位置基準・`deltaY`比例のスケーリングを標準で備える)がそのままズームを処理する(Goals節のとおり、家族側のズームのスケーリング自体には手を入れない)。
+除外された(`ctrlKey`無しの)`wheel`イベントは、d3-zoomの購読先と同じ要素(`chart.svg.parentNode`)に追加した自前のリスナー(`{ passive: false }`)で受け、`d3.select(container).call(zoomObj.translateBy, dx, dy)`でパンする。同じtransform状態(`zoomObj`)を経由するため、`family-chart`本体の"zoom"イベントハンドラ(transform反映)・ドラッグパン・`manualZoom`(+/-ボタン)と状態がズレない。
 
 検討した代替案:
 - **`zoom_polite`オプションの利用**: 却下。`f3.createChart(cont, data)`にオプション引数が無く、公開APIから到達できない
