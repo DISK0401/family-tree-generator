@@ -43,6 +43,8 @@ interface FormFields {
   surnameKana: string
   givenKana: string
   gender: Gender
+  /** 出生順(家族内での出生順、任意)。空文字は未設定を表す(design.md D1) */
+  birthOrder: string
   birthDate: FuzzyDate | undefined
   birthPlace: string
   deathDate: FuzzyDate | undefined
@@ -58,6 +60,7 @@ function fieldsFromPerson(person: Person): FormFields {
     surnameKana: person.name.surnameKana ?? '',
     givenKana: person.name.givenKana ?? '',
     gender: person.gender,
+    birthOrder: person.birthOrder?.toString() ?? '',
     birthDate: person.birth?.date,
     birthPlace: person.birth?.place ?? '',
     deathDate: person.death?.date,
@@ -75,6 +78,7 @@ function fieldsMatchPerson(fields: FormFields, person: Person): boolean {
     fields.surnameKana === p.surnameKana &&
     fields.givenKana === p.givenKana &&
     fields.gender === p.gender &&
+    fields.birthOrder === p.birthOrder &&
     fuzzyDateEqual(fields.birthDate, p.birthDate) &&
     fields.birthPlace === p.birthPlace &&
     fuzzyDateEqual(fields.deathDate, p.deathDate) &&
@@ -98,6 +102,9 @@ export function PersonEditForm({
   const [surnameKana, setSurnameKana] = useState(person.name.surnameKana ?? '')
   const [givenKana, setGivenKana] = useState(person.name.givenKana ?? '')
   const [gender, setGender] = useState<Gender>(person.gender)
+  const [birthOrder, setBirthOrder] = useState(
+    person.birthOrder?.toString() ?? '',
+  )
   const [birthDate, setBirthDate] = useState<FuzzyDate | undefined>(
     person.birth?.date,
   )
@@ -108,6 +115,7 @@ export function PersonEditForm({
   const [deathPlace, setDeathPlace] = useState(person.death?.place ?? '')
   const [note, setNote] = useState(person.note ?? '')
   const genderId = useId()
+  const birthOrderId = useId()
   const birthPlaceId = useId()
   const deathPlaceId = useId()
   const noteId = useId()
@@ -118,6 +126,7 @@ export function PersonEditForm({
     surnameKana,
     givenKana,
     gender,
+    birthOrder,
     birthDate,
     birthPlace,
     deathDate,
@@ -159,6 +168,7 @@ export function PersonEditForm({
     setSurnameKana(next.surnameKana)
     setGivenKana(next.givenKana)
     setGender(next.gender)
+    setBirthOrder(next.birthOrder)
     setBirthDate(next.birthDate)
     setBirthPlace(next.birthPlace)
     setDeathDate(next.deathDate)
@@ -176,6 +186,7 @@ export function PersonEditForm({
     surnameKana,
     givenKana,
     gender,
+    birthOrder,
     birthDate,
     birthPlace,
     deathDate,
@@ -194,6 +205,7 @@ export function PersonEditForm({
         ...(givenKana.trim() && { givenKana: givenKana.trim() }),
       },
       gender,
+      birthOrder: birthOrder.trim() ? Number(birthOrder.trim()) : undefined,
       birth:
         birthDate || birthPlace.trim()
           ? {
@@ -263,6 +275,23 @@ export function PersonEditForm({
             </option>
           ))}
         </select>
+      </label>
+
+      <label
+        htmlFor={birthOrderId}
+        className="person-edit-form-field field-label"
+      >
+        出生順(家族内での出生順。任意)
+        <input
+          id={birthOrderId}
+          className="field field--block"
+          type="number"
+          min={1}
+          step={1}
+          value={birthOrder}
+          onChange={(e) => setBirthOrder(e.target.value)}
+          placeholder="例: 2(次に生まれた子であれば2)"
+        />
       </label>
 
       <fieldset className="person-edit-form-event surface--fieldset">

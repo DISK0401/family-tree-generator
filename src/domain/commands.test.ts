@@ -1577,6 +1577,19 @@ describe('updatePerson', () => {
     )
     expect(doc).toEqual(before)
   })
+
+  it('出生順(birthOrder)を設定できる', () => {
+    const { doc, personId } = withPerson('次郎')
+    const doc2 = updatePerson(doc, personId, { birthOrder: 2 })
+    expect(doc2.persons[personId].birthOrder).toBe(2)
+  })
+
+  it('出生順(birthOrder)を未設定に戻せる', () => {
+    const { doc, personId } = withPerson('次郎')
+    const doc2 = updatePerson(doc, personId, { birthOrder: 2 })
+    const doc3 = updatePerson(doc2, personId, { birthOrder: undefined })
+    expect(doc3.persons[personId].birthOrder).toBeUndefined()
+  })
 })
 
 describe('updateFamily', () => {

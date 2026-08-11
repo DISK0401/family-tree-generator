@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createTreeDocument } from '../../domain/helpers'
 import { addPerson, addSpouse } from '../../domain/commands'
-import type { TreeDocument } from '../../domain/types'
+import { SCHEMA_VERSION, type TreeDocument } from '../../domain/types'
 import { exportFamilyTreeJsonText } from './export'
 import { importFamilyTreeJson } from './import'
 
 function baseDocument(): TreeDocument {
   return {
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     id: 'doc-1',
     title: 'テスト',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -32,6 +32,22 @@ describe('importFamilyTreeJson', () => {
     if (!result.success) return
     expect(Object.keys(result.document.persons)).toHaveLength(1)
     expect(result.warnings).toEqual([])
+  })
+
+  it('出生順(birthOrder)を含むJSONを正常にインポートする(issue #49)', () => {
+    let document = createTreeDocument()
+    document = addPerson(document, {
+      name: { given: '次郎' },
+      birthOrder: 2,
+    }).doc
+    const text = exportFamilyTreeJsonText(document)
+
+    const result = importFamilyTreeJson(text)
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const person = Object.values(result.document.persons)[0]
+    expect(person.birthOrder).toBe(2)
   })
 
   it('構文が不正なJSONは中断する', () => {
@@ -81,7 +97,7 @@ describe('importFamilyTreeJson', () => {
   it('必須フィールドが欠けたJSONは中断する', () => {
     const result = importFamilyTreeJson(
       JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: SCHEMA_VERSION,
         id: 'x',
         title: 't',
         updatedAt: '2026-01-01T00:00:00.000Z',

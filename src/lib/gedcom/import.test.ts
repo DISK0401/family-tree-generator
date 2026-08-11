@@ -463,6 +463,46 @@ describe('importGedcom 拡張タグ・特殊値の取り扱い', () => {
     ).toBe(true)
   })
 
+  it('_BIRTH_ORDERを読み取ってbirthOrderへ変換する(issue #49)', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 NAME 次郎 /Test/',
+      '1 _BIRTH_ORDER 2',
+      '0 TRLR',
+    ].join('\n')
+
+    const result = importGedcom(bytesOf(text))
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const person = Object.values(result.document.persons)[0]
+    expect(person.birthOrder).toBe(2)
+    expect(result.warnings).toHaveLength(0)
+  })
+
+  it('_BIRTH_ORDERが数値として解釈できない場合は無視して警告を出す', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 7.0',
+      '0 @I1@ INDI',
+      '1 NAME X /Test/',
+      '1 _BIRTH_ORDER 長男',
+      '0 TRLR',
+    ].join('\n')
+
+    const result = importGedcom(bytesOf(text))
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const person = Object.values(result.document.persons)[0]
+    expect(person.birthOrder).toBeUndefined()
+    expect(result.warnings.some((w) => w.tag === '_BIRTH_ORDER')).toBe(true)
+  })
+
   it('SEX Xは「不明」として取り込み警告を出す', () => {
     const text = [
       '0 HEAD',

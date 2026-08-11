@@ -1,4 +1,8 @@
 import { displayName } from '../../domain/helpers'
+import {
+  compareSiblingOrder,
+  deriveBirthOrderLabel,
+} from '../../domain/sibling-order'
 import type {
   CalendarDate,
   Family,
@@ -32,6 +36,8 @@ export interface FamilyChartCardData {
   /** ふりがな(design.md D8、表示設定でオン/オフを選べる) */
   surnameKana?: string
   givenKana?: string
+  /** 家族内での出生順(性別非依存)。兄弟の並び順比較に使う(design.md D1/D3) */
+  birthOrder?: number
   birthYear?: number
   deathYear?: number
   /** 表示粒度設定(design.md D9)に応じた書式化に使う完全な生年月日・没年月日 */
@@ -44,6 +50,8 @@ export interface FamilyChartCardData {
   age?: number
   /** 没の記録(年不明でも)があれば故人として描く。カードのマーカー・†表示に使う */
   deceased: boolean
+  /** 出生順位ラベル(長男/次男等)。`resolveBirthOrderLabel`が導出した結果(design.md D2/D7) */
+  birthOrderLabel?: string
   /** この人物の主たる親子線(rels.parents)に対応する続柄種別。findRootAncestorの祖先方向判定に使う。
    * 系線のスタイル分岐は人物単位のこの値ではなく、辺(エッジ)単位の`buildPedigreeByEdge`を使う
    * (design.md リスク「family-chartの表現力限界」: 非主たる家族の辺も描画されうるため) */
@@ -86,6 +94,26 @@ export function findPrimaryParentFamily(
     }
   }
   return candidate
+}
+
+/**
+ * 出生順位ラベル(長男/次男等)を導出する(design.md D2/D7)。ラベル算出の基準となる兄弟
+ * グループは、`findPrimaryParentFamily`が指す主たる親家族の子どもたちとする。
+ * 折りたたみ表示・全体表示(家系ごと)(本ファイルの`buildPersonDatums`)と
+ * つながった全体表示(PedigreeCanvas.tsx)の両方がこの関数を呼ぶことで、
+ * ラベル算出ロジックを1箇所に集約する(spec tree-rendering「人物カードの表現の一致」)
+ */
+export function resolveBirthOrderLabel(
+  doc: TreeDocument,
+  personId: PersonId,
+): string | undefined {
+  const family = findPrimaryParentFamily(doc, personId)
+  if (!family) return undefined
+  const siblings = family.children
+    .map((c) => doc.persons[c.childId])
+    .filter((p) => p !== undefined)
+    .map((p) => ({ id: p.id, gender: p.gender, birthOrder: p.birthOrder }))
+  return deriveBirthOrderLabel(personId, siblings)
 }
 
 /**
@@ -495,8 +523,9 @@ function buildPersonDatums(
         // ここで同じ変換をもう一度書くと、「カードに何を描くかを決める処理を描画系ごとに
         // 重複して持たない」(spec tree-rendering「人物カードの表現の一致」)が、
         // 表示設定の適用より手前の段階で崩れる
-        ...personToCardInput(person),
+        ...personToCardInput(person, resolveBirthOrderLabel(doc, person.id)),
         displayName: displayName(person),
+        birthOrder: person.birthOrder,
         birthYear: person.birth?.date?.date?.year,
         pedigree: pedigreeByChild.get(person.id),
       },
@@ -623,8 +652,10 @@ export function toFullViewFamilyChartData(
 }
 
 /**
- * 子の並び順比較関数(design.md D1)。family-chartの`setSortChildrenFunction`に渡す。
- * 生年が判明している子は生年昇順、不明な子はその後ろに名前順で並べる。
+ * 子の並び順比較関数(design.md D1/D3)。family-chartの`setSortChildrenFunction`に渡す。
+ * 出生順(birthOrder)→生年→氏名の優先順位で並べる(`domain/sibling-order.ts`の
+ * `compareSiblingOrder`に委譲。`layout/ordering.ts`と同じ比較ロジックを共有することで、
+ * 折りたたみ表示・全体表示(家系ごと)・つながった全体表示の並び順を一致させる)。
  *
  * family-chartは指定した比較関数の適用後に内部関数`sortChildrenWithSpouses`を必ず実行し、
  * 親カードの性別(`data.gender === 'M'`かどうか)で昇順/降順を反転させる。単婚(半きょうだいが
@@ -635,12 +666,18 @@ export function compareChildrenByBirthThenName(
   a: FamilyChartDatum,
   b: FamilyChartDatum,
 ): number {
-  const yearA = a.data.birthYear
-  const yearB = b.data.birthYear
-  if (yearA !== undefined && yearB !== undefined) return yearA - yearB
-  if (yearA !== undefined) return -1
-  if (yearB !== undefined) return 1
-  return a.data.displayName.localeCompare(b.data.displayName, 'ja')
+  return compareSiblingOrder(
+    {
+      birthOrder: a.data.birthOrder,
+      birthYear: a.data.birthYear,
+      displayName: a.data.displayName,
+    },
+    {
+      birthOrder: b.data.birthOrder,
+      birthYear: b.data.birthYear,
+      displayName: b.data.displayName,
+    },
+  )
 }
 
 /**

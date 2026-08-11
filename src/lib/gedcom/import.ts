@@ -58,6 +58,7 @@ const KNOWN_TOP_LEVEL_TAGS = new Set(['HEAD', 'TRLR', 'INDI', 'FAM', 'SUBM'])
  * 読み飛ばされる」の実装)。
  * - NAME/SEX/BIRT/DEAT/NOTE/FAMC: モデルへ取り込む
  * - FAMS: FAMレコード側のHUSB/WIFEから復元できる冗長参照のため意図的に無視する
+ * - _BIRTH_ORDER: 本アプリの独自拡張タグ(出生順)
  */
 const KNOWN_INDI_TAGS = new Set([
   'NAME',
@@ -67,6 +68,7 @@ const KNOWN_INDI_TAGS = new Set([
   'NOTE',
   'FAMC',
   'FAMS',
+  '_BIRTH_ORDER',
 ])
 
 /** INDI直下のイベントタグ(この直下の未知タグも集計対象にする) */
@@ -192,6 +194,28 @@ function mapLifeEvent<T extends string>(
   }
 }
 
+/**
+ * 拡張タグ`_BIRTH_ORDER`(出生順、性別非依存)を読み取る。値が正の整数として
+ * パースできない場合は警告を出して無視する(design.md D6)。
+ */
+function mapBirthOrder(
+  indi: GedcomNode,
+  warnings: ImportWarning[],
+): number | undefined {
+  const node = findChild(indi, '_BIRTH_ORDER')
+  if (!node?.value) return undefined
+  const parsed = Number(node.value)
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    warnings.push({
+      lineNumber: node.lineNumber,
+      tag: '_BIRTH_ORDER',
+      message: `出生順の値「${node.value}」は正の整数として解釈できないため無視しました(@${indi.xref ?? '?'}@)`,
+    })
+    return undefined
+  }
+  return parsed
+}
+
 function joinNotes(node: GedcomNode): string | undefined {
   const notes = findChildren(node, 'NOTE')
     .map((note) => note.value)
@@ -208,6 +232,7 @@ function mapIndiToPerson(indi: GedcomNode, warnings: ImportWarning[]): Person {
     id: newId(),
     name: nameNode ? gedcomNodeToPersonName(nameNode) : {},
     gender: mapGender(indi, warnings),
+    birthOrder: mapBirthOrder(indi, warnings),
     birth: birtNode ? mapLifeEvent('birth', birtNode) : undefined,
     death: deatNode ? mapLifeEvent('death', deatNode) : undefined,
     note: joinNotes(indi),

@@ -11,6 +11,7 @@ import { layoutPedigree } from '../../layout'
 import type { PedigreeLayout } from '../../layout/types'
 import { useTreeStore } from '../../store/tree-store'
 import { useDisplaySettingsStore } from '../../store/display-settings-store'
+import { resolveBirthOrderLabel } from './to-family-chart-data'
 import { ZoomControls } from './ZoomControls'
 import {
   derivePersonCardView,
@@ -375,12 +376,19 @@ export function PedigreeCanvas({
         {layout.persons.map((position) => {
           const person = document.persons[position.personId]
           if (!person) return null
-          const view = derivePersonCardView(personToCardInput(person), {
-            birthDateGranularity,
-            deathDateGranularity,
-            calendarMode,
-            visibleCardFields,
-          })
+          const birthOrderLabel = resolveBirthOrderLabel(
+            document,
+            position.personId,
+          )
+          const view = derivePersonCardView(
+            personToCardInput(person, birthOrderLabel),
+            {
+              birthDateGranularity,
+              deathDateGranularity,
+              calendarMode,
+              visibleCardFields,
+            },
+          )
           // personCardInnerHtmlの戻り値は氏名等の利用者入力をescapeHtml済みのHTML文字列のため、
           // dangerouslySetInnerHTMLへそのまま渡してよい(person-card.ts参照)。
           // 折りたたみ表示と同じマークアップ・クラス名(.tree-card系)を使うことで、

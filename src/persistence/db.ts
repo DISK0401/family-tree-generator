@@ -56,10 +56,13 @@ export async function clearTreeDocument(): Promise<void> {
 /**
  * schemaVersionのマイグレーション定義。
  * キーは移行元バージョン、値はそのバージョンから次のバージョンへ変換する関数。
- * 現行SCHEMA_VERSION=1のため本番では空だが、将来のモデル変更時にここへ追記する。
  */
 export type MigrationStep = (doc: TreeDocument) => TreeDocument
-export const MIGRATIONS: Record<number, MigrationStep> = {}
+export const MIGRATIONS: Record<number, MigrationStep> = {
+  // v1→v2: PersonにbirthOrder(出生順)を追加。既存データは未設定のまま成立する
+  // 後方互換な追加のため、schemaVersionを進める以外の変換は不要
+  1: (doc) => ({ ...doc, schemaVersion: 2 }),
+}
 
 function migrate(
   doc: TreeDocument,

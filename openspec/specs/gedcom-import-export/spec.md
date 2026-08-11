@@ -14,7 +14,7 @@ GEDCOMのインポート・エクスポート処理は、すべてユーザー�
 - **THEN** 自ホストの静的アセット取得以外のネットワーク通信が発生しない
 
 ### Requirement: GEDCOM 7.0エクスポート
-システムは `TreeDocument` をGEDCOM 7.0形式のファイルとしてエクスポートできなければならない(SHALL)。出力はUTF-8(BOM付き)とし、ヘッダに `GEDC.VERS 7.0` を含まなければならない(SHALL)。氏名(SURN/GIVN、ふりがなは拡張タグ `_KANA_SURN`/`_KANA_GIVN`)、日付(DATE+PHRASE)、続柄(PEDI)、家族関係種別(拡張タグ `_FAM_KIND`)を `docs/gedcom-mapping.md` の対応表に従ってマッピングしなければならない(SHALL)。
+システムは `TreeDocument` をGEDCOM 7.0形式のファイルとしてエクスポートできなければならない(SHALL)。出力はUTF-8(BOM付き)とし、ヘッダに `GEDC.VERS 7.0` を含まなければならない(SHALL)。氏名(SURN/GIVN、ふりがなは拡張タグ `_KANA_SURN`/`_KANA_GIVN`)、日付(DATE+PHRASE)、続柄(PEDI)、家族関係種別(拡張タグ `_FAM_KIND`)、出生順(拡張タグ `_BIRTH_ORDER`)を `docs/gedcom-mapping.md` の対応表に従ってマッピングしなければならない(SHALL)。
 
 #### Scenario: 基本的なエクスポート
 - **GIVEN** 人物2名とその婚姻家族を含む `TreeDocument`
@@ -36,8 +36,13 @@ GEDCOMのインポート・エクスポート処理は、すべてユーザー�
 - **WHEN** GEDCOM 7.0形式でエクスポートする
 - **THEN** DATE値には西暦換算の日付(ABT修飾付き)が出力され、和暦の原文はPHRASE構造で保全される
 
+#### Scenario: 出生順のエクスポート
+- **GIVEN** 出生順「2」が設定された人物を含む `TreeDocument`
+- **WHEN** GEDCOM 7.0形式でエクスポートする
+- **THEN** 当該人物のINDIレコードに拡張タグ `_BIRTH_ORDER 2` が出力され、ヘッダの`SCHMA`に`_BIRTH_ORDER`が宣言される
+
 ### Requirement: GEDCOM 5.5.1互換モードエクスポート
-システムはGEDCOM 5.5.1互換形式でのエクスポートを選択できなければならない(SHALL)。出力はUTF-8とし、ヘッダに `VERS 5.5.1` と `CHAR UTF-8` を含まなければならない(SHALL)。事実婚など5.5.1に標準の対応構造がない関係種別は、7.0と同じ拡張タグ(`_FAM_KIND`)で出力し、情報を失ってはならない(MUST NOT)。日付の原文は、DATEに構造化値のみを出力したうえで兄弟NOTE(「元の表記: …」)として保全しなければならない(SHALL)。
+システムはGEDCOM 5.5.1互換形式でのエクスポートを選択できなければならない(SHALL)。出力はUTF-8とし、ヘッダに `VERS 5.5.1` と `CHAR UTF-8` を含まなければならない(SHALL)。事実婚など5.5.1に標準の対応構造がない関係種別は、7.0と同じ拡張タグ(`_FAM_KIND`)で出力し、情報を失ってはならない(MUST NOT)。出生順も同様に、7.0と同じ拡張タグ(`_BIRTH_ORDER`)で出力し、情報を失ってはならない(MUST NOT)。日付の原文は、DATEに構造化値のみを出力したうえで兄弟NOTE(「元の表記: …」)として保全しなければならない(SHALL)。
 
 #### Scenario: 5.5.1互換モードでのエクスポート
 - **GIVEN** 人物と家族を含む `TreeDocument`
@@ -53,6 +58,11 @@ GEDCOMのインポート・エクスポート処理は、すべてユーザー�
 - **GIVEN** 和暦由来のFuzzyDate(原文「明治10年頃」)を持つ出生イベントを含む人物
 - **WHEN** GEDCOM 5.5.1互換モードでエクスポートする
 - **THEN** DATEには西暦換算値のみが出力され、同階層のNOTEに「元の表記: 明治10年頃」が出力される
+
+#### Scenario: 出生順の5.5.1エクスポート
+- **GIVEN** 出生順「1」が設定された人物を含む `TreeDocument`
+- **WHEN** GEDCOM 5.5.1互換モードでエクスポートする
+- **THEN** 当該人物のINDIレコードに拡張タグ `_BIRTH_ORDER 1` が出力され、警告なしで情報が保全される
 
 ### Requirement: GEDCOMインポートとバージョン自動判定
 システムはGEDCOM 7.0および5.5.1のファイルをインポートし、`TreeDocument` へ変換できなければならない(SHALL)。バージョンはファイルヘッダから自動判定しなければならない(SHALL)。ヘッダが欠落・不正でGEDCOMとして解釈できない場合はインポートを中断し、理由を平易な日本語で表示しなければならない(SHALL)。
@@ -78,6 +88,11 @@ GEDCOMのインポート・エクスポート処理は、すべてユーザー�
 - **GIVEN** ANULイベントを含むFAMレコード
 - **WHEN** インポートする
 - **THEN** 当該イベントは離婚(`divorce`)イベントとして取り込まれ、続柄モデルに対応する種別がない旨の警告が表示される(本モデルの `FamilyEventType` は婚姻/離婚のみを持つため)
+
+#### Scenario: 出生順を含むファイルのインポート
+- **GIVEN** 拡張タグ `_BIRTH_ORDER 3` を持つINDIレコードを含むGEDCOMファイル
+- **WHEN** インポートする
+- **THEN** 当該人物は出生順「3」を持つPersonとして `TreeDocument` に変換される
 
 ### Requirement: 文字コードの自動判定
 インポート時、システムはUTF-8(BOM有無とも)・UTF-16(BOM付き)・Shift_JISのファイルを自動判定して読み込めなければならない(SHALL)。判定はUTF-8厳格デコードを最優先し、失敗時のみShift_JISへフォールバックしなければならない(SHALL)。判定したエンコーディングをインポート結果サマリに表示しなければならない(SHALL)。ANSELエンコーディングを検出した場合はインポートを中断し、理由を表示しなければならない(SHALL)。

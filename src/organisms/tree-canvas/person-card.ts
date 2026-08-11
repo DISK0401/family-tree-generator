@@ -40,6 +40,12 @@ export interface PersonCardInput {
   /** 没年(年のみでも可)。没の記録があるかどうかの判定は`deceased`を使う。ageLabelの「没」表記の判定にのみ使う */
   deathYear?: number
   deceased: boolean
+  /**
+   * 出生順位ラベル(長男/次男/長女/次女等)。`Person`には保存されておらず、呼び出し側
+   * (to-family-chart-data.ts / PedigreeCanvas.tsx)が兄弟のbirthOrder・genderから
+   * 都度導出して渡す(design.md D2/D7)
+   */
+  birthOrderLabel?: string
 }
 
 /**
@@ -67,6 +73,8 @@ export interface PersonCardView {
   /** 性別アイコンを表示するか(表示設定の項目選択に従う) */
   showGenderIcon: boolean
   deceased: boolean
+  /** 出生順位ラベル(長男/次男等)。未導出(出生順未設定・性別不明等)の場合はundefined */
+  birthOrderLabel?: string
 }
 
 /** カード表示に関わる表示設定のうち、`derivePersonCardView`が必要とする部分 */
@@ -144,6 +152,7 @@ export function derivePersonCardView(
     gender: person.gender,
     showGenderIcon: fields.genderIcon,
     deceased: person.deceased,
+    birthOrderLabel: person.birthOrderLabel,
   }
 }
 
@@ -155,7 +164,10 @@ export function derivePersonCardView(
  * PedigreeCanvasに引き込むことになり、design.md D1の「描画データはTreeDocumentからの一方向の
  * 射影」という原則には反しないが、依存の見通しが悪くなるため)
  */
-export function personToCardInput(person: Person): PersonCardInput {
+export function personToCardInput(
+  person: Person,
+  birthOrderLabel?: string,
+): PersonCardInput {
   return {
     personId: person.id,
     gender:
@@ -171,6 +183,7 @@ export function personToCardInput(person: Person): PersonCardInput {
     age: computeAge(person),
     deathYear: person.death?.date?.date?.year,
     deceased: person.death !== undefined,
+    birthOrderLabel,
   }
 }
 
@@ -308,6 +321,12 @@ export function personCardInnerHtml(
     ? htmlTag('div', { class: 'tree-card-deceased-mark', title: '故人' }, '†')
     : ''
 
+  // 出生順位ラベル(長男/次男等)は性別インジケーター・故人マーカーの並びに続けて配置する
+  // (design.md D2/D7, spec tree-rendering「出生順位ラベルの表示」)
+  const birthOrderLabelHtml = view.birthOrderLabel
+    ? htmlTag('div', { class: 'tree-card-birth-order' }, view.birthOrderLabel)
+    : ''
+
   // 姓・名は別の縦書き列として描く(位牌・表札に倣う伝統的な書式。design.md D6)。
   // 片方しかない場合も「tree-card-given」列として描く(既存カードの見た目を保つための踏襲)
   const nameHtml =
@@ -368,6 +387,7 @@ export function personCardInnerHtml(
   return `<div class="tree-card surface--raised${selectedClass}${deceasedClass}">
         ${genderHtml}
         ${deceasedMarkHtml}
+        ${birthOrderLabelHtml}
         ${badgeHtml}
         ${kanaHtml}
         <div class="tree-card-name-row">${nameHtml}</div>

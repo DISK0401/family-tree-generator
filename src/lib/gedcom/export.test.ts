@@ -184,6 +184,36 @@ describe('exportGedcom 5.5.1互換モード', () => {
     expect(roots.some((r) => r.tag === 'SUBM')).toBe(false)
   })
 
+  it('出生順(birthOrder)は_BIRTH_ORDER拡張タグで両バージョンとも出力される(issue #49)', () => {
+    let document = createTreeDocument()
+    const person = addPerson(document, {
+      name: { given: '次郎' },
+      birthOrder: 2,
+    })
+    document = person.doc
+
+    for (const version of ['7.0', '5.5.1'] as const) {
+      const { text, warnings } = exportGedcom(document, version)
+      const { roots } = parseGedcomText(text)
+      const indi = roots.find((r) => r.tag === 'INDI')!
+
+      expect(findChild(indi, '_BIRTH_ORDER')?.value).toBe('2')
+      expect(warnings).toHaveLength(0)
+    }
+  })
+
+  it('出生順(birthOrder)未設定の人物には_BIRTH_ORDERタグが出力されない', () => {
+    let document = createTreeDocument()
+    const person = addPerson(document, { name: { given: '太郎' } })
+    document = person.doc
+
+    const { text } = exportGedcom(document, '7.0')
+    const { roots } = parseGedcomText(text)
+    const indi = roots.find((r) => r.tag === 'INDI')!
+
+    expect(findChild(indi, '_BIRTH_ORDER')).toBeUndefined()
+  })
+
   it('事実婚(common-law)は_FAM_KIND拡張タグで両バージョンとも出力される', () => {
     let document = createTreeDocument()
     const partnerA = addPerson(document, { name: { given: 'A' } })
@@ -268,6 +298,7 @@ describe('exportGedcom 7.0のSCHMA拡張タグ宣言', () => {
       '_KANA_SURN',
       '_KANA_GIVN',
       '_FAM_KIND',
+      '_BIRTH_ORDER',
       '_TREE_TITLE',
       '_SPOUSE_ROLE_UNKNOWN',
     ])

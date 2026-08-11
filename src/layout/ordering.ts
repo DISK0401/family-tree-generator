@@ -1,5 +1,9 @@
+import {
+  compareSiblingOrder,
+  type SiblingSortKey,
+} from '../domain/sibling-order'
 import type { PersonId } from '../domain/types'
-import type { PedigreeGraph } from './graph'
+import type { PedigreeGraph, PersonNode } from './graph'
 
 /** 層(世代)ごとの人物の並び順。配列の添字が層内の左から右への位置を表す */
 export type LayerOrder = Map<number, PersonId[]>
@@ -81,11 +85,24 @@ function cloneUnitsMap(map: Map<number, Unit[]>): Map<number, Unit[]> {
   )
 }
 
+function siblingOrderKey(node: PersonNode | undefined): SiblingSortKey {
+  return {
+    birthOrder: node?.birthOrder,
+    birthYear: node?.birthYear,
+    displayName: node?.displayName ?? '',
+  }
+}
+
 /**
  * 単位の直近の親家族を探し、その位置ときょうだい内の順位を返す。
  * 上の層であればよく、1つ上の層に限定しない(限定すると、実家が2層以上離れた婚入者が
  * 「親が見つからない」扱いで層の末尾へ回され、子から遠く離れた位置に固定されてしまう)。
- * 最も近い層の親家族を優先する
+ * 最も近い層の親家族を優先する。
+ *
+ * きょうだい内の順位(siblingRank)は`family.children`の登録順ではなく、
+ * `compareSiblingOrder`(design.md D3)で並べ替えた後の順位を使う。これにより
+ * 出生順・生年・氏名が`tree-rendering`(折りたたみ表示・全体表示(家系ごと))と
+ * 同じ優先順位で反映される
  */
 function findParentRank(
   unit: Unit,
@@ -114,7 +131,13 @@ function findParentRank(
       if (positions.length === 0) continue
       const position =
         positions.reduce((sum, p) => sum + p, 0) / positions.length
-      const siblingRank = family.children.findIndex(
+      const orderedChildren = [...family.children].sort((a, b) =>
+        compareSiblingOrder(
+          siblingOrderKey(graph.persons.get(a.childId)),
+          siblingOrderKey(graph.persons.get(b.childId)),
+        ),
+      )
+      const siblingRank = orderedChildren.findIndex(
         (c) => c.childId === memberId,
       )
       best = { position, siblingRank, distance }
@@ -128,9 +151,9 @@ function findParentRank(
  *
  * 最上位の層は単位の識別子(構成人物の最小ID)で並べる。それより下の層は、各単位を
  * 「1つ上の層にいる親の単位の位置」で並べ、同じ親を持つ単位(きょうだい)は
- * 家族内の登録順(family.children配列の順)で連続させる。親が見つからない単位
- * (孤立した人物・独立した家族クラスタ・層をまたぐ関係の子)は、位置が確定した単位より後ろへ、
- * 単位の識別子順で置く
+ * `compareSiblingOrder`による並び順(出生順→生年→氏名。design.md D3)で連続させる。
+ * 親が見つからない単位(孤立した人物・独立した家族クラスタ・層をまたぐ関係の子)は、
+ * 位置が確定した単位より後ろへ、単位の識別子順で置く
  */
 function buildInitialUnitOrder(
   graph: PedigreeGraph,
@@ -271,11 +294,29 @@ function average(values: number[]): number | undefined {
 }
 
 /**
+ * 各単位の「初期順序(design.md D2-2, buildInitialUnitOrder)における層内の位置」。
+ * 重心値が同値になった際、人物IDへ直接落ちる前にこの順序を優先するためのタイブレークキー
+ * (下記sweepOnceのコメント参照)。同じ親を1組しか持たない(=兄弟全員の重心値が常に同値になる)
+ * 家族は非常に多く、これが無いと出生順・生年に基づく初期順序が重心法の一巡目で
+ * 人物ID順へ上書きされてしまう
+ */
+function buildInitialRank(initial: Map<number, Unit[]>): Map<Unit, number> {
+  const rank = new Map<Unit, number>()
+  for (const units of initial.values()) {
+    units.forEach((unit, index) => rank.set(unit, index))
+  }
+  return rank
+}
+
+/**
  * 重心法による1回分の並び替え(design.md D2-2, tasks.md 3.2)。
  * 下方向のパスでは各層を上から順に、1つ上の層(直近の親)の位置の平均で並べ替える。
  * 上方向のパスでは逆に、1つ下の層(直近の子)の位置の平均で並べ替える。
  * 隣接関係を持たない単位(孤立した人物・独立したクラスタ)は動かす基準がないため末尾へ固定する。
- * 同値は単位の識別子(人物ID)で決着させ、全順序を保つ(spec「レイアウトの決定性」)
+ *
+ * 重心値が同値の場合(単一の親を持つ兄弟は全員が同じ親の位置を参照するため常に同値になる)、
+ * 出生順・生年・氏名に基づく初期順序(initialRank)をまず優先し、それも同値の場合にのみ
+ * 単位の識別子(人物ID)で決着させて全順序を保つ(spec「レイアウトの決定性」)
  */
 function sweepOnce(
   unitsByGeneration: Map<number, Unit[]>,
@@ -283,6 +324,7 @@ function sweepOnce(
   graph: PedigreeGraph,
   generationOf: Map<PersonId, number>,
   direction: 'down' | 'up',
+  initialRank: Map<Unit, number>,
 ): void {
   const order = direction === 'down' ? generations : [...generations].reverse()
   for (const generation of order) {
@@ -304,13 +346,17 @@ function sweepOnce(
         ),
       ),
     }))
+    const tieBreak = (a: Unit, b: Unit) => {
+      const rankDiff = (initialRank.get(a) ?? 0) - (initialRank.get(b) ?? 0)
+      return rankDiff !== 0 ? rankDiff : a.key.localeCompare(b.key)
+    }
     decorated.sort((a, b) => {
       if (a.value === undefined && b.value === undefined)
-        return a.unit.key.localeCompare(b.unit.key)
+        return tieBreak(a.unit, b.unit)
       if (a.value === undefined) return 1
       if (b.value === undefined) return -1
       if (a.value !== b.value) return a.value - b.value
-      return a.unit.key.localeCompare(b.unit.key)
+      return tieBreak(a.unit, b.unit)
     })
     unitsByGeneration.set(
       generation,
@@ -524,6 +570,8 @@ export function orderWithinLayers(
   const generations = [...initial.keys()].sort((a, b) => a - b)
   // 単位の構成はスイープを通して変わらない(順序だけが入れ替わる)ため、ここで1回だけ求める
   const looseSpouseEdges = collectLooseSpouseEdges(graph, generationOf, initial)
+  // 重心値が同値になった際のタイブレーク用(出生順・生年・氏名に基づく初期順序を保つ。sweepOnce参照)
+  const initialRank = buildInitialRank(initial)
 
   const score = (units: Map<number, Unit[]>): OrderScore => {
     const order = flattenToLayerOrder(units)
@@ -538,7 +586,7 @@ export function orderWithinLayers(
   const current = cloneUnitsMap(initial)
 
   for (const direction of SWEEP_DIRECTIONS) {
-    sweepOnce(current, generations, graph, generationOf, direction)
+    sweepOnce(current, generations, graph, generationOf, direction, initialRank)
     const currentScore = score(current)
     if (compareScores(currentScore, bestScore) <= 0) {
       bestScore = currentScore

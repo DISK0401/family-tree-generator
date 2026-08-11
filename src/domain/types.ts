@@ -48,11 +48,16 @@ export interface LifeEvent<T extends string = string> {
   place?: string
 }
 
-/** 個人(GEDCOM INDI相当) */
+/**
+ * 個人(GEDCOM INDI相当)。
+ * birthOrderは家族内での出生順(性別非依存の絶対順位)。長男・次男等の性別付きラベルは
+ * 保存せず、表示のたびにbirthOrderとgenderから導出する(design.md D1/D2参照)
+ */
 export interface Person {
   id: PersonId
   name: PersonName
   gender: Gender
+  birthOrder?: number
   birth?: LifeEvent<'birth'>
   death?: LifeEvent<'death'>
   note?: string
@@ -83,7 +88,7 @@ export interface Family {
 }
 
 /** 現行スキーマバージョン。モデル構造の変更時に必ずインクリメントする */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 /** 家系図全体の保存単位 */
 export interface TreeDocument {

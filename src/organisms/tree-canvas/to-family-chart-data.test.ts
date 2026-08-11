@@ -523,6 +523,24 @@ describe('compareChildrenByBirthThenName', () => {
     expect(compareChildrenByBirthThenName(known, unknown)).toBeLessThan(0)
     expect(compareChildrenByBirthThenName(unknown, known)).toBeGreaterThan(0)
   })
+
+  it('出生順(birthOrder)が設定された子同士は出生順で並ぶ', () => {
+    const c1 = makeDatum('c1', { birthOrder: 2 })
+    const c2 = makeDatum('c2', { birthOrder: 1 })
+    expect(compareChildrenByBirthThenName(c2, c1)).toBeLessThan(0)
+    expect(compareChildrenByBirthThenName(c1, c2)).toBeGreaterThan(0)
+  })
+
+  it('出生順が設定された子は、出生順未設定・生年判明の子より前に並ぶ', () => {
+    const withOrder = makeDatum('withOrder', { birthOrder: 1 })
+    const withYearOnly = makeDatum('withYearOnly', { birthYear: 1955 })
+    expect(
+      compareChildrenByBirthThenName(withOrder, withYearOnly),
+    ).toBeLessThan(0)
+    expect(
+      compareChildrenByBirthThenName(withYearOnly, withOrder),
+    ).toBeGreaterThan(0)
+  })
 })
 
 describe('sortSpousesByMarriageDate', () => {

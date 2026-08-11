@@ -148,6 +148,44 @@ describe('PersonEditForm: undo/redo・外部更新への追随(監査 中4)', ()
   })
 })
 
+describe('PersonEditForm: 出生順(issue #49)', () => {
+  it('出生順を入力して確定すると、onSaveの引数にbirthOrderが数値で渡る', () => {
+    const person = createPerson({ name: { given: '太郎' } })
+    const onSave = vi.fn()
+    render(<PersonEditForm person={person} onSave={onSave} />)
+
+    const input = screen.getByLabelText('出生順(家族内での出生順。任意)')
+    fireEvent.change(input, { target: { value: '2' } })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ birthOrder: 2 }),
+    )
+  })
+
+  it('出生順を未入力のまま確定すると、onSaveの引数のbirthOrderはundefinedになる', () => {
+    const person = createPerson({ name: { given: '太郎' } })
+    const onSave = vi.fn()
+    render(<PersonEditForm person={person} onSave={onSave} />)
+
+    const input = screen.getByLabelText('名', { exact: true })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ birthOrder: undefined }),
+    )
+  })
+
+  it('既存の出生順が入力欄に反映される', () => {
+    const person = createPerson({ name: { given: '太郎' }, birthOrder: 3 })
+    render(<PersonEditForm person={person} onSave={vi.fn()} />)
+
+    const input =
+      screen.getByLabelText<HTMLInputElement>('出生順(家族内での出生順。任意)')
+    expect(input.value).toBe('3')
+  })
+})
+
 describe('PersonEditForm: Enterキーによる確定', () => {
   it('テキスト入力でEnterキーを押すとonSaveが実行される(標準のフォーム送信仕様)', () => {
     const person = createPerson({ name: { given: '太郎' } })

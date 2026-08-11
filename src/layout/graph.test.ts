@@ -46,6 +46,37 @@ describe('buildGraph', () => {
     expect(graph.persons.has('ghost-child')).toBe(false)
   })
 
+  it('出生順・生年・表示名を人物ノードに反映する(design.md D4)', () => {
+    const child = {
+      ...person('child', '花子'),
+      birthOrder: 2,
+      birth: {
+        type: 'birth' as const,
+        date: {
+          original: '1990年',
+          qualifier: 'exact' as const,
+          date: { year: 1990 },
+        },
+      },
+    }
+    const doc = testDoc([child], [])
+    const graph = buildGraph(doc)
+
+    const node = graph.persons.get('child')
+    expect(node?.birthOrder).toBe(2)
+    expect(node?.birthYear).toBe(1990)
+    expect(node?.displayName).toBe('花子')
+  })
+
+  it('出生順・生年が未設定の人物は両方ともundefinedになる', () => {
+    const doc = testDoc([person('child', '太郎')], [])
+    const graph = buildGraph(doc)
+
+    const node = graph.persons.get('child')
+    expect(node?.birthOrder).toBeUndefined()
+    expect(node?.birthYear).toBeUndefined()
+  })
+
   it('存在しない人物IDを指す配偶者参照を無視する', () => {
     const doc = testDoc(
       [person('husband', '夫')],

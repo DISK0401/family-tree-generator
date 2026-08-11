@@ -76,6 +76,72 @@ function renderBothModes(): { collapsed: string; connected: string } {
   return { collapsed, connected }
 }
 
+/**
+ * 特定の人物IDのカードを、折りたたみ表示・つながった全体表示それぞれから取り出す。
+ * family-chartは`.card[data-id]`、PedigreeCanvasは`.pedigree-card[data-person-id]`に
+ * 人物IDを持つ(それぞれのDOM構造を参照)
+ */
+function renderBothModesForPerson(personId: string): {
+  collapsed: string
+  connected: string
+} {
+  const { container, unmount } = render(
+    <FamilyTreeCanvas selectedPersonId={null} onSelectPerson={() => {}} />,
+  )
+
+  const collapsedCard = container.querySelector(
+    `.card[data-id="${personId}"] .tree-card`,
+  )
+  expect(
+    collapsedCard,
+    `折りたたみ表示に人物${personId}のカードが描かれていない`,
+  ).not.toBeNull()
+  const collapsed = collapsedCard?.outerHTML ?? ''
+
+  fireEvent.click(screen.getByRole('button', { name: 'つながった全体表示' }))
+
+  const connectedCard = container.querySelector(
+    `.pedigree-card[data-person-id="${personId}"] .tree-card`,
+  )
+  expect(
+    connectedCard,
+    `つながった全体表示に人物${personId}のカードが描かれていない`,
+  ).not.toBeNull()
+  const connected = connectedCard?.outerHTML ?? ''
+
+  unmount()
+  return { collapsed, connected }
+}
+
+/** 親1人・子2人(出生順1・2)の家族。出生順位ラベルの一致検証に使う(issue #49, 6.3) */
+function docWithBirthOrderSiblings(): TreeDocument {
+  const doc = createTreeDocument()
+  doc.persons.parent = { id: 'parent', name: { given: '親' }, gender: 'male' }
+  doc.persons.c1 = {
+    id: 'c1',
+    name: { given: '一郎' },
+    gender: 'male',
+    birthOrder: 1,
+  }
+  doc.persons.c2 = {
+    id: 'c2',
+    name: { given: '二郎' },
+    gender: 'male',
+    birthOrder: 2,
+  }
+  doc.families.f1 = {
+    id: 'f1',
+    spouseIds: ['parent'],
+    kind: 'unknown',
+    events: [],
+    children: [
+      { childId: 'c1', pedigree: 'biological' },
+      { childId: 'c2', pedigree: 'biological' },
+    ],
+  }
+  return doc
+}
+
 beforeEach(() => {
   useTreeStore.getState().replace(docWithOnePerson())
   act(() => {
@@ -137,6 +203,14 @@ describe('カード表現の一致(9.1)', () => {
     expect(collapsed).toContain('†')
     expect(connected).toContain('†')
     expect(connected).toBe(collapsed)
+  })
+
+  it('出生順位ラベル(長男/次男)が両方の描画系で一致する(issue #49)', () => {
+    useTreeStore.getState().replace(docWithBirthOrderSiblings())
+    const { collapsed, connected } = renderBothModesForPerson('c2')
+
+    expect(connected).toBe(collapsed)
+    expect(collapsed).toContain('<div class="tree-card-birth-order">次男</div>')
   })
 
   it('4文字以上の氏名でも、両方の描画系で同じ縮小フォントサイズの1列として表示される', () => {

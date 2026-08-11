@@ -14,6 +14,7 @@
 | `name.surnameKana` | `NAME` 内の拡張タグ `_KANA_SURN`(独自拡張)+ 標準の音訳構造を併記 | 併記: 5.5.1 は `FONE <かな値>`+`TYPE kana`、7.0 は `TRAN <かな値>`+`LANG ja-Kana`(他ソフトへ引き継ぐため)。インポートは `_KANA_*` 優先、無ければ FONE(TYPE kana/hiragana/katakana)/ TRAN(LANG ja-*)から補完 |
 | `name.givenKana` | `NAME` 内の拡張タグ `_KANA_GIVN`(独自拡張)+ 同上 | 同上 |
 | `gender` | `SEX`(`M`/`F`/`U`) | エクスポートは `unknown` → `U`。インポートは `X`(7.0)→ `unknown` +警告(「性別 X は『不明』として取り込みました」) |
+| `birthOrder` | 拡張タグ `_BIRTH_ORDER`(独自拡張) | 家族内での出生順(性別非依存の数値)。GEDCOM標準に対応タグが無いため7.0/5.5.1共通で拡張タグへ退避する(`_FAM_KIND`と同じ往復パターン)。インポート時、値が正の整数として解釈できない場合は無視して警告を出す |
 | `birth` | `BIRT` イベント | `LifeEvent` → `BIRT` に写像(下表参照) |
 | `death` | `DEAT` イベント | `LifeEvent` → `DEAT` に写像 |
 | `note` | `NOTE` | 構造化ノート(`SNOTE`)も将来検討可 |
@@ -76,7 +77,7 @@
 ## ヘッダ・シリアライズ規約
 
 - **5.5.1 の必須要素**: `HEAD` に `SOUR KAKEIZUCHO`(+`NAME 家系図帖`)・`SUBM @U1@`・`GEDC` 配下 `FORM LINEAGE-LINKED` を出力し、`0 @U1@ SUBM` レコードを併せて出力する(規格の必須構造。厳格な取込器対策)。
-- **7.0 の SCHMA**: 使用する独自拡張タグ(`_KANA_SURN`/`_KANA_GIVN`/`_FAM_KIND`/`_TREE_TITLE`/`_SPOUSE_ROLE_UNKNOWN`)を `HEAD` の `SCHMA` で宣言する。
+- **7.0 の SCHMA**: 使用する独自拡張タグ(`_KANA_SURN`/`_KANA_GIVN`/`_FAM_KIND`/`_BIRTH_ORDER`/`_TREE_TITLE`/`_SPOUSE_ROLE_UNKNOWN`)を `HEAD` の `SCHMA` で宣言する。
 - **行分割**: 7.0 は CONC を使わない(7.0で廃止されたため。改行は CONT のみ)。5.5.1 の CONC 分割は NOTE 系の長文タグに限定し、サロゲートペア境界・行末空白を避けて分割する。
 - **エスケープ**: 値先頭の `@` は `@@` へ(パース時に復号)。値中の `\r` は `\n` へ正規化してから行分割する(行構造注入の防止)。
 - **文字コード判定**(インポート): UTF-8(BOM有無)/UTF-16/Shift_JIS を自動判定。Shift_JIS として読めた場合も必ず警告を出し、結果に U+FFFD が含まれる・`0 HEAD` 行が無い場合は失敗として扱う。ANSEL は先頭領域の `CHAR` 宣言で検出して中断する。

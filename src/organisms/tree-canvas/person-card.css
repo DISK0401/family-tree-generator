@@ -180,6 +180,22 @@
   color: var(--ink-faint);
 }
 
+/*
+ * 出生順位ラベル(長男/次男等、issue #49)。故人マーカーと同じ理由(氏名縦書き列内に
+ * 埋め込むと折り返しで浮いて見える)で、性別インジケーター→故人マーカーの並びに
+ * 続く固定位置バッジとして独立させる。故人マーカーの表示幅を12px相当と見込んで
+ * その右隣(space-1の間隔を空けて)に配置する
+ */
+.tree-card-birth-order {
+  position: absolute;
+  top: var(--space-1);
+  left: calc(var(--space-1) * 3 + 22px);
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
 /* 生没年は氏名に次いで重要な情報のため、横書きで常に読める大きさ・向きで表示する */
 .tree-card-years {
   font-family: var(--font-gothic);

@@ -368,6 +368,42 @@ describe('personCardInnerHtml: PersonCardViewからのHTML組み立て', () => {
     expect(html).toContain('tree-card-gender')
   })
 
+  it('出生順位ラベルが導出されている場合のみ描かれる(issue #49)', () => {
+    const withLabel = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({ birthOrderLabel: '次男' }),
+        baseSettings(),
+      ),
+    )
+    const withoutLabel = personCardInnerHtml(
+      derivePersonCardView(baseInput(), baseSettings()),
+    )
+    expect(withLabel).toContain('<div class="tree-card-birth-order">次男</div>')
+    expect(withoutLabel).not.toContain('tree-card-birth-order')
+  })
+
+  it('出生順位ラベルは利用者入力ではないがhtmlTag経由でエスケープされる', () => {
+    const html = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({ birthOrderLabel: '<script>x</script>' }),
+        baseSettings(),
+      ),
+    )
+    expect(html).not.toContain('<script>')
+  })
+
+  it('故人かつ出生順位ラベルがある場合、性別インジケーター・故人マーカー・ラベルの全てが描画される', () => {
+    const html = personCardInnerHtml(
+      derivePersonCardView(
+        baseInput({ deceased: true, deathYear: 1980, birthOrderLabel: '長男' }),
+        baseSettings(),
+      ),
+    )
+    expect(html).toContain('tree-card-gender')
+    expect(html).toContain('tree-card-deceased-mark')
+    expect(html).toContain('<div class="tree-card-birth-order">長男</div>')
+  })
+
   it('姓名それぞれ3文字以下では列にフォントサイズの指定が付かない(既定表示のまま)', () => {
     const view = derivePersonCardView(
       baseInput({ surname: '山田', given: '太郎' }),
@@ -549,5 +585,20 @@ describe('personToCardInput: Person → PersonCardInput', () => {
     })
     expect(input.deceased).toBe(false)
     expect(input.deathYear).toBeUndefined()
+  })
+
+  it('第2引数で渡した出生順位ラベルがそのまま反映される(design.md D7)', () => {
+    const withLabel = personToCardInput(
+      { id: 'x3', name: { given: 'X' }, gender: 'male' },
+      '次男',
+    )
+    expect(withLabel.birthOrderLabel).toBe('次男')
+
+    const withoutLabel = personToCardInput({
+      id: 'x4',
+      name: { given: 'X' },
+      gender: 'male',
+    })
+    expect(withoutLabel.birthOrderLabel).toBeUndefined()
   })
 })

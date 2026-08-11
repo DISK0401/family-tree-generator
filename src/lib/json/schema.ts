@@ -77,6 +77,7 @@ export const personSchema = z.object({
   id: z.string(),
   name: personNameSchema,
   gender: genderSchema,
+  birthOrder: z.number().optional(),
   birth: lifeEventSchema(z.literal('birth')).optional(),
   death: lifeEventSchema(z.literal('death')).optional(),
   note: z.string().optional(),
