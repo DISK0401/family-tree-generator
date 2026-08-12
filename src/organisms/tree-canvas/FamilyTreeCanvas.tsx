@@ -35,6 +35,7 @@ import { SegmentedControl } from '../../atoms/SegmentedControl'
 import './person-card.css'
 import './FamilyTreeCanvas.css'
 import { Button } from '../../atoms/Button'
+import { setupWheelPan } from './family-chart-wheel-pan'
 
 // family-chartはDatumの構造を緩く型付けしているため、ここでのみ緩い型を使う
 type ChartInstance = ReturnType<typeof f3.createChart>
@@ -336,6 +337,8 @@ export function FamilyTreeCanvas({
         return formatDateForDisplay(date, 'full', calendarModeRef.current) ?? ''
       })
     chartRef.current = chart
+    // トラックパッドの2本指パン・素のホイール回転をパンとして扱う(fix-trackpad-canvas-pan-zoom)
+    const teardownWheelPan = setupWheelPan(chart.svg)
 
     // 折りたたみ時の非表示人数バッジ(design.md D6)。カード描画のたびに毎回計算し直すと
     // O(人数^2)になるため、直前に使った`store.getTree()`の参照が変わっていない間は使い回す
@@ -432,6 +435,7 @@ export function FamilyTreeCanvas({
     chart.updateTree({ initial: true, tree_position: 'fit' })
 
     return () => {
+      teardownWheelPan()
       container.replaceChildren()
       chartRef.current = null
     }

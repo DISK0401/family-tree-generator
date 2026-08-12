@@ -20,6 +20,7 @@ import {
 } from './person-card'
 import './person-card.css'
 import './PedigreeCanvas.css'
+import { normalizeWheelDelta, wheelZoomFactor } from './wheel-gesture'
 
 export interface PedigreeCanvasProps {
   selectedPersonId: string | null
@@ -291,41 +292,80 @@ export function PedigreeCanvas({
     dragRef.current = null
   }
 
-  /** カーソル位置を中心に据えたままscaleFactor倍する(ホイール・+/-ボタン共通) */
+  /**
+   * カーソル位置を中心に据えたままscaleFactor倍する(ホイール・+/-ボタン共通)。
+   * 連続したホイールイベントでも1フレーム1回に間引かれるよう、パンと同じ
+   * `scheduleCamera`を経由する(監査 中5と同じ非同期化。design.md D2)。
+   * 起点は直前にスケジュール済みだが未反映のカメラ(`pendingCameraRef`)を優先し、
+   * 同一フレーム内で複数回呼ばれても取りこぼさないようにする
+   */
   function zoomAround(clientX: number, clientY: number, scaleFactor: number) {
     const rect = svgRef.current?.getBoundingClientRect()
     if (!rect) return
-    setCamera((prev) => {
-      const nextWidth = prev.width * scaleFactor
-      const nextHeight = prev.height * scaleFactor
-      // 全景フィット時の幅を基準に拡大率を求め、極端な拡大/縮小を防ぐ
-      const baseWidth = Math.max(layout.width, 1) + PADDING * 2
-      const nextScale = baseWidth / nextWidth
-      if (nextScale < MIN_SCALE || nextScale > MAX_SCALE) return prev
-      const ratioX = rect.width > 0 ? (clientX - rect.left) / rect.width : 0.5
-      const ratioY = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5
-      return {
-        x: prev.x + (prev.width - nextWidth) * ratioX,
-        y: prev.y + (prev.height - nextHeight) * ratioY,
-        width: nextWidth,
-        height: nextHeight,
-      }
+    const prev = pendingCameraRef.current ?? camera
+    const nextWidth = prev.width * scaleFactor
+    const nextHeight = prev.height * scaleFactor
+    // 全景フィット時の幅を基準に拡大率を求め、極端な拡大/縮小を防ぐ
+    const baseWidth = Math.max(layout.width, 1) + PADDING * 2
+    const nextScale = baseWidth / nextWidth
+    if (nextScale < MIN_SCALE || nextScale > MAX_SCALE) return
+    const ratioX = rect.width > 0 ? (clientX - rect.left) / rect.width : 0.5
+    const ratioY = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5
+    scheduleCamera({
+      x: prev.x + (prev.width - nextWidth) * ratioX,
+      y: prev.y + (prev.height - nextHeight) * ratioY,
+      width: nextWidth,
+      height: nextHeight,
     })
   }
 
-  // ホイールによるズームはReactの`onWheel`では実装できない。Reactはrootの`wheel`リスナを
-  // passiveとして登録するため、そこでの`preventDefault()`は効かず、ズームと同時にページが
-  // スクロールしてしまう。要素へ直接`{ passive: false }`で登録する
+  /**
+   * ホイールでのパン(トラックパッドの2本指移動・素のホイール回転)。
+   * ドラッグパン(`handlePointerMove`)とは異なり、`deltaX`/`deltaY`をカメラ座標へ
+   * そのまま加算する(一般的なスクロールUIの符号規約に合わせる。design.md D2)
+   */
+  function panBy(dx: number, dy: number) {
+    const base = pendingCameraRef.current ?? camera
+    const scale = clientToSvgScale()
+    scheduleCamera({
+      ...base,
+      x: base.x + dx * scale.x,
+      y: base.y + dy * scale.y,
+    })
+  }
+
+  // ホイールのパン・ズームはReactの`onWheel`では実装できない。Reactはrootの`wheel`リスナを
+  // passiveとして登録するため、そこでの`preventDefault()`は効かず、操作と同時にページが
+  // スクロールしてしまう。要素へ直接`{ passive: false }`で登録する。
+  // Ctrl(⌘)キー付き(トラックパッドのピンチ、または⌘/Ctrl+ホイール)はズーム、
+  // それ以外(素のホイール回転・トラックパッドの2本指移動)はパンとして扱う
+  // (Figma/Excalidraw/Google Maps等と同じ規約。fix-trackpad-canvas-pan-zoom proposal.md)
   const zoomAroundRef = useRef(zoomAround)
   useEffect(() => {
     zoomAroundRef.current = zoomAround
+  })
+  const panByRef = useRef(panBy)
+  useEffect(() => {
+    panByRef.current = panBy
   })
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      zoomAroundRef.current(e.clientX, e.clientY, e.deltaY > 0 ? 1.1 : 1 / 1.1)
+      if (e.ctrlKey) {
+        const normalizedDeltaY = normalizeWheelDelta(e.deltaY, e.deltaMode)
+        zoomAroundRef.current(
+          e.clientX,
+          e.clientY,
+          wheelZoomFactor(normalizedDeltaY),
+        )
+      } else {
+        panByRef.current(
+          normalizeWheelDelta(e.deltaX, e.deltaMode),
+          normalizeWheelDelta(e.deltaY, e.deltaMode),
+        )
+      }
     }
     svg.addEventListener('wheel', onWheel, { passive: false })
     return () => svg.removeEventListener('wheel', onWheel)
